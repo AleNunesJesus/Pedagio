@@ -1,0 +1,159 @@
+# Modelo de Dados
+
+Draft de schema para revisão — nada aplicado ainda no Supabase. Todas as
+tabelas usam PostGIS (`geometry`/`geography`, SRID 4326).
+
+## Schema
+
+Todas as tabelas abaixo vivem no schema **`pedagio`** (não `public`), no
+mesmo projeto Supabase do sistema de tickets, para isolar objetos/permissões
+dos dois projetos. Nomes completos: `pedagio.praca_pedagio`,
+`pedagio.tarifa_praca`, etc. (o prefixo é omitido nas tabelas abaixo por
+brevidade).
+
+Pontos de atenção decorrentes disso:
+- A extensão PostGIS é global ao banco (schema `extensions`/`public`
+  dependendo de como já foi instalada) — não precisa reinstalar, só
+  referenciar os tipos normalmente.
+- Por padrão o PostgREST do Supabase só expõe o schema `public` via API. Se
+  o frontend for consumir `pedagio.*` diretamente via API (em vez de só
+  RPC/Edge Functions), é preciso adicionar `pedagio` em
+  Settings → API → "Exposed schemas".
+- RLS deve ser habilitada por tabela dentro do schema `pedagio` do mesmo
+  jeito que no `public` — isolamento de schema não substitui RLS.
+
+## Visão geral das entidades
+
+```mermaid
+erDiagram
+    PRACA_PEDAGIO ||--o{ TARIFA_PRACA : possui
+    PRACA_PEDAGIO ||--o{ VALIDACAO_PASSAGEM : referencia
+    CATEGORIA_VEICULO ||--o{ TARIFA_PRACA : possui
+    CATEGORIA_VEICULO ||--o{ VEICULO : classifica
+    VEICULO ||--o{ POSICAO_VEICULO : gera
+    VEICULO ||--o{ PASSAGEM_PEDAGIO : realiza
+    LOTE_IMPORTACAO ||--o{ PASSAGEM_PEDAGIO : origina
+    PASSAGEM_PEDAGIO ||--|| VALIDACAO_PASSAGEM : resulta_em
+    POSICAO_VEICULO ||--o{ VALIDACAO_PASSAGEM : evidencia
+```
+
+## Tabelas
+
+### `praca_pedagio`
+Cadastro das praças e o polígono geográfico que delimita sua área de
+cobrança/detecção.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| nome | text | |
+| rodovia | text | |
+| concessionaria | text | |
+| km | numeric | opcional, referência |
+| poligono | geometry(Polygon, 4326) | área usada na validação |
+| sentido | text | opcional (norte/sul, ida/volta) |
+| ativo | boolean | default true |
+| created_at | timestamptz | default now() |
+
+Índice: `GIST(poligono)`.
+
+### `categoria_veiculo`
+Categorias tarifárias (ex.: eixo 2, eixo 3, moto), pois a tarifa varia por
+categoria.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| codigo | text unique | ex: "EIXO_2" |
+| descricao | text | |
+
+### `tarifa_praca`
+Histórico de valores por praça + categoria, com vigência — nunca faz
+`UPDATE` do valor, sempre insere uma nova vigência.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| praca_id | fk praca_pedagio | |
+| categoria_veiculo_id | fk categoria_veiculo | |
+| valor | numeric(10,2) | |
+| vigencia_inicio | date | |
+| vigencia_fim | date null | null = vigente atualmente |
+
+Constraint: sem sobreposição de vigência para o mesmo par
+praça+categoria (via `EXCLUDE USING gist` com `daterange`).
+
+### `veiculo`
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| placa | text unique | |
+| categoria_veiculo_id | fk categoria_veiculo | |
+| frota / empresa | text | opcional, se multi-frota |
+| ativo | boolean | |
+
+### `posicao_veiculo`
+Pings de GPS. Tabela de maior volume — particionar por mês (`data_hora`)
+quando o volume justificar.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | bigserial pk | |
+| veiculo_id | fk veiculo | |
+| geom | geometry(Point, 4326) | |
+| data_hora | timestamptz | |
+| fonte | text | `carga_arquivo` \| `api` |
+| lote_importacao_id | fk lote_importacao null | quando vier de arquivo |
+| created_at | timestamptz | default now() |
+
+Índices: `GIST(geom)`, `(veiculo_id, data_hora)`.
+
+### `lote_importacao`
+Rastreabilidade de cada carga de planilha (passagens ou posições).
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| tipo | text | `passagens` \| `posicoes_gps` |
+| arquivo_nome | text | |
+| usuario | text | quem importou |
+| total_linhas | int | |
+| total_erros | int | |
+| created_at | timestamptz | |
+
+### `passagem_pedagio`
+Uma linha da planilha de passagens importada.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| id_externo | text | id vindo da planilha, para rastreio |
+| veiculo_id | fk veiculo null | null se placa não reconhecida |
+| placa_informada | text | valor bruto da planilha (auditoria) |
+| praca_id | fk praca_pedagio null | null se praça não reconhecida |
+| praca_informada | text | valor bruto da planilha |
+| data_hora | timestamptz | |
+| valor_cobrado | numeric(10,2) | |
+| documento_vinculado | text | nota fiscal/fatura |
+| lote_importacao_id | fk lote_importacao | |
+| status_validacao | text | `pendente` (default), atualizado pelo processo de validação |
+| created_at | timestamptz | |
+
+### `validacao_passagem`
+Resultado do cruzamento geoespacial + tarifário para cada passagem.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| passagem_id | fk passagem_pedagio unique | 1:1 |
+| posicao_veiculo_id | fk posicao_veiculo null | ping usado como evidência |
+| dentro_poligono | boolean | |
+| distancia_metros | numeric | distância do ping ao centróide/borda, se fora |
+| diferenca_segundos | int | |ping.data_hora - passagem.data_hora| |
+| valor_esperado | numeric(10,2) | tarifa vigente na data |
+| divergencia_valor | numeric(10,2) | valor_cobrado - valor_esperado |
+| resultado | text | `ok` \| `sem_dados_gps` \| `fora_poligono` \| `valor_divergente` \| `local_e_valor_divergentes` |
+| validado_em | timestamptz | |
+
+Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo que popula esta
+tabela.
