@@ -9,11 +9,13 @@ Registradas aqui para não esquecer — cada uma será resolvida na fase que
 depende dela:
 
 - ~~Multi-tenant/multi-frota~~ — **resolvido em 2026-09-10: single-tenant.**
-- Tamanho da janela de tolerância tempo/distância — decidir na FASE 03.
+- ~~Janela de tolerância tempo/distância~~ — **resolvido em 2026-09-10: fixa
+  em ±10 minutos.**
+- ~~Revalidação automática ao chegar GPS depois~~ — **resolvido em
+  2026-09-10: sim, via trigger.**
 - Tratamento de placa/praça não reconhecida na importação — decidir na
-  FASE 04.
-- Revalidação automática quando GPS via API chega depois da passagem —
-  decidir na FASE 03 ou 04.
+  FASE 04 (a função de validação já suporta o caso via `sem_cadastro`, mas
+  falta decidir se a importação bloqueia a linha ou importa mesmo assim).
 - Stack de frontend/dashboard — decidir antes da FASE 06.
 
 ---
@@ -103,20 +105,43 @@ cadastro que não dependem de volume/tempo real: `categoria_veiculo`,
 
 ## FASE 03 — Função de validação (geoespacial + tarifária)
 
-**Status:** 🔴 Não iniciado
+**Status:** 🟢 Concluído
 
 **Objetivo:** implementar `validar_passagem(passagem_id)` conforme
 [docs/fluxo-validacao.md](fluxo-validacao.md), resolvendo antes: janela de
 tolerância e política de revalidação.
 
 **Checklist:**
-- [ ] Decisão: janela de tempo (minutos) — fixa ou por praça
-- [ ] Decisão: revalidação automática ao chegar GPS novo via API
-- [ ] Função/RPC `validar_passagem`
-- [ ] Job/trigger para rodar em lote sobre passagens `pendente`
-- [ ] Script de verificação `.mjs` (caso ok, fora_poligono, sem_dados_gps, valor_divergente)
+- [x] Decisão: janela de tempo — fixa em ±10 minutos (`pedagio.janela_tolerancia_validacao()`)
+- [x] Decisão: revalidação automática ao chegar GPS novo (trigger em `posicao_veiculo`)
+- [x] Função `pedagio.validar_passagem(passagem_id)`
+- [x] Função `pedagio.processar_validacoes_pendentes()` (lote, para rodar após importação ou via job)
+- [x] Trigger `posicao_veiculo_revalidar_passagens` (revalida `pendente`/`sem_dados_gps` do mesmo veículo ao chegar novo ping na janela)
+- [x] `get_advisors` — WARN de `search_path` mutável nas 4 funções corrigido (`set search_path = ''`)
+- [x] Verificação via SQL direto (`execute_sql`): casos `ok`, `fora_poligono`, `valor_divergente`, `sem_cadastro`, `sem_dados_gps` → revalidação automática para `ok` ao chegar ping tardio, e `processar_validacoes_pendentes` processando passagem pendente; cleanup confirmado (contagens zeradas)
 
-**Notas de implementação:** _(preenchido ao concluir a fase)_
+**Notas de implementação:**
+- Migrations aplicadas: `20260910185409_pedagio_fase03_funcao_validacao`,
+  `20260910185427_pedagio_fase03_fix_search_path` (mirror local em
+  `supabase/migrations/`).
+- Janela de tolerância isolada em `pedagio.janela_tolerancia_validacao()`
+  (retorna `interval`) para não duplicar o valor entre `validar_passagem` e
+  o trigger — se um dia precisar variar por praça, essa é a única função a
+  alterar.
+- Caso não exista tarifa vigente cadastrada para a combinação
+  praça+categoria+data, `divergencia_valor` fica `null` e o resultado passa
+  a depender só da geo (não bloqueia nem marca como divergente) — decisão
+  de simplificação, não estava no desenho original; revisar se fizer
+  sentido criar um status específico para "sem tarifa cadastrada".
+- Comparação de valor é exata (`=`), sem tolerância de centavos — o desenho
+  original cogitava tolerância, mas ficou exata por simplicidade; ajustar
+  se aparecerem divergências de arredondamento na prática.
+- Funções `SECURITY INVOKER` (padrão), sem exposição via API ainda — RLS
+  do schema `pedagio` continua sem políticas.
+- Trigger dispara por linha (`FOR EACH ROW`); para cargas em lote muito
+  grandes de `posicao_veiculo` isso significa uma verificação por linha
+  inserida — aceitável no volume atual, mas revisar se performance for
+  problema quando o volume crescer (FASE 04 já vai trazer volume real).
 
 ---
 
@@ -164,13 +189,12 @@ tratamento de placa/praça não reconhecida.
 
 ## Estado atual
 
-FASE 01 e FASE 02 concluídas (schema `pedagio` completo — cadastros +
-tabelas de movimento — aplicado e verificado no Supabase, project_id
-`wduypqixkafimcndytiz`). Decisão de multi-tenant resolvida: single-tenant.
-Aguardando aval para iniciar a FASE 03.
+FASE 01, FASE 02 e FASE 03 concluídas (schema `pedagio` completo —
+cadastros, tabelas de movimento e função de validação geoespacial/tarifária
+com revalidação automática — aplicado e verificado no Supabase, project_id
+`wduypqixkafimcndytiz`). Aguardando aval para iniciar a FASE 04.
 
 ## Próximo passo
 
-FASE 03 — Função de validação geoespacial + tarifária, incluindo as
-decisões de janela de tolerância e revalidação automática que ainda estão
-em aberto.
+FASE 04 — Importação (planilha), incluindo a decisão de como tratar
+placa/praça não reconhecida na linha importada.
