@@ -45,6 +45,17 @@ tarifa vigente naquela data.
   passagens hoje (staging table + Supabase Studio), antes de existir tela
   de upload.
 
+## Rodando localmente
+
+O app fica em `app/`. Roda na porta **3001** (não 3000), para poder ficar
+ligado ao mesmo tempo que o projeto de tickets (que usa 3000):
+
+```
+cd app
+npm install
+npm run dev
+```
+
 ## Decisões em aberto
 
 - Multi-tenant (mais de uma empresa/frota usando o mesmo banco)? Afeta RLS.

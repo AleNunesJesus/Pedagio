@@ -296,6 +296,9 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
   momentaneamente para confirmar que `/` redireciona para `/login` (307,
   usuário não autenticado) e que `/login` renderiza o formulário.
 - `npm run typecheck`, `npx eslint .` e `npx next build` rodaram limpos.
+- `dev`/`start` fixados na porta **3001** (`next dev -p 3001` /
+  `next start -p 3001`) para poder rodar junto com o projeto de tickets
+  (porta 3000) — pedido do usuário em 2026-09-10.
 - `app/AGENTS.md` e `app/CLAUDE.md` são gerados automaticamente pelo
   próprio `next dev`/`next build` do Next.js 16 (aviso sobre breaking
   changes desta versão para agentes de IA) — não foram criados por mim,
