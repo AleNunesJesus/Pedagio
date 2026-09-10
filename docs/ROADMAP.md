@@ -13,9 +13,10 @@ depende dela:
   em ±10 minutos.**
 - ~~Revalidação automática ao chegar GPS depois~~ — **resolvido em
   2026-09-10: sim, via trigger.**
-- Tratamento de placa/praça não reconhecida na importação — decidir na
-  FASE 04 (a função de validação já suporta o caso via `sem_cadastro`, mas
-  falta decidir se a importação bloqueia a linha ou importa mesmo assim).
+- ~~Tratamento de placa/praça não reconhecida na importação~~ —
+  **resolvido em 2026-09-10: importa como `sem_cadastro`, não bloqueia.**
+- Carga em lote de `posicao_veiculo` (GPS) — ainda sem staging/função
+  dedicada; avaliar quando a necessidade aparecer.
 - Stack de frontend/dashboard — decidir antes da FASE 06.
 
 ---
@@ -147,20 +148,38 @@ tolerância e política de revalidação.
 
 ## FASE 04 — Importação (planilha)
 
-**Status:** 🔴 Não iniciado
+**Status:** 🟢 Concluído
 
-**Objetivo:** pipeline de importação de `passagem_pedagio` (e, quando
-aplicável, `posicao_veiculo`) a partir de arquivo, resolvendo antes:
-tratamento de placa/praça não reconhecida.
+**Objetivo:** pipeline de importação de `passagem_pedagio` a partir de
+arquivo, resolvendo antes: tratamento de placa/praça não reconhecida e
+mecanismo de carga (sem tela de upload ainda).
 
 **Checklist:**
-- [ ] Decisão: bloquear linha vs. importar como `sem_cadastro`
-- [ ] Rotina de parsing/normalização do arquivo
-- [ ] Vínculo com `lote_importacao`
-- [ ] Disparo da validação (FASE 03) após importar
-- [ ] Script de verificação `.mjs`
+- [x] Decisão: importar mesmo assim como `sem_cadastro` (não bloquear a linha)
+- [x] Decisão: mecanismo de carga — staging table + import CSV nativo do Supabase Studio
+- [x] Tabela `pedagio.staging_passagem_pedagio` (colunas cruas em texto)
+- [x] Helpers de parsing `pedagio.parse_data_hora_br` e `pedagio.parse_valor_brl` (formato fixo, documentado — sem tentativa de adivinhar formato)
+- [x] Função `pedagio.processar_staging_passagens` — casa placa/praça, insere em `passagem_pedagio`, cria `lote_importacao`, dispara validação (FASE 03), limpa a staging
+- [x] `get_advisors` — sem achados novos além do esperado
+- [x] Verificação via SQL direto (`execute_sql`): parsers isolados (milhar+decimal BR, data DD/MM/YYYY), linha com cadastro reconhecido → validada, linha sem cadastro → `sem_cadastro`, linhas com data/valor inválidos → viram erro e não são inseridas, contadores `total_linhas`/`total_erros` corretos, staging limpa ao final; cleanup confirmado (contagens zeradas)
+- [x] Documentação do processo: [docs/importacao.md](importacao.md)
 
-**Notas de implementação:** _(preenchido ao concluir a fase)_
+**Notas de implementação:**
+- Migration aplicada: `20260910190043_pedagio_fase04_importacao` (mirror
+  local em `supabase/migrations/`).
+- Formato de data/hora e valor são **fixos e documentados**
+  (`DD/MM/YYYY HH24:MI:SS`, número BR com vírgula decimal) — deliberadamente
+  sem múltiplas tentativas de parsing automático, para não arriscar
+  interpretar uma data/valor errado silenciosamente em dados financeiros.
+  Qualquer linha fora desse formato vira erro contado em
+  `lote_importacao.total_erros` e não é inserida.
+- `processar_staging_passagens` processa TUDO que estiver na staging no
+  momento da chamada (não há filtro por usuário/sessão) — adequado ao uso
+  single-tenant/single-usuário atual; se um dia houver múltiplos
+  importadores simultâneos, isso precisa ser revisitado.
+- Carga em lote de `posicao_veiculo` (GPS) ainda não tem staging/função
+  dedicada — só a carga de `passagem_pedagio` foi implementada nesta fase.
+  Fica registrado como pendência para quando a necessidade aparecer.
 
 ---
 
@@ -189,12 +208,13 @@ tratamento de placa/praça não reconhecida.
 
 ## Estado atual
 
-FASE 01, FASE 02 e FASE 03 concluídas (schema `pedagio` completo —
-cadastros, tabelas de movimento e função de validação geoespacial/tarifária
-com revalidação automática — aplicado e verificado no Supabase, project_id
-`wduypqixkafimcndytiz`). Aguardando aval para iniciar a FASE 04.
+FASE 01 a FASE 04 concluídas (schema `pedagio` completo — cadastros,
+tabelas de movimento, função de validação geoespacial/tarifária com
+revalidação automática, e pipeline de importação via staging table —
+aplicado e verificado no Supabase, project_id `wduypqixkafimcndytiz`).
+Aguardando aval para iniciar a FASE 05.
 
 ## Próximo passo
 
-FASE 04 — Importação (planilha), incluindo a decisão de como tratar
-placa/praça não reconhecida na linha importada.
+FASE 05 — Indicadores (views/materialized views sobre `validacao_passagem`
++ `passagem_pedagio`).

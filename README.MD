@@ -41,6 +41,9 @@ tarifa vigente naquela data.
   propostos para análise.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — plano de fases da implementação
   (mesma disciplina do projeto de tickets: uma fase por vez).
+- [docs/importacao.md](docs/importacao.md) — como carregar a planilha de
+  passagens hoje (staging table + Supabase Studio), antes de existir tela
+  de upload.
 
 ## Decisões em aberto
 
