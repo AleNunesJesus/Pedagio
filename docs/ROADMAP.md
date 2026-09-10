@@ -17,7 +17,11 @@ depende dela:
   **resolvido em 2026-09-10: importa como `sem_cadastro`, não bloqueia.**
 - Carga em lote de `posicao_veiculo` (GPS) — ainda sem staging/função
   dedicada; avaliar quando a necessidade aparecer.
-- Stack de frontend/dashboard — decidir antes da FASE 06.
+- ~~Stack de frontend/dashboard~~ — **resolvido em 2026-09-10: Next.js,
+  auth compartilhado com o sistema de tickets, acesso liberado para
+  qualquer autenticado.**
+- Biblioteca de mapa para desenhar o polígono da praça (FASE 06.4) — ainda
+  não escolhida (provável MapLibre GL ou Leaflet).
 
 ---
 
@@ -217,18 +221,58 @@ mecanismo de carga (sem tela de upload ainda).
 
 ## FASE 06 — Frontend/dashboard
 
-**Status:** 🔴 Não iniciado — stack ainda não definida
+**Status:** 🟡 Em andamento
+
+Decisões fechadas (2026-09-10): stack **Next.js** (mesma do projeto de
+tickets); autenticação **compartilhada** com o sistema de tickets (mesmo
+Supabase Auth, mesmo `auth.users`); controle de acesso **qualquer usuário
+autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
+
+**FASE 06.1 — RLS + grants para acesso autenticado** — 🟢 Concluído
+- [x] Policy `authenticated_full_access` (USING/CHECK true) nas 9 tabelas do schema `pedagio`
+- [x] Grants (`usage`, `select/insert/update/delete`, `execute`) para `authenticated` + `alter default privileges` para tabelas/funções futuras
+- [x] Verificado: `authenticated` enxerga dado de teste; `anon` recebe `permission denied` (schema `pedagio` nunca foi liberado pra `anon`)
+- [x] **Pendência do usuário:** habilitar `pedagio` em Dashboard → Settings → API → Exposed schemas (não é possível via MCP)
+- Migration: `20260910200708_pedagio_fase06_rls_acesso_autenticado`
+
+**FASE 06.2 — Scaffold Next.js + login** — 🔴 Não iniciado
+- [ ] Criar app Next.js (App Router) em `Pedagio/app/`
+- [ ] Cliente Supabase (browser + server, mesma abordagem `@supabase/ssr` do projeto de tickets)
+- [ ] Tela de login reaproveitando `auth.users` existente (sem cadastro novo)
+- [ ] Layout base + navegação entre as áreas abaixo
+
+**FASE 06.3 — Dashboard de indicadores** — 🔴 Não iniciado
+- [ ] Telas consumindo as views da FASE 05 (financeiro, auditoria, operacional)
+
+**FASE 06.4 — Cadastros (praças, tarifas, veículos, categorias)** — 🔴 Não iniciado
+- [ ] CRUD de veículo/categoria/tarifa (formulários simples)
+- [ ] Cadastro de praça com desenho do polígono num mapa (biblioteca de mapa a definir — provável MapLibre/Leaflet)
+
+**FASE 06.5 — Importação (UI)** — 🔴 Não iniciado
+- [ ] Upload de CSV → grava em `staging_passagem_pedagio` → chama `processar_staging_passagens` → mostra resultado do lote
+
+**FASE 06.6 — Passagens e validações (consulta/detalhe)** — 🔴 Não iniciado
+- [ ] Lista de passagens com filtro por status_validacao/praça/veículo/período
+- [ ] Detalhe de uma passagem mostrando o cruzamento (posição usada, distância, divergência)
+
+**Notas de implementação (06.1):**
+- Optamos por RLS simples (`true`/`true`) em vez de papéis porque a decisão
+  do usuário foi "qualquer autenticado vê/edita tudo" — se algum dia
+  precisar de admin vs. operador, as políticas atuais precisam ser
+  substituídas por checks reais (não é só adicionar, é trocar).
+- `anon` nunca recebeu `GRANT USAGE ON SCHEMA pedagio` — por isso o erro é
+  "permission denied" (nem chega a avaliar RLS), o que é o comportamento
+  correto: só usuários logados devem tocar nesse schema.
 
 ---
 
 ## Estado atual
 
-FASE 01 a FASE 05 concluídas (schema `pedagio` completo — cadastros,
-tabelas de movimento, função de validação com revalidação automática,
-pipeline de importação e views de indicadores — aplicado e verificado no
-Supabase, project_id `wduypqixkafimcndytiz`). Aguardando aval para iniciar
-a FASE 06.
+FASE 01 a FASE 05 concluídas. FASE 06.1 (RLS + grants para acesso
+autenticado) concluída e verificada. Aguardando: (1) usuário habilitar
+`pedagio` em Exposed Schemas no Dashboard, (2) aval para iniciar a
+FASE 06.2 (scaffold Next.js + login).
 
 ## Próximo passo
 
-FASE 06 — Frontend/dashboard: falta decidir a stack.
+FASE 06.2 — Scaffold do app Next.js e tela de login.
