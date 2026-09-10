@@ -235,11 +235,11 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 - [x] **Pendência do usuário:** habilitar `pedagio` em Dashboard → Settings → API → Exposed schemas (não é possível via MCP)
 - Migration: `20260910200708_pedagio_fase06_rls_acesso_autenticado`
 
-**FASE 06.2 — Scaffold Next.js + login** — 🔴 Não iniciado
-- [ ] Criar app Next.js (App Router) em `Pedagio/app/`
-- [ ] Cliente Supabase (browser + server, mesma abordagem `@supabase/ssr` do projeto de tickets)
-- [ ] Tela de login reaproveitando `auth.users` existente (sem cadastro novo)
-- [ ] Layout base + navegação entre as áreas abaixo
+**FASE 06.2 — Scaffold Next.js + login** — 🟢 Concluído
+- [x] Criar app Next.js (App Router) em `Pedagio/app/`
+- [x] Cliente Supabase (browser + server, mesma abordagem `@supabase/ssr` do projeto de tickets, com `db.schema: "pedagio"`)
+- [x] Tela de login reaproveitando `auth.users` existente (sem cadastro novo, sem tabela de perfil própria)
+- [x] Layout base (`(app)/layout.tsx` com guard `requireAutenticado`) + página `/dashboard` placeholder
 
 **FASE 06.3 — Dashboard de indicadores** — 🔴 Não iniciado
 - [ ] Telas consumindo as views da FASE 05 (financeiro, auditoria, operacional)
@@ -264,15 +264,52 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
   "permission denied" (nem chega a avaliar RLS), o que é o comportamento
   correto: só usuários logados devem tocar nesse schema.
 
+**Notas de implementação (06.2):**
+- Stack idêntica ao projeto de tickets: Next.js 16.3.3 (App Router,
+  Turbopack), React 19.2.8, `@supabase/ssr` + `@supabase/supabase-js`,
+  Tailwind 4, TypeScript estrito, ESLint flat config. App vive em
+  `Pedagio/app/` (subpasta própria, para não misturar com `docs/` e
+  `supabase/` na raiz do projeto).
+- Next.js 16 renomeou `middleware.ts` para `proxy.ts` — replicado
+  (`src/proxy.ts` + `src/lib/supabase/proxy.ts`) exatamente como no projeto
+  de tickets.
+- Clientes Supabase (`client.ts`/`server.ts`) usam
+  `db: { schema: "pedagio" }` e o segundo generic `<Database, "pedagio">`
+  — por padrão eles nunca tocam o `public` do sistema de tickets.
+- Diferente do projeto de tickets, **não existe tabela de perfil** própria
+  do Pedagio (`usuarios` equivalente): o guard `requireAutenticado` só
+  confere se há uma sessão Supabase Auth válida (`auth.getClaims()`), sem
+  checar papel/ativo — condizente com a decisão "qualquer autenticado vê/
+  edita tudo".
+- `src/types/database.ts` foi **escrito à mão** a partir das migrations
+  reais (`generate_typescript_types` do MCP só cobre `public`, mesmo com
+  `pedagio` exposto — confirmado por probe direto ao PostgREST). Colunas
+  `geometry` (`poligono`, `geom`) estão tipadas como `string` (WKB hex) —
+  decisão pendente para a FASE 06.4 sobre como servir/editar isso num mapa
+  (provavelmente uma view com `ST_AsGeoJSON`).
+- Verificação **real** de ponta a ponta (não só SQL): script Node
+  descartável criou um usuário via Admin API, fez login por senha de
+  verdade, e usou o `access_token` retornado para bater no PostgREST
+  (`Accept-Profile: pedagio`) confirmando leitura de tabela e view,
+  inserção e exclusão respeitando RLS, e que `anon` continua bloqueado —
+  usuário de teste removido ao final. Também iniciei o `next dev` local
+  momentaneamente para confirmar que `/` redireciona para `/login` (307,
+  usuário não autenticado) e que `/login` renderiza o formulário.
+- `npm run typecheck`, `npx eslint .` e `npx next build` rodaram limpos.
+- `app/AGENTS.md` e `app/CLAUDE.md` são gerados automaticamente pelo
+  próprio `next dev`/`next build` do Next.js 16 (aviso sobre breaking
+  changes desta versão para agentes de IA) — não foram criados por mim,
+  são normais e podem ser commitados.
+
 ---
 
 ## Estado atual
 
-FASE 01 a FASE 05 concluídas. FASE 06.1 (RLS + grants para acesso
-autenticado) concluída e verificada. Aguardando: (1) usuário habilitar
-`pedagio` em Exposed Schemas no Dashboard, (2) aval para iniciar a
-FASE 06.2 (scaffold Next.js + login).
+FASE 01 a FASE 05 concluídas. FASE 06.1 (RLS + grants) e FASE 06.2
+(scaffold Next.js + login) concluídas e verificadas de ponta a ponta
+(login real + REST no schema `pedagio`). Aguardando aval para iniciar a
+FASE 06.3 (dashboard de indicadores).
 
 ## Próximo passo
 
-FASE 06.2 — Scaffold do app Next.js e tela de login.
+FASE 06.3 — Telas de dashboard consumindo as views da FASE 05.
