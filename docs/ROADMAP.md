@@ -241,8 +241,42 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 - [x] Tela de login reaproveitando `auth.users` existente (sem cadastro novo, sem tabela de perfil própria)
 - [x] Layout base (`(app)/layout.tsx` com guard `requireAutenticado`) + página `/dashboard` placeholder
 
-**FASE 06.3 — Dashboard de indicadores** — 🔴 Não iniciado
-- [ ] Telas consumindo as views da FASE 05 (financeiro, auditoria, operacional)
+**FASE 06.3 — Dashboard de indicadores** — 🟢 Concluído
+- [x] Telas consumindo as 9 views da FASE 05 (financeiro, auditoria, operacional)
+
+**Notas de implementação (06.3):**
+- Seguida a skill `dataviz` do repositório de skills: paleta categórica/
+  sequencial/status validada (`src/features/dashboard/colors.ts`), forma
+  escolhida pelo trabalho do dado (tendência → linha/área, ranking →
+  barra horizontal, proporção com semântica de estado → lista de barras
+  com cor de status, >7 categorias/detalhe → tabela), tooltip com hover em
+  todo gráfico, texto nunca na cor da série, gridlines recessivas.
+- `vw_status_resumo` usa a **paleta de status** (good/warning/serious/
+  critical), não a categórica — os valores de `status_validacao` são
+  estados, não identidades de série; cor nunca aparece sem o rótulo em
+  texto ao lado (regra "nunca só cor").
+- `vw_volume_passagens_praca_dia` (praça × dia) foi agregado por dia
+  (somando todas as praças) para virar um único gráfico de tendência —
+  o grid completo praça×dia (heatmap) ficou de fora por ora; considerar
+  se um drill-down por praça for necessário depois.
+- Cores dos gráficos (recharts) usam os hexadecimais fixos do modo claro
+  da paleta; a página já tem classes `dark:` nos contêineres (cards,
+  texto), mas as cores das marcas dos gráficos ainda não trocam
+  automaticamente no modo escuro — o app ainda não tem alternância de tema
+  (isso não fazia parte do escopo desta fase). Ajustar se/quando um toggle
+  de tema for adicionado.
+- **Verificação:** populei dados de teste realistas (`[SEED]`/`SEED*`,
+  2 meses, 2 praças, status variados) e confirmei via consulta direta
+  (mesmas 9 views que a página usa) que os números batem com o esperado
+  (totais, percentuais, taxas). Também confirmei — ponto importante — que
+  o PostgREST serializa `numeric` como número JSON de verdade (não string),
+  o que valida a soma feita em `reduce()` na página. Dados de teste
+  removidos ao final (zero resíduo confirmado).
+  **Limitação honesta:** não há ferramenta de navegador/screenshot neste
+  ambiente, então os gráficos não foram conferidos visualmente (layout,
+  colisão de rótulos, etc. — passo 7 da skill `dataviz`). Recomendo
+  conferir em `http://localhost:3001/dashboard` com dados reais importados
+  antes de considerar o visual definitivo.
 
 **FASE 06.4 — Cadastros (praças, tarifas, veículos, categorias)** — 🔴 Não iniciado
 - [ ] CRUD de veículo/categoria/tarifa (formulários simples)
@@ -308,11 +342,15 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 
 ## Estado atual
 
-FASE 01 a FASE 05 concluídas. FASE 06.1 (RLS + grants) e FASE 06.2
-(scaffold Next.js + login) concluídas e verificadas de ponta a ponta
-(login real + REST no schema `pedagio`). Aguardando aval para iniciar a
-FASE 06.3 (dashboard de indicadores).
+FASE 01 a FASE 05 concluídas. FASE 06.1, 06.2 e 06.3 concluídas
+(RLS/grants, scaffold Next.js + login, dashboard de indicadores). Painel
+em `/dashboard` já consome as 9 views da FASE 05, verificado com dados de
+teste reais (removidos ao final) — falta só a conferência visual num
+navegador de verdade, que o usuário pode fazer em
+`http://localhost:3001/dashboard`. Aguardando aval para iniciar a
+FASE 06.4.
 
 ## Próximo passo
 
-FASE 06.3 — Telas de dashboard consumindo as views da FASE 05.
+FASE 06.4 — Cadastros (praças, tarifas, veículos, categorias), incluindo
+escolher a biblioteca de mapa para desenhar o polígono da praça.
