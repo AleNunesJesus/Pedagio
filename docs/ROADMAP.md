@@ -185,18 +185,33 @@ mecanismo de carga (sem tela de upload ainda).
 
 ## FASE 05 — Indicadores
 
-**Status:** 🔴 Não iniciado
+**Status:** 🟢 Concluído
 
 **Objetivo:** views/materialized views para os indicadores listados em
 [docs/indicadores.md](indicadores.md).
 
 **Checklist:**
-- [ ] Views financeiras
-- [ ] Views de auditoria/validação
-- [ ] Views operacionais
-- [ ] Script de verificação `.mjs`
+- [x] View base `vw_passagens_detalhado` (join passagem + validação + praça + veículo)
+- [x] Views financeiras: `vw_financeiro_mensal`, `vw_gasto_por_veiculo_mensal`, `vw_gasto_por_praca`
+- [x] Views de auditoria/validação: `vw_status_resumo`, `vw_praca_taxa_fora_poligono`, `vw_veiculo_taxa_divergencia`, `vw_sem_dados_gps_por_dia`
+- [x] Views operacionais: `vw_diferenca_tempo_media_por_praca`, `vw_volume_passagens_praca_dia`
+- [x] `get_advisors` — sem achados novos além do esperado
+- [x] Verificação via SQL direto (`execute_sql`): 5 passagens de teste cobrindo `ok`/`valor_divergente`/`fora_poligono`/`sem_dados_gps`/`sem_cadastro`, 2 praças, 2 veículos, 3 meses distintos; 12 asserções conferindo totais/percentuais/médias de cada view batendo com o esperado; cleanup confirmado (contagens zeradas)
 
-**Notas de implementação:** _(preenchido ao concluir a fase)_
+**Notas de implementação:**
+- Migration aplicada: `20260910191911_pedagio_fase05_indicadores` (mirror
+  local em `supabase/migrations/`).
+- Todas as views usam `with (security_invoker = true)` — importante
+  porque, sem essa opção, uma view no Postgres roda com os privilégios do
+  dono dela e ignoraria a RLS das tabelas de base; com ela, quando
+  políticas de RLS forem adicionadas (FASE 06), as views passam a
+  respeitá-las automaticamente sem precisar recriar nada.
+- Views são simples (não materializadas) — volume atual não justifica
+  materialização/refresh; reavaliar se o volume real (FASE de produção)
+  tornar as agregações lentas.
+- O indicador "mapa com polígonos + pings sobrepostos" do desenho original
+  não vira view — é puramente uma renderização de frontend (FASE 06),
+  consumindo `praca_pedagio.poligono` e `posicao_veiculo.geom` diretamente.
 
 ---
 
@@ -208,13 +223,12 @@ mecanismo de carga (sem tela de upload ainda).
 
 ## Estado atual
 
-FASE 01 a FASE 04 concluídas (schema `pedagio` completo — cadastros,
-tabelas de movimento, função de validação geoespacial/tarifária com
-revalidação automática, e pipeline de importação via staging table —
-aplicado e verificado no Supabase, project_id `wduypqixkafimcndytiz`).
-Aguardando aval para iniciar a FASE 05.
+FASE 01 a FASE 05 concluídas (schema `pedagio` completo — cadastros,
+tabelas de movimento, função de validação com revalidação automática,
+pipeline de importação e views de indicadores — aplicado e verificado no
+Supabase, project_id `wduypqixkafimcndytiz`). Aguardando aval para iniciar
+a FASE 06.
 
 ## Próximo passo
 
-FASE 05 — Indicadores (views/materialized views sobre `validacao_passagem`
-+ `passagem_pedagio`).
+FASE 06 — Frontend/dashboard: falta decidir a stack.
