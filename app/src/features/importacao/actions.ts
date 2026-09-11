@@ -111,3 +111,76 @@ export async function importarPlanilha(
     lote: { id: lote.id, total_linhas: lote.total_linhas, total_erros: lote.total_erros },
   };
 }
+
+const COLUNAS_ESPERADAS_POSICOES = ["placa", "latitude", "longitude", "data", "horario"] as const;
+
+export async function importarPosicoes(
+  _prevState: ImportacaoState,
+  formData: FormData,
+): Promise<ImportacaoState> {
+  const arquivo = formData.get("arquivo");
+
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { error: "Selecione um arquivo CSV." };
+  }
+
+  const texto = await arquivo.text();
+  const resultado = Papa.parse<Record<string, string>>(texto, {
+    header: true,
+    skipEmptyLines: true,
+  });
+
+  if (resultado.errors.length > 0) {
+    return { error: `Erro ao ler o CSV: ${resultado.errors[0].message}` };
+  }
+
+  const linhas = resultado.data;
+  if (linhas.length === 0) {
+    return { error: "O arquivo não tem nenhuma linha de dados." };
+  }
+
+  const colunasEncontradas = Object.keys(linhas[0]);
+  const temAlgumaColunaEsperada = COLUNAS_ESPERADAS_POSICOES.some((c) =>
+    colunasEncontradas.includes(c),
+  );
+  if (!temAlgumaColunaEsperada) {
+    return {
+      error:
+        "Nenhuma coluna esperada foi encontrada no CSV. Confira os cabeçalhos em docs/importacao.md " +
+        `(esperado: ${COLUNAS_ESPERADAS_POSICOES.join(", ")}).`,
+    };
+  }
+
+  if (linhas.length > LIMITE_LINHAS) {
+    return { error: `O arquivo tem ${linhas.length} linhas — o limite por importação é ${LIMITE_LINHAS}.` };
+  }
+
+  const linhasParaStaging = linhas.map((linha) => ({
+    placa: vazio(linha.placa),
+    latitude_texto: vazio(linha.latitude),
+    longitude_texto: vazio(linha.longitude),
+    data_texto: vazio(linha.data),
+    horario_texto: vazio(linha.horario),
+  }));
+
+  const supabase = await createClient();
+
+  const { error: insertError } = await supabase
+    .from("staging_posicao_veiculo")
+    .insert(linhasParaStaging);
+  if (insertError) return { error: `Erro ao gravar na staging: ${insertError.message}` };
+
+  const { data: claims } = await supabase.auth.getClaims();
+  const usuario = (claims?.claims?.email as string | undefined) ?? null;
+
+  const { data: lote, error: rpcError } = await supabase.rpc("processar_staging_posicoes", {
+    p_arquivo_nome: arquivo.name,
+    p_usuario: usuario,
+  });
+  if (rpcError) return { error: `Erro ao processar a importação: ${rpcError.message}` };
+
+  revalidatePath("/importacao");
+  return {
+    lote: { id: lote.id, total_linhas: lote.total_linhas, total_erros: lote.total_erros },
+  };
+}

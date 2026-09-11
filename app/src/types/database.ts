@@ -364,6 +364,36 @@ export type Database = {
           },
         ];
       };
+      staging_posicao_veiculo: {
+        Row: {
+          id: number;
+          placa: string | null;
+          latitude_texto: string | null;
+          longitude_texto: string | null;
+          data_texto: string | null;
+          horario_texto: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: number;
+          placa?: string | null;
+          latitude_texto?: string | null;
+          longitude_texto?: string | null;
+          data_texto?: string | null;
+          horario_texto?: string | null;
+          criado_em?: string;
+        };
+        Update: {
+          id?: number;
+          placa?: string | null;
+          latitude_texto?: string | null;
+          longitude_texto?: string | null;
+          data_texto?: string | null;
+          horario_texto?: string | null;
+          criado_em?: string;
+        };
+        Relationships: [];
+      };
       usuario_perfil: {
         Row: {
           user_id: string;
@@ -645,6 +675,14 @@ export type Database = {
       remover_papel: {
         Args: { p_user_id: string };
         Returns: undefined;
+      };
+      parse_coordenada: {
+        Args: { p_texto: string };
+        Returns: number | null;
+      };
+      processar_staging_posicoes: {
+        Args: { p_arquivo_nome?: string | null; p_usuario?: string | null };
+        Returns: Database["pedagio"]["Tables"]["lote_importacao"]["Row"];
       };
     };
     Enums: Record<string, never>;
