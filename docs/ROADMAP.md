@@ -888,24 +888,51 @@ de teste do usuário, antes gravada como `20:11:00+00`, ficou
 
 ---
 
+## FASE 12 — Mapa da validação geoespacial
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** complementar visualmente o resultado "dentro do polígono"
+já exibido em texto na tela de detalhe da passagem (`/passagens/[id]`),
+mostrando o polígono da praça e o ping de GPS usado na validação num
+mapa.
+
+**Checklist:**
+- [x] `vw_passagens_detalhado` ganhou a coluna `posicao_veiculo_id`
+  (vindo de `validacao_passagem`), pra buscar o ping via
+  `vw_posicao_veiculo` (já existe, FASE 11) sem view nova
+- [x] Componente `MapaValidacao` (Leaflet puro, somente leitura):
+  desenha o polígono da praça e, se houver ping associado, um marcador
+  colorido conforme `dentro_poligono` (verde = dentro, vermelho = fora,
+  cinza = sem dado)
+- [x] Seção "Mapa da validação" em `/passagens/[id]`, usando o polígono
+  já exposto por `vw_praca_pedagio_mapa` (mesma view do cadastro de
+  praças); quando a praça não foi identificada (`sem_cadastro`), mostra
+  mensagem em vez do mapa
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `get_advisors` — sem achados novos
+- [x] Verificação: SQL confirmou `posicao_veiculo_id` chegando certo na
+  view para os casos com/sem ping; REST sem autenticação continua
+  bloqueado (permission denied)
+
+**Limitação conhecida:** mesma das fases anteriores — não testei
+visualmente no navegador (sem ferramenta de browser neste ambiente).
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 11).** Schema `pedagio` (cadastros
+**Projeto completo (FASE 01 a FASE 12).** Schema `pedagio` (cadastros
 incluindo viagem/embarcador, movimento, validação com revalidação
 automática, importação de passagens e de GPS no layout real do
 fornecedor, indicadores, papéis de acesso admin/operador, visibilidade
 de GPS por veículo) + app Next.js (login compartilhado, dashboard,
-cadastros com mapa, importação via UI, consulta de passagens/validações,
-rastreamento de GPS, gestão de usuários) — tudo aplicado e verificado no
-Supabase (`wduypqixkafimcndytiz`).
+cadastros com mapa, importação via UI, consulta de passagens/validações
+com mapa da validação geoespacial, rastreamento de GPS, gestão de
+usuários) — tudo aplicado e verificado no Supabase
+(`wduypqixkafimcndytiz`).
 
 ## Próximo passo
-
-**FASE 12 (planejada, não iniciada) — Mapa da validação geoespacial.**
-Combinado em 2026-09-11: adicionar na tela de detalhe da passagem
-(`/passagens/[id]`) uma versão visual (mapa) do resultado "dentro do
-polígono" — mostrando o polígono da praça e o ponto de GPS usado na
-validação, complementando o texto/distância que já existe.
 
 **FASE 13 (planejada, não iniciada) — Viagem completa (documento
 fiscal).** Discutido em 2026-09-11, aguardando planilha real antes de

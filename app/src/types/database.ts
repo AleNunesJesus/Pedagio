@@ -567,6 +567,7 @@ export type Database = {
           embarcador: string | null;
           viagem_id: string | null;
           embarcador_id: string | null;
+          posicao_veiculo_id: number | null;
         };
         Relationships: [];
       };

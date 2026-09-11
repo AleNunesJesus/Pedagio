@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getPassagemDetalhe } from "@/features/passagens/queries";
+import { getPracaMapa } from "@/features/cadastros/queries";
+import { getPosicao } from "@/features/rastreamento/queries";
+import { MapaValidacaoLoader } from "@/features/passagens/components/mapa-validacao-loader";
 import { formatBRL, formatNumber } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 
@@ -38,6 +41,11 @@ export default async function PassagemDetalhePage({
   const passagem = await getPassagemDetalhe(id);
 
   if (!passagem) notFound();
+
+  const [praca, posicao] = await Promise.all([
+    passagem.praca_id ? getPracaMapa(passagem.praca_id) : null,
+    passagem.posicao_veiculo_id ? getPosicao(passagem.posicao_veiculo_id) : null,
+  ]);
 
   const statusInfo = passagem.status_validacao
     ? STATUS_VALIDACAO_INFO[passagem.status_validacao]
@@ -125,6 +133,27 @@ export default async function PassagemDetalhePage({
             },
           ]}
         />
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+          Mapa da validação
+        </h2>
+        {praca?.poligono_geojson ? (
+          <MapaValidacaoLoader
+            poligono={praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] }}
+            ponto={
+              posicao && posicao.latitude !== null && posicao.longitude !== null && posicao.data_hora !== null
+                ? { latitude: posicao.latitude, longitude: posicao.longitude, data_hora: posicao.data_hora }
+                : null
+            }
+            dentroPoligono={passagem.dentro_poligono}
+          />
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Praça não identificada para esta passagem — sem polígono para exibir.
+          </p>
+        )}
       </section>
     </main>
   );

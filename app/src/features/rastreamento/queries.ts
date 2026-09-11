@@ -24,3 +24,9 @@ export async function listPosicoes(filtros: FiltrosPosicoes) {
   const { data } = await query;
   return data ?? [];
 }
+
+export async function getPosicao(id: number) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("vw_posicao_veiculo").select("*").eq("id", id).single();
+  return data;
+}
