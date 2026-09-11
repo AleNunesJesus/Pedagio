@@ -21,19 +21,22 @@ em que a planilha do fornecedor as traz:
 | `placa` | texto | `ABC1D23` |
 | `tipo_veiculo` | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
 | `praca_nome` | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
-| `tipo_uso_texto` | `passagem`/`passagens` ou `contrato` | `passagem` |
-| `valor_texto` | formato BR: vírgula decimal, ponto como milhar (opcional). **Já vem negativo quando `condicao_texto = credito`** | `12,50` ou `-30,00` |
-| `condicao_texto` | `debito` ou `credito` (com ou sem acento) | `debito` |
+| `tipo_uso_texto` | `passagem`/`passagens`, `contrato` ou `plano contratado` (case-insensitive) | `passagem` |
+| `valor_texto` | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00` ou `23` |
+| `condicao_texto` | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
 | `viagem` | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem | `VIAGEM-9` |
 | `embarcador` | texto livre, opcional — quem lançou o crédito da viagem | `Embarcador X` |
 | `sentido` | texto — usado junto com `praca_nome` para casar com o cadastro da praça | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
-formato, ou `tipo_uso_texto`/`condicao_texto` não reconhecidos, ou sinal
-do valor inconsistente com a condição informada (débito negativo ou
-crédito positivo), é contada como erro (`total_erros` do lote) e **não**
-é importada — não há tentativa de adivinhar formatos alternativos, para
-não arriscar interpretar um dado errado silenciosamente.
+formato, ou `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
+valores listados na tabela acima), é contada como erro (`total_erros` do
+lote) e **não** é importada — não há tentativa de adivinhar formatos
+alternativos além dos já mapeados, para não arriscar interpretar um dado
+errado silenciosamente. O sinal do valor **não** é motivo de erro: é
+sempre normalizado pela condição (ver tabela acima), porque o arquivo
+real do fornecedor não é consistente nisso — já apareceu linha de
+crédito com valor positivo.
 
 ### `tipo_uso_texto = contrato`
 

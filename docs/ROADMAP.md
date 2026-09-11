@@ -534,7 +534,7 @@ por controle de acesso real com dois papéis: **admin** (acesso total) e
 - [x] `typecheck`/`eslint`/`next build` limpos
 
 **Notas de implementação:**
-- Migration aplicada: `20260911122829_pedagio_fase08_papeis_acesso`
+- Migration aplicada: `20260911122825_pedagio_fase08_papeis_acesso`
   (mirror local em `supabase/migrations/`).
 - Bootstrap do primeiro admin feito via `INSERT` direto (service role) em
   `pedagio.usuario_perfil` para `alexandre.nunes@dinon.com.br` — a partir
@@ -565,6 +565,53 @@ por controle de acesso real com dois papéis: **admin** (acesso total) e
   propósito: o layout de `(app)` já redireciona para `/sem-acesso` quem
   não tem papel, então colocar essa página dentro do mesmo grupo causaria
   loop de redirecionamento.
+
+---
+
+## Ajuste pós-FASE 07 — códigos reais do fornecedor (2026-09-11)
+
+Primeiro arquivo real de teste (`teste_pedagio.csv`, 16 linhas) importou
+**0 de 16** linhas (todas em erro). Investigação encontrou duas
+divergências entre o que a FASE 07 assumiu e o layout real:
+
+- `condicao_texto` vem como `DB`/`CR` (abreviado), não `debito`/`credito`
+  por extenso — confirmado com o usuário que é **sempre** assim nos
+  arquivos reais desse fornecedor.
+- `tipo_uso_texto` de contrato vem como `PLANO CONTRATADO`, não
+  `CONTRATO` — confirmado que é sempre esse o rótulo usado.
+- Adicionalmente, linhas de crédito (`CR`) apareceram com **valor
+  positivo** no arquivo (ex.: uma linha de débito 6,50 seguida de uma
+  linha de crédito 23,00 na mesma passagem/viagem) — quebrando a regra
+  da FASE 07 de "sinal deve bater com a condição, senão é erro".
+  Confirmado com o usuário: crédito sempre reduz o gasto, então o sinal
+  agora é **normalizado** pela condição em vez de barrar a linha.
+
+**O que mudou** (migrations `pedagio_fix_normalizacao_condicao_tipo_uso_codigos_reais`
+e `pedagio_fix_normalizacao_sinal_valor_credito`):
+- `normalizar_condicao` aceita `DB`→débito e `CR`→crédito, além das
+  palavras completas.
+- `normalizar_tipo_uso` aceita `PLANO CONTRATADO`→contrato, além de
+  `CONTRATO`.
+- `processar_staging_passagens` deixou de rejeitar sinal inconsistente
+  como erro — agora sempre grava débito como positivo e crédito como
+  negativo (`abs`/`-abs` pela condição já normalizada), independente do
+  sinal que veio no arquivo.
+- `docs/importacao.md` atualizado com os novos valores aceitos e a nova
+  regra de sinal.
+
+**Verificação:** as 16 linhas reais do arquivo de teste reprocessadas
+diretamente no banco (staging → RPC) — 16/16 sem erro, sinais corretos
+(crédito sempre negativo), `tipo_uso = contrato` corretamente marcado
+`nao_aplicavel`. Todas ficaram `sem_cadastro` (esperado: placas e a
+praça "PRACA FRANCO DA ROCHA - SUL" ainda não estão cadastradas — não é
+bug, falta cadastro). Dados de teste e lotes de tentativas anteriores
+removidos, zero resíduo confirmado.
+
+**Pendência aberta:** se aparecerem outros códigos/rótulos não mapeados
+em arquivos futuros (ex.: variações de `tipo_veiculo` ou novos valores
+de `condicao_texto`/`tipo_uso_texto`), o comportamento continua sendo
+**erro explícito**, não adivinhação — trazer o caso real para mapear,
+como fizemos aqui.
 
 ---
 
