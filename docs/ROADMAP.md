@@ -788,20 +788,99 @@ confiável — único item que ainda restava das "Decisões em aberto".
 
 ---
 
+## Ajuste pós-FASE 07 — linha inválida não pode abortar o lote (2026-09-11)
+
+**Problema real:** ao importar uma planilha real de passagens, a primeira
+linha do primeiro envio chegou na staging sem `praca_nome`/`sentido`.
+Isso violava a constraint not null de `passagem_pedagio.praca_informada`
+e lançava uma exceção não tratada dentro do loop de
+`processar_staging_passagens` — abortando a transação inteira (o
+`lote_importacao` nem chegava a ser confirmado) e, pior, **sem limpar a
+`staging_passagem_pedagio`** (o insert na staging é uma chamada separada,
+fora da transação da função). Resultado: toda nova tentativa de
+reimportar reprocessava as linhas antigas acumuladas junto com as novas,
+sempre falhando no mesmo ponto — o usuário reenviou o mesmo arquivo 4
+vezes tentando resolver, acumulando 64 linhas na staging.
+
+**Correção** (migration
+`20260911180512_pedagio_fix_erro_linha_nao_aborta_lote`):
+- `praca_nome`/`sentido` vazios agora são checados explicitamente e
+  contados como erro da linha, mesmo padrão já usado para
+  data/valor/tipo_uso/condicao inválidos.
+- Todo o processamento de uma linha (lookup + insert) passou a rodar
+  dentro de um bloco `begin/exception when others` — qualquer erro
+  inesperado (constraint, etc.) é contado como erro daquela linha e o
+  loop continua, nunca aborta o lote inteiro nem deixa lixo na staging.
+- Staging poluída (64 linhas, resíduo das 4 tentativas do mesmo arquivo)
+  limpa manualmente uma vez; reimportação seguinte: 16/16 sem erro.
+
+---
+
+## FASE 11 — Visibilidade das posições de GPS
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** dar visibilidade aos pings de GPS já importados (FASE 09)
+por veículo/período — hoje só existiam como dado bruto sem tela própria,
+usado apenas internamente pela validação geoespacial.
+
+**Decisões fechadas (2026-09-11):**
+- Formato da tela: mapa (trajeto) **e** lista de pings juntos, não só um
+  dos dois.
+- Escopo: consulta somente leitura; sem edição/exclusão de pings aqui.
+
+**Checklist:**
+- [x] View `pedagio.vw_posicao_veiculo` (lat/lon extraídos do `geom` via
+  `ST_Y`/`ST_X`, join com `veiculo` pra trazer a placa), `security_invoker
+  = true` — herda a policy de leitura já existente (`usuario_autorizado`)
+- [x] Página `/rastreamento`: filtro por veículo (obrigatório escolher
+  um) + período opcional; mapa com trajeto (polyline + marcador por
+  ping, Leaflet puro, mesmo padrão do `PolygonMapEditor`) e lista de
+  pings (data/hora, lat, lon, fonte) lado a lado
+- [x] Link "Rastreamento" no menu, visível para qualquer autorizado
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] Verificação: SQL direto confirmou lat/lon extraídos batendo com os
+  pings reais já importados; REST sem autenticação contra a view nova
+  retornou 401/permission denied (mesmo comportamento das demais
+  tabelas do schema); rota `/rastreamento` responde 307 → `/login`
+  quando não autenticado (sem erro de servidor)
+
+**Limitação conhecida:** não testei visualmente no navegador com sessão
+autenticada (sem ferramenta de browser neste ambiente) — validado via
+build/typecheck/lint + consultas SQL/REST diretas. Vale conferir
+visualmente na primeira vez que usar.
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 10) até o plano atual — todos os
-itens do desenho original e das "Decisões em aberto" resolvidos.**
-Schema `pedagio` (cadastros incluindo viagem/embarcador, movimento,
-validação com revalidação automática, importação de passagens e de GPS
-no layout real do fornecedor, indicadores, papéis de acesso
-admin/operador) + app Next.js (login compartilhado, dashboard,
+**Projeto completo (FASE 01 a FASE 11).** Schema `pedagio` (cadastros
+incluindo viagem/embarcador, movimento, validação com revalidação
+automática, importação de passagens e de GPS no layout real do
+fornecedor, indicadores, papéis de acesso admin/operador, visibilidade
+de GPS por veículo) + app Next.js (login compartilhado, dashboard,
 cadastros com mapa, importação via UI, consulta de passagens/validações,
-gestão de usuários) — tudo aplicado e verificado no Supabase
-(`wduypqixkafimcndytiz`).
+rastreamento de GPS, gestão de usuários) — tudo aplicado e verificado no
+Supabase (`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
-Nenhum item pendente do plano atual nem das decisões em aberto
-originais. Próximos passos dependem inteiramente do uso real do
-sistema — trazer necessidades concretas conforme aparecerem.
+**FASE 12 (planejada, não iniciada) — Viagem completa (documento
+fiscal).** Discutido em 2026-09-11, aguardando planilha real antes de
+implementar:
+
+- Tabela nova e independente `pedagio.viagem_transporte` (não mexe na
+  `pedagio.viagem` existente — são conceitos e numerações diferentes).
+- Colunas: `placa`, `numero_transporte`, `cidade_origem`/`uf_origem`,
+  `cidade_destino`/`uf_destino`, `data_hora_saida`/`data_hora_chegada`,
+  `carreta_1` (indica 6/7 eixos), `carreta_2` (indica 9 eixos),
+  `tipo_viagem` (`vazia`/`carregada` — coluna nova que ainda será
+  adicionada na planilha do fornecedor).
+- `embarcador_id`: **não** vem na planilha — precisa ser descoberto
+  cruzando `placa` + janela `data_hora_saida`/`data_hora_chegada` contra
+  `passagem_pedagio.embarcador_informada` do mesmo veículo (regra de
+  cruzamento ainda por definir em detalhe).
+- Importação em lote (mesmo padrão staging + função das demais).
+- Falta: planilha real de exemplo para fechar formato exato de cada
+  coluna (em especial `carreta_1`/`carreta_2`/`tipo_viagem`) antes de
+  implementar — não adivinhar formato.

@@ -570,6 +570,19 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_posicao_veiculo: {
+        Row: {
+          id: number | null;
+          veiculo_id: string | null;
+          placa: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          data_hora: string | null;
+          fonte: string | null;
+          lote_importacao_id: string | null;
+        };
+        Relationships: [];
+      };
       vw_financeiro_mensal: {
         Row: {
           mes: string | null;

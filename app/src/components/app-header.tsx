@@ -33,6 +33,12 @@ export function AppHeader({ papel }: { papel: string }) {
             >
               Passagens
             </Link>
+            <Link
+              href="/rastreamento"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              Rastreamento
+            </Link>
             {papel === "admin" && (
               <Link
                 href="/usuarios"
