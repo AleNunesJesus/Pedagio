@@ -44,8 +44,10 @@ export function ImportarForm() {
           className="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-gray-700 hover:file:bg-gray-200 dark:text-gray-300 dark:file:bg-gray-800 dark:file:text-gray-300"
         />
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Cabeçalhos esperados: id_externo, placa, praca_nome, data_hora_texto
-          (DD/MM/AAAA HH24:MI:SS), valor_texto (formato BR), documento.
+          Cabeçalhos esperados: numero_fatura, data_texto (DD/MM/AAAA), horario_texto
+          (HH24:MI ou HH24:MI:SS), placa, tipo_veiculo, praca_nome, tipo_uso_texto
+          (passagem/contrato), valor_texto (formato BR), condicao_texto
+          (debito/credito), viagem, embarcador, sentido. Veja docs/importacao.md.
         </p>
       </div>
 

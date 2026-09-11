@@ -12,10 +12,16 @@ type FiltrosFormProps = {
     status?: string;
     pracaId?: string;
     veiculoId?: string;
+    tipoUso?: string;
     dataInicio?: string;
     dataFim?: string;
   };
 };
+
+const OPCOES_TIPO_USO = [
+  { value: "passagem", label: "Passagem" },
+  { value: "contrato", label: "Contrato" },
+];
 
 export function FiltrosForm({ pracas, veiculos, valores }: FiltrosFormProps) {
   return (
@@ -46,6 +52,14 @@ export function FiltrosForm({ pracas, veiculos, valores }: FiltrosFormProps) {
         placeholder="Todos"
         defaultValue={valores.veiculoId ?? ""}
         options={veiculos.map((v) => ({ value: v.id, label: v.nome }))}
+      />
+      <SelectField
+        id="tipoUso"
+        name="tipoUso"
+        label="Tipo de uso"
+        placeholder="Todos"
+        defaultValue={valores.tipoUso ?? ""}
+        options={OPCOES_TIPO_USO}
       />
       <TextField
         id="dataInicio"

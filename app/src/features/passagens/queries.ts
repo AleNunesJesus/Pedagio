@@ -6,6 +6,7 @@ export type FiltrosPassagens = {
   status?: string;
   pracaId?: string;
   veiculoId?: string;
+  tipoUso?: string;
   dataInicio?: string;
   dataFim?: string;
   pagina?: number;
@@ -26,6 +27,7 @@ export async function listPassagens(filtros: FiltrosPassagens) {
   if (filtros.status) query = query.eq("status_validacao", filtros.status);
   if (filtros.pracaId) query = query.eq("praca_id", filtros.pracaId);
   if (filtros.veiculoId) query = query.eq("veiculo_id", filtros.veiculoId);
+  if (filtros.tipoUso) query = query.eq("tipo_uso", filtros.tipoUso);
   if (filtros.dataInicio) query = query.gte("data_hora", filtros.dataInicio);
   if (filtros.dataFim) query = query.lte("data_hora", `${filtros.dataFim}T23:59:59`);
 

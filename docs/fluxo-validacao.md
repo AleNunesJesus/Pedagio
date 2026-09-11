@@ -1,5 +1,11 @@
 # Fluxo de Validação
 
+> FASE 07: este fluxo só se aplica a linhas com `tipo_uso = 'passagem'`.
+> Linhas `tipo_uso = 'contrato'` (ajuste/lançamento contratual, sem
+> passagem física por uma praça) nunca entram aqui — já são importadas
+> com `status_validacao = 'nao_aplicavel'`. Ver
+> [importacao.md](importacao.md).
+
 Para cada `passagem_pedagio` pendente, o processo de validação precisa
 responder duas perguntas independentes:
 

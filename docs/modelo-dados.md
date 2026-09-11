@@ -122,21 +122,27 @@ Rastreabilidade de cada carga de planilha (passagens ou posições).
 | created_at | timestamptz | |
 
 ### `passagem_pedagio`
-Uma linha da planilha de passagens importada.
+Uma linha da planilha de passagens importada (formato real do fornecedor,
+FASE 07).
 
 | coluna | tipo | notas |
 |---|---|---|
 | id | uuid pk | |
-| id_externo | text | id vindo da planilha, para rastreio |
+| numero_fatura | text | número da fatura vindo da planilha, para rastreio |
 | veiculo_id | fk veiculo null | null se placa não reconhecida |
 | placa_informada | text | valor bruto da planilha (auditoria) |
-| praca_id | fk praca_pedagio null | null se praça não reconhecida |
+| tipo_veiculo_informado | text | texto livre da planilha, só informativo (tarifa usa a categoria já cadastrada do veículo) |
+| praca_id | fk praca_pedagio null | null se (praça, sentido) não reconhecidos juntos |
 | praca_informada | text | valor bruto da planilha |
-| data_hora | timestamptz | |
-| valor_cobrado | numeric(10,2) | |
-| documento_vinculado | text | nota fiscal/fatura |
+| sentido_informado | text | usado junto com praca_informada para casar com o cadastro |
+| tipo_uso | text | `passagem` \| `contrato` — contrato nunca passa pela validação geo/tarifária |
+| condicao | text | `debito` \| `credito` — sinal de valor_cobrado precisa bater com esta coluna |
+| data_hora | timestamptz | montada a partir de data + horário da planilha |
+| valor_cobrado | numeric(10,2) | negativo quando condicao = credito |
+| viagem | text | opcional, viagem à qual o crédito foi lançado |
+| embarcador | text | opcional, quem lançou o crédito da viagem |
 | lote_importacao_id | fk lote_importacao | |
-| status_validacao | text | `pendente` (default), atualizado pelo processo de validação |
+| status_validacao | text | `pendente` (default) \| ... \| `nao_aplicavel` (linhas tipo_uso = contrato) |
 | created_at | timestamptz | |
 
 ### `validacao_passagem`

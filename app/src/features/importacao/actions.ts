@@ -14,12 +14,18 @@ export type ImportacaoState = {
 };
 
 const COLUNAS_ESPERADAS = [
-  "id_externo",
+  "numero_fatura",
+  "data_texto",
+  "horario_texto",
   "placa",
+  "tipo_veiculo",
   "praca_nome",
-  "data_hora_texto",
+  "tipo_uso_texto",
   "valor_texto",
-  "documento",
+  "condicao_texto",
+  "viagem",
+  "embarcador",
+  "sentido",
 ] as const;
 
 const LIMITE_LINHAS = 5000;
@@ -70,12 +76,18 @@ export async function importarPlanilha(
   }
 
   const linhasParaStaging = linhas.map((linha) => ({
-    id_externo: vazio(linha.id_externo),
+    numero_fatura: vazio(linha.numero_fatura),
+    data_texto: vazio(linha.data_texto),
+    horario_texto: vazio(linha.horario_texto),
     placa: vazio(linha.placa),
+    tipo_veiculo: vazio(linha.tipo_veiculo),
     praca_nome: vazio(linha.praca_nome),
-    data_hora_texto: vazio(linha.data_hora_texto),
+    tipo_uso_texto: vazio(linha.tipo_uso_texto),
     valor_texto: vazio(linha.valor_texto),
-    documento: vazio(linha.documento),
+    condicao_texto: vazio(linha.condicao_texto),
+    viagem: vazio(linha.viagem),
+    embarcador: vazio(linha.embarcador),
+    sentido: vazio(linha.sentido),
   }));
 
   const supabase = await createClient();

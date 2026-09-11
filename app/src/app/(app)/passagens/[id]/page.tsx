@@ -4,6 +4,16 @@ import { getPassagemDetalhe } from "@/features/passagens/queries";
 import { formatBRL, formatNumber } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 
+const LABEL_TIPO_USO: Record<string, string> = {
+  passagem: "Passagem",
+  contrato: "Contrato",
+};
+
+const LABEL_CONDICAO: Record<string, string> = {
+  debito: "Débito",
+  credito: "Crédito",
+};
+
 type Campo = { label: string; valor: React.ReactNode };
 
 function Campos({ campos }: { campos: Campo[] }) {
@@ -54,14 +64,27 @@ export default async function PassagemDetalhePage({
         <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">Passagem</h2>
         <Campos
           campos={[
+            { label: "Fatura", valor: passagem.numero_fatura ?? "—" },
             {
               label: "Data/hora",
               valor: passagem.data_hora ? new Date(passagem.data_hora).toLocaleString("pt-BR") : "—",
             },
             { label: "Placa", valor: passagem.placa ?? "—" },
+            { label: "Tipo de veículo (informado)", valor: passagem.tipo_veiculo_informado ?? "—" },
             { label: "Praça", valor: passagem.praca_nome ?? "—" },
             { label: "Rodovia", valor: passagem.rodovia ?? "—" },
+            { label: "Sentido (informado)", valor: passagem.sentido_informado ?? "—" },
+            {
+              label: "Tipo de uso",
+              valor: passagem.tipo_uso ? LABEL_TIPO_USO[passagem.tipo_uso] ?? passagem.tipo_uso : "—",
+            },
+            {
+              label: "Condição",
+              valor: passagem.condicao ? LABEL_CONDICAO[passagem.condicao] ?? passagem.condicao : "—",
+            },
             { label: "Valor cobrado", valor: formatBRL(passagem.valor_cobrado) },
+            { label: "Viagem", valor: passagem.viagem ?? "—" },
+            { label: "Embarcador", valor: passagem.embarcador ?? "—" },
           ]}
         />
       </section>
