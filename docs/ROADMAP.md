@@ -333,9 +333,24 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 - Limite de 5000 linhas por importação (mensagem de erro, não trava
   silenciosamente) — ajustar se o volume real precisar de mais.
 
-**FASE 06.6 — Passagens e validações (consulta/detalhe)** — 🔴 Não iniciado
-- [ ] Lista de passagens com filtro por status_validacao/praça/veículo/período
-- [ ] Detalhe de uma passagem mostrando o cruzamento (posição usada, distância, divergência)
+**FASE 06.6 — Passagens e validações (consulta/detalhe)** — 🟢 Concluído
+- [x] Lista em `/passagens` com filtro por status/praça/veículo/período (form GET, sem JS) + paginação (50/página)
+- [x] Detalhe em `/passagens/[id]`: status colorido, dados da passagem, resultado da validação (dentro do polígono, distância, diferença de tempo, valor esperado, divergência)
+- [x] `STATUS`/`STATUS_VALIDACAO_INFO` movidos de `features/dashboard/colors.ts` para `lib/status-validacao.ts` (agora usado por dashboard e passagens)
+- [x] Navegação: link "Passagens" no header
+- [x] Verificação via REST com usuário real: 3 passagens de teste, filtro por status/veículo/período cada um retornando exatamente o esperado, detalhe com todos os campos da página — 9/9 checks, zero resíduo
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação (06.6):**
+- Filtros são um `<form method="get">` puro (sem client component) —
+  atualiza a URL e a página server-renderiza de novo; paginação também é
+  só links preservando os filtros atuais na querystring.
+- Detalhe e lista reusam `vw_passagens_detalhado` (FASE 05) — já tinha
+  todos os campos necessários, não precisou de view nova.
+- **Esta fase fecha o plano atual do projeto** (FASE 01 a FASE 06.6 todas
+  concluídas). Próximos passos ficam a critério do usuário — ex.:
+  refinar UX, adicionar papéis (admin/operador), importação de GPS em
+  lote, ou qualquer necessidade que surgir do uso real.
 
 **Notas de implementação (06.1):**
 - Optamos por RLS simples (`true`/`true`) em vez de papéis porque a decisão
@@ -390,11 +405,14 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 
 ## Estado atual
 
-FASE 01 a FASE 05 concluídas. FASE 06.1 a 06.5 concluídas (RLS/grants,
-scaffold Next.js + login, dashboard de indicadores, cadastros completos
-incluindo mapa de praça, e importação de passagens via UI). Aguardando
-aval para iniciar a FASE 06.6 — última fase do plano atual.
+**Projeto completo (FASE 01 a FASE 06.6) até o plano atual.** Schema
+`pedagio` (cadastros, movimento, validação com revalidação automática,
+importação, indicadores) + app Next.js (login compartilhado, dashboard,
+cadastros com mapa, importação via UI, consulta de passagens/validações)
+— tudo aplicado e verificado no Supabase (`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
-FASE 06.6 — Consulta de passagens e validações (lista + detalhe).
+Nenhum item pendente do plano original. Próximos passos dependem do uso
+real do sistema — ver "Decisões em aberto" abaixo para itens que ficaram
+conscientemente de fora (carga de GPS em lote, papéis de acesso, etc.).

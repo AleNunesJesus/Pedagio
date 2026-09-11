@@ -1,0 +1,73 @@
+import Link from "next/link";
+import { STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
+import { SelectField, TextField } from "@/components/ui/field";
+import { Button } from "@/components/ui/button";
+
+type Opcao = { id: string; nome: string };
+
+type FiltrosFormProps = {
+  pracas: Opcao[];
+  veiculos: Opcao[];
+  valores: {
+    status?: string;
+    pracaId?: string;
+    veiculoId?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  };
+};
+
+export function FiltrosForm({ pracas, veiculos, valores }: FiltrosFormProps) {
+  return (
+    <form method="get" className="flex flex-wrap items-end gap-3">
+      <SelectField
+        id="status"
+        name="status"
+        label="Status"
+        placeholder="Todos"
+        defaultValue={valores.status ?? ""}
+        options={Object.entries(STATUS_VALIDACAO_INFO).map(([value, info]) => ({
+          value,
+          label: info.label,
+        }))}
+      />
+      <SelectField
+        id="pracaId"
+        name="pracaId"
+        label="Praça"
+        placeholder="Todas"
+        defaultValue={valores.pracaId ?? ""}
+        options={pracas.map((p) => ({ value: p.id, label: p.nome }))}
+      />
+      <SelectField
+        id="veiculoId"
+        name="veiculoId"
+        label="Veículo"
+        placeholder="Todos"
+        defaultValue={valores.veiculoId ?? ""}
+        options={veiculos.map((v) => ({ value: v.id, label: v.nome }))}
+      />
+      <TextField
+        id="dataInicio"
+        name="dataInicio"
+        label="De"
+        type="date"
+        defaultValue={valores.dataInicio ?? ""}
+      />
+      <TextField
+        id="dataFim"
+        name="dataFim"
+        label="Até"
+        type="date"
+        defaultValue={valores.dataFim ?? ""}
+      />
+      <Button type="submit">Filtrar</Button>
+      <Link
+        href="/passagens"
+        className="text-sm text-gray-500 hover:underline dark:text-gray-400"
+      >
+        Limpar
+      </Link>
+    </form>
+  );
+}

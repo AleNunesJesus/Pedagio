@@ -1,4 +1,4 @@
-import { STATUS, STATUS_VALIDACAO_INFO } from "../colors";
+import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { EmptyState } from "@/components/ui/card";
 
