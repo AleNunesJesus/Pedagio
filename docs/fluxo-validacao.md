@@ -42,8 +42,11 @@ disparada logo após cada importação.
 
 1. Buscar em `tarifa_praca` o valor vigente para `praca_id` +
    `categoria_veiculo_id` (do veículo) onde
-   `vigencia_inicio <= passagem.data_hora::date`
-   e (`vigencia_fim is null` ou `vigencia_fim >= passagem.data_hora::date`).
+   `vigencia_inicio <= (passagem.data_hora at time zone 'America/Sao_Paulo')::date`
+   e (`vigencia_fim is null` ou `vigencia_fim >= (passagem.data_hora at time zone 'America/Sao_Paulo')::date`).
+   A data é sempre convertida para o horário local (Brasil) antes do
+   cast — `data_hora` é `timestamptz` gravado em UTC, e o dia "de
+   verdade" pra efeito de tarifa é o dia local, não o dia UTC.
 2. Comparar com `valor_cobrado`:
    - Igual (ou dentro de uma tolerância de centavos) → ok.
    - Diferente → `divergencia_valor = valor_cobrado - valor_esperado`,

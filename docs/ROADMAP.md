@@ -634,11 +634,12 @@ alimentar o motor de validação (FASE 03) com pings de GPS reais.
   (`trg_revalidar_passagens_por_posicao`, também invoker) roda como quem
   importou, por isso a policy de INSERT em `posicao_veiculo` precisou
   virar `usuario_autorizado()` em vez de `eh_admin()`.
-- Verificação inicial teve um bug do próprio script de teste (não do
-  código): a passagem de teste foi criada com horário em `-03:00` (BRT)
-  enquanto `parse_data_hora_planilha` interpreta o texto do CSV como UTC
-  direto (via `to_timestamp` sem timezone, no timezone da sessão) —
-  corrigido usando o mesmo referencial (UTC) nos dois lados do teste.
+- Verificação inicial teve uma discrepância de horário entre o script de
+  teste e `parse_data_hora_planilha` (que interpretava o texto do CSV
+  como UTC direto). Na hora resolvi ajustando só o teste para o mesmo
+  referencial — **isso era o sintoma de um bug real no produto**, só
+  identificado de fato depois de um teste manual do usuário (ver "Ajuste
+  pós-FASE 04/09 — fuso horário na importação", mais abaixo).
 
 ---
 
@@ -852,6 +853,41 @@ visualmente na primeira vez que usar.
 
 ---
 
+## Ajuste pós-FASE 04/09 — fuso horário na importação (2026-09-11)
+
+**Problema real:** usuário importou uma posição de GPS informando
+`20:11:00` e o app exibiu `17:11:00`. `parse_data_hora_planilha` usava
+`to_timestamp(...)`, que trata o texto da planilha (horário local do
+Brasil) como se já fosse UTC — a posição ficava gravada como
+`2026-08-31 20:11:00+00`, e a tela (convertendo UTC → horário local,
+Brasil = UTC-3) mostrava 3h a menos. Afetava igualmente
+`passagem_pedagio` e `posicao_veiculo` (mesma função), então a
+comparação relativa entre elas (janela de tolerância, geoespacial)
+continuava correta — só a exibição do horário absoluto ficava errada.
+
+**Efeito colateral encontrado:** `validar_passagem` comparava
+`passagem.data_hora::date` (cast em UTC) contra a vigência da tarifa. Uma
+passagem perto da meia-noite local, com o instante UTC corrigido, pode
+"virar o dia" em UTC e cair fora da vigência cadastrada — a comparação
+de vigência também precisava ser pela data local, não UTC.
+
+**Correção** (migration `20260911193045_pedagio_fix_fuso_horario_importacao`):
+- `parse_data_hora_planilha` agora interpreta a data/hora da planilha
+  como horário de `America/Sao_Paulo` e converte corretamente para UTC
+  antes de gravar.
+- `validar_passagem` passa a comparar a vigência da tarifa pela data
+  local (`data_hora at time zone 'America/Sao_Paulo'`), não UTC.
+- Dados já importados corrigidos em massa (+3h em `passagem_pedagio` e
+  `posicao_veiculo`) e todas as passagens revalidadas de novo, pra
+  garantir consistência com a correção de vigência.
+
+**Verificação:** `parse_data_hora_planilha('31/08/2026', '20:11:00')`
+retorna `2026-08-31 23:11:00+00` (= 20:11:00 local, correto); a posição
+de teste do usuário, antes gravada como `20:11:00+00`, ficou
+`23:11:00+00` após a correção retroativa.
+
+---
+
 ## Estado atual
 
 **Projeto completo (FASE 01 a FASE 11).** Schema `pedagio` (cadastros
@@ -865,7 +901,13 @@ Supabase (`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
-**FASE 12 (planejada, não iniciada) — Viagem completa (documento
+**FASE 12 (planejada, não iniciada) — Mapa da validação geoespacial.**
+Combinado em 2026-09-11: adicionar na tela de detalhe da passagem
+(`/passagens/[id]`) uma versão visual (mapa) do resultado "dentro do
+polígono" — mostrando o polígono da praça e o ponto de GPS usado na
+validação, complementando o texto/distância que já existe.
+
+**FASE 13 (planejada, não iniciada) — Viagem completa (documento
 fiscal).** Discutido em 2026-09-11, aguardando planilha real antes de
 implementar:
 
