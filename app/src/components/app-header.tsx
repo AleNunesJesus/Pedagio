@@ -2,7 +2,7 @@ import Link from "next/link";
 import { logout } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 
-export function AppHeader() {
+export function AppHeader({ papel }: { papel: string }) {
   return (
     <header className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
@@ -33,6 +33,14 @@ export function AppHeader() {
             >
               Passagens
             </Link>
+            {papel === "admin" && (
+              <Link
+                href="/usuarios"
+                className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              >
+                Usuários
+              </Link>
+            )}
           </nav>
         </div>
         <form action={logout}>

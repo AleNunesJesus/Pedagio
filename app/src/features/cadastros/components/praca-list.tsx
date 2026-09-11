@@ -9,7 +9,7 @@ type Praca = {
   ativo: boolean;
 };
 
-export function PracaList({ rows }: { rows: Praca[] }) {
+export function PracaList({ rows, podeEditar }: { rows: Praca[]; podeEditar: boolean }) {
   return (
     <DataTable
       rows={rows}
@@ -18,14 +18,17 @@ export function PracaList({ rows }: { rows: Praca[] }) {
       columns={[
         {
           header: "Nome",
-          render: (r) => (
-            <Link
-              href={`/cadastros/pracas/${r.id}`}
-              className="text-blue-600 hover:underline dark:text-blue-400"
-            >
-              {r.nome}
-            </Link>
-          ),
+          render: (r) =>
+            podeEditar ? (
+              <Link
+                href={`/cadastros/pracas/${r.id}`}
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                {r.nome}
+              </Link>
+            ) : (
+              r.nome
+            ),
         },
         { header: "Rodovia", render: (r) => r.rodovia ?? "—" },
         { header: "Km", align: "right", render: (r) => r.km ?? "—" },

@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getMeuPapel } from "@/lib/auth/guards";
 import { getPracaMapa } from "@/features/cadastros/queries";
 import { PracaForm } from "@/features/cadastros/components/praca-form";
 
@@ -7,6 +8,9 @@ export default async function EditarPracaPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const papel = await getMeuPapel();
+  if (papel !== "admin") redirect("/cadastros/pracas");
+
   const { id } = await params;
   const praca = await getPracaMapa(id);
 

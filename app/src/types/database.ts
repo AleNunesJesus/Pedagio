@@ -6,9 +6,8 @@
 // disponível, e reconcilie manualmente.
 //
 // Colunas `geometry` (poligono, geom) chegam do PostgREST como string WKB
-// hex — não há conversão automática para GeoJSON. A FASE 06.4 (mapa de
-// praças) precisa decidir como lidar com isso (provavelmente expor uma
-// coluna/view computada com `ST_AsGeoJSON`).
+// hex — não há conversão automática para GeoJSON. A view `vw_praca_pedagio_mapa`
+// expõe uma coluna computada com `ST_AsGeoJSON` para o mapa (FASE 06.4).
 
 export type Json =
   | string
@@ -232,42 +231,57 @@ export type Database = {
       passagem_pedagio: {
         Row: {
           id: string;
-          id_externo: string | null;
+          numero_fatura: string | null;
           veiculo_id: string | null;
           placa_informada: string;
+          tipo_veiculo_informado: string | null;
           praca_id: string | null;
           praca_informada: string;
+          sentido_informado: string | null;
+          tipo_uso: string;
+          condicao: string;
           data_hora: string;
           valor_cobrado: number;
-          documento_vinculado: string | null;
+          viagem: string | null;
+          embarcador: string | null;
           lote_importacao_id: string;
           status_validacao: string;
           created_at: string;
         };
         Insert: {
           id?: string;
-          id_externo?: string | null;
+          numero_fatura?: string | null;
           veiculo_id?: string | null;
           placa_informada: string;
+          tipo_veiculo_informado?: string | null;
           praca_id?: string | null;
           praca_informada: string;
+          sentido_informado?: string | null;
+          tipo_uso: string;
+          condicao: string;
           data_hora: string;
           valor_cobrado: number;
-          documento_vinculado?: string | null;
+          viagem?: string | null;
+          embarcador?: string | null;
           lote_importacao_id: string;
           status_validacao?: string;
           created_at?: string;
         };
         Update: {
           id?: string;
-          id_externo?: string | null;
+          numero_fatura?: string | null;
           veiculo_id?: string | null;
           placa_informada?: string;
+          tipo_veiculo_informado?: string | null;
           praca_id?: string | null;
           praca_informada?: string;
+          sentido_informado?: string | null;
+          tipo_uso?: string;
+          condicao?: string;
           data_hora?: string;
           valor_cobrado?: number;
-          documento_vinculado?: string | null;
+          viagem?: string | null;
+          embarcador?: string | null;
           lote_importacao_id?: string;
           status_validacao?: string;
           created_at?: string;
@@ -350,35 +364,74 @@ export type Database = {
           },
         ];
       };
+      usuario_perfil: {
+        Row: {
+          user_id: string;
+          papel: string;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          user_id: string;
+          papel: string;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Update: {
+          user_id?: string;
+          papel?: string;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Relationships: [];
+      };
       staging_passagem_pedagio: {
         Row: {
           id: number;
-          id_externo: string | null;
+          numero_fatura: string | null;
+          data_texto: string | null;
+          horario_texto: string | null;
           placa: string | null;
+          tipo_veiculo: string | null;
           praca_nome: string | null;
-          data_hora_texto: string | null;
+          tipo_uso_texto: string | null;
           valor_texto: string | null;
-          documento: string | null;
+          condicao_texto: string | null;
+          viagem: string | null;
+          embarcador: string | null;
+          sentido: string | null;
           criado_em: string;
         };
         Insert: {
           id?: number;
-          id_externo?: string | null;
+          numero_fatura?: string | null;
+          data_texto?: string | null;
+          horario_texto?: string | null;
           placa?: string | null;
+          tipo_veiculo?: string | null;
           praca_nome?: string | null;
-          data_hora_texto?: string | null;
+          tipo_uso_texto?: string | null;
           valor_texto?: string | null;
-          documento?: string | null;
+          condicao_texto?: string | null;
+          viagem?: string | null;
+          embarcador?: string | null;
+          sentido?: string | null;
           criado_em?: string;
         };
         Update: {
           id?: number;
-          id_externo?: string | null;
+          numero_fatura?: string | null;
+          data_texto?: string | null;
+          horario_texto?: string | null;
           placa?: string | null;
+          tipo_veiculo?: string | null;
           praca_nome?: string | null;
-          data_hora_texto?: string | null;
+          tipo_uso_texto?: string | null;
           valor_texto?: string | null;
-          documento?: string | null;
+          condicao_texto?: string | null;
+          viagem?: string | null;
+          embarcador?: string | null;
+          sentido?: string | null;
           criado_em?: string;
         };
         Relationships: [];
@@ -416,6 +469,13 @@ export type Database = {
           distancia_metros: number | null;
           diferenca_segundos: number | null;
           lote_importacao_id: string | null;
+          numero_fatura: string | null;
+          tipo_veiculo_informado: string | null;
+          sentido_informado: string | null;
+          tipo_uso: string | null;
+          condicao: string | null;
+          viagem: string | null;
+          embarcador: string | null;
         };
         Relationships: [];
       };
@@ -546,13 +606,45 @@ export type Database = {
         Args: { p_texto: string };
         Returns: number | null;
       };
-      parse_data_hora_br: {
+      parse_data_hora_planilha: {
+        Args: { p_data: string; p_horario: string };
+        Returns: string | null;
+      };
+      normalizar_tipo_uso: {
+        Args: { p_texto: string };
+        Returns: string | null;
+      };
+      normalizar_condicao: {
         Args: { p_texto: string };
         Returns: string | null;
       };
       janela_tolerancia_validacao: {
         Args: Record<string, never>;
         Returns: string;
+      };
+      eh_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      usuario_autorizado: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      meu_papel: {
+        Args: Record<string, never>;
+        Returns: string | null;
+      };
+      listar_usuarios: {
+        Args: Record<string, never>;
+        Returns: { user_id: string; email: string | null; papel: string | null }[];
+      };
+      definir_papel: {
+        Args: { p_user_id: string; p_papel: string };
+        Returns: Database["pedagio"]["Tables"]["usuario_perfil"]["Row"];
+      };
+      remover_papel: {
+        Args: { p_user_id: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

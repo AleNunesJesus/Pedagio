@@ -21,6 +21,12 @@ depende dela:
   auth compartilhado com o sistema de tickets, acesso liberado para
   qualquer autenticado.**
 - ~~Biblioteca de mapa~~ — **resolvido em 2026-09-10/11: Leaflet + Leaflet.draw + OpenStreetMap.**
+- ~~Validação geo/tarifária para linhas `tipo_uso = contrato`~~ — **resolvido
+  em 2026-09-11: pulam a validação (`status_validacao = nao_aplicavel`).**
+- ~~Viagem/embarcador~~ — **resolvido em 2026-09-11: campos texto simples,
+  sem cadastro próprio por ora.**
+- ~~Casamento de praça na importação~~ — **resolvido em 2026-09-11: por
+  (nome, sentido) juntos, não só nome.**
 
 ---
 
@@ -403,16 +409,178 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 
 ---
 
+## FASE 07 — Ajuste ao formato real da planilha do fornecedor
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** adequar staging/`passagem_pedagio`/views/frontend ao layout
+exato da planilha real disponibilizada pelo usuário: fatura, data e
+horário separados, tipo de veículo informado, tipo de uso (passagem/
+contrato), condição (débito/crédito, valor já assinado), viagem,
+embarcador e sentido.
+
+**Checklist:**
+- [x] Decisão: `tipo_uso = contrato` pula a validação geo/tarifária (novo status `nao_aplicavel`)
+- [x] Decisão: viagem/embarcador como campos texto simples (sem cadastro próprio)
+- [x] Decisão: casamento de praça na importação por (nome, sentido) juntos
+- [x] `staging_passagem_pedagio`: colunas remodeladas para o layout real (`numero_fatura`, `data_texto`, `horario_texto`, `tipo_veiculo`, `tipo_uso_texto`, `condicao_texto`, `viagem`, `embarcador`, `sentido`)
+- [x] `passagem_pedagio`: `id_externo`→`numero_fatura`, `documento_vinculado` removido, colunas novas (`tipo_veiculo_informado`, `sentido_informado`, `tipo_uso`, `condicao`, `viagem`, `embarcador`), check de `valor_cobrado` trocado (sinal deve bater com `condicao`, crédito pode ser negativo), novo status `nao_aplicavel`
+- [x] Helpers novos: `parse_data_hora_planilha` (data+hora separados, aceita `HH24:MI:SS` ou `HH24:MI`), `normalizar_tipo_uso`, `normalizar_condicao` (case/acento-insensitive); `parse_data_hora_br` removido (sem uso)
+- [x] `processar_staging_passagens` reescrita: monta `data_hora`, normaliza `tipo_uso`/`condicao`, casa praça por (nome, sentido), grava `nao_aplicavel` direto para `contrato` (nunca `pendente`)
+- [x] Views: `vw_passagens_detalhado` ganha as colunas novas (compatível com as views dependentes, sem quebrar nada); `vw_praca_taxa_fora_poligono`/`vw_veiculo_taxa_divergencia` excluem `nao_aplicavel` do denominador; `vw_volume_passagens_praca_dia` conta só `tipo_uso = passagem`
+- [x] `get_advisors` — sem achados novos
+- [x] Verificação via SQL direto (`execute_sql`): 5 linhas de staging cobrindo passagem/débito casada, contrato/crédito (valor negativo, viagem/embarcador preservados), praça com sentido divergente (`sem_cadastro`), data inválida e `tipo_uso` inválido (ambas viram erro) — 1 lote com `total_linhas=5`/`total_erros=2`, tudo conferido, cleanup confirmado
+- [x] Verificação via REST com usuário real (mesmo caminho da Server Action): 13/13 checks (cadastros de apoio, staging + RPC, view com campos novos, linha inválida não importada), zero resíduo
+- [x] Frontend: `types/database.ts`, `lib/status-validacao.ts` (label para `nao_aplicavel`), módulo de importação (colunas esperadas + texto de ajuda), listagem/detalhe de passagens (filtro por tipo de uso, colunas/campos novos)
+- [x] `docs/importacao.md` e `docs/modelo-dados.md` atualizados para o novo layout
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação:**
+- Migration aplicada: `20260911115052_pedagio_fase07_formato_planilha_real`
+  (mirror local em `supabase/migrations/`). Tabelas de movimento estavam
+  vazias no momento da migration (confirmado antes de aplicar) — todas as
+  alterações foram `ALTER TABLE`/`DROP`/`ADD COLUMN` diretas, sem
+  necessidade de backfill.
+- "Tipo de veículo" da planilha é só informativo
+  (`tipo_veiculo_informado`) — a tarifa continua usando a categoria já
+  cadastrada do veículo (`veiculo.categoria_veiculo_id`), não este campo
+  solto da planilha.
+- Linha com sinal de valor inconsistente com a condição informada (débito
+  negativo, crédito positivo) é tratada como erro de importação (não
+  insere, conta em `total_erros`) — evita depender só do `check` da
+  tabela para barrar dado ruim.
+- `horario_texto` aceita `HH24:MI:SS` ou `HH24:MI` (dois formatos fixos,
+  não um "adivinhador" genérico) — planilhas reais costumam vir sem
+  segundos.
+- Views financeiras (`vw_financeiro_mensal` etc.) continuam somando tudo,
+  incluindo `contrato`: débito soma, crédito já vem negativo e abate,
+  refletindo o gasto líquido real. Só as views de auditoria/volume de
+  passagens (que medem acurácia de validação/contagem de passagens
+  físicas) excluem `contrato`/`nao_aplicavel`.
+
+---
+
+## FASE 08 — Papéis de acesso (admin/operador)
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** substituir as policies `authenticated_full_access` (true/true)
+por controle de acesso real com dois papéis: **admin** (acesso total) e
+**operador** (consulta + importação, sem CRUD de cadastros/tarifas).
+
+**Decisões fechadas (2026-09-11):**
+- Papéis: **admin** edita tudo (cadastros, tarifas, veículos, categorias,
+  praças, importação, consulta). **Operador** só consulta (dashboard,
+  passagens, cadastros em modo leitura) e usa a importação de planilha —
+  não cria/edita/exclui categoria, praça, tarifa ou veículo.
+- Armazenamento: tabela `pedagio.usuario_perfil` (`user_id` FK
+  `auth.users`, `papel` check `admin`/`operador`) + tela de gestão de
+  usuários (só admin acessa) para listar usuários e definir/trocar papel —
+  sem depender de SQL manual no dia a dia.
+- Papel padrão: usuário autenticado **sem registro** em `usuario_perfil` é
+  **bloqueado** (nem operador) até um admin definir o papel dele.
+- Bootstrap do primeiro admin: `INSERT` manual via SQL/Studio logo após a
+  migration (não existe admin ainda para usar a tela) — comando será
+  fornecido nesta fase.
+
+**Checklist:**
+- [x] Tabela `pedagio.usuario_perfil` (`user_id uuid PK/FK auth.users(id)`,
+  `papel text check in ('admin','operador')`, timestamps) + RLS própria
+  (só admin lê/escreve a tabela diretamente)
+- [x] Função helper `pedagio.eh_admin()` (SECURITY DEFINER, STABLE,
+  `search_path = ''`) — checa se `auth.uid()` tem `papel = 'admin'`
+- [x] Função helper `pedagio.usuario_autorizado()` — checa se `auth.uid()`
+  tem QUALQUER registro em `usuario_perfil` (admin ou operador); usada nas
+  policies de leitura em vez de só `authenticated`
+- [x] Função `pedagio.meu_papel()` (SECURITY DEFINER) — retorna o papel do
+  usuário logado, para o frontend decidir o que mostrar/esconder
+- [x] Funções admin-only `pedagio.listar_usuarios()` (join `auth.users` +
+  `usuario_perfil`), `pedagio.definir_papel(usuario_id, papel)` e
+  `pedagio.remover_papel(usuario_id)` — todas verificam `eh_admin()`
+  internamente e lançam exceção se não for admin
+- [x] Policies revisadas nas 9 tabelas do schema `pedagio`:
+  - Cadastros (`categoria_veiculo`, `praca_pedagio`, `tarifa_praca`,
+    `veiculo`): SELECT para `usuario_autorizado()`, INSERT/UPDATE/DELETE
+    só para `eh_admin()`
+  - `staging_passagem_pedagio`: ALL para `usuario_autorizado()` (tabela
+    100% operacional, sem dado sensível de cadastro)
+  - `lote_importacao`/`passagem_pedagio`/`validacao_passagem`: SELECT/
+    INSERT/UPDATE para `usuario_autorizado()` (o motor de validação é
+    SECURITY INVOKER e roda como quem importou); DELETE só `eh_admin()`
+  - `posicao_veiculo`: SELECT para `usuario_autorizado()`; INSERT/UPDATE/
+    DELETE restrito a `eh_admin()` por ora (sem UI de carga de GPS ainda —
+    revisar quando essa importação existir)
+- [x] Migration aplicada + mirror local em `supabase/migrations/`
+- [x] Frontend: tela `/usuarios` (guard `requireAdmin`) listando usuários +
+  select de papel + ação salvar (RPCs `definir_papel`/`remover_papel`);
+  link "Usuários" no header só para admin; forms de criar/editar
+  escondidos para operador em categorias/veículos/tarifas/praças; rotas
+  `/cadastros/pracas/nova` e `/cadastros/pracas/[id]` redirecionam
+  operador de volta à listagem; página `/sem-acesso` (fora do grupo
+  `(app)`, para não entrar em loop de redirect) para autenticado sem papel
+- [x] `get_advisors` — únicos achados são o WARN padrão "SECURITY DEFINER
+  executável por authenticated/anon" nas 6 funções novas (esperado: são
+  helpers que retornam false/null para quem não tem papel, e RPCs
+  admin-only que se autoverificam com `eh_admin()` e lançam exceção —
+  mesmo padrão já usado em `atualizar_perfil_proprio` no projeto de
+  tickets) + o WARN pré-existente de leaked password protection
+- [x] Verificação via REST com 3 usuários reais (admin, operador, sem
+  papel): `meu_papel()` correto para os 3, SELECT em cadastro liberado
+  para admin/operador e bloqueado para sem-papel, INSERT em cadastro só
+  admin, fluxo completo de importação (staging→RPC→validação) funcionando
+  para operador, `listar_usuarios`/`definir_papel` só admin, promoção e
+  remoção de papel refletindo imediatamente em `meu_papel()` — 18/18
+  checks, zero resíduo (usuários e dados de teste removidos ao final)
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação:**
+- Migration aplicada: `20260911122829_pedagio_fase08_papeis_acesso`
+  (mirror local em `supabase/migrations/`).
+- Bootstrap do primeiro admin feito via `INSERT` direto (service role) em
+  `pedagio.usuario_perfil` para `alexandre.nunes@dinon.com.br` — a partir
+  daqui, qualquer promoção/remoção de papel passa pela tela `/usuarios`.
+- Todos os helpers/RPCs são `SECURITY DEFINER` com `search_path = ''`,
+  seguindo o padrão já usado nas funções de validação (FASE 03) — o
+  `get_advisors` sinaliza isso como WARN por padrão (qualquer função
+  SECURITY DEFINER exposta), mas é intencional: `eh_admin`/
+  `usuario_autorizado`/`meu_papel` são seguros para qualquer chamador
+  (retornam `false`/`null` sem papel), e as RPCs de gestão fazem a própria
+  verificação de admin internamente.
+- `staging_passagem_pedagio` ficou com policy única `ALL` para qualquer
+  autorizado (sem distinção admin/operador) porque é uma tabela puramente
+  operacional/transitória — não há cadastro para proteger ali, e o
+  operador precisa de INSERT+SELECT+DELETE nela para o fluxo de
+  importação funcionar de ponta a ponta.
+- `passagem_pedagio`/`validacao_passagem`/`lote_importacao` precisaram
+  liberar UPDATE (não só INSERT) para `usuario_autorizado()` porque
+  `processar_staging_passagens`/`validar_passagem` são `SECURITY INVOKER`
+  (decisão da FASE 03) — rodam com o papel de quem importou, então o
+  operador precisa desses direitos para o próprio pipeline de validação
+  concluir (ex.: `UPDATE passagem_pedagio SET status_validacao = ...`).
+- Nenhuma tela nova precisou de checagem de papel *dentro* da server
+  action — a UI esconde os controles que operador não deveria ver, e a
+  RLS é a linha de defesa real (uma tentativa direta de bypass da UI
+  recebe erro de permissão do Postgres, não um bug silencioso).
+- Página `/sem-acesso` fica **fora** do grupo de rotas `(app)` de
+  propósito: o layout de `(app)` já redireciona para `/sem-acesso` quem
+  não tem papel, então colocar essa página dentro do mesmo grupo causaria
+  loop de redirecionamento.
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 06.6) até o plano atual.** Schema
+**Projeto completo (FASE 01 a FASE 08) até o plano atual.** Schema
 `pedagio` (cadastros, movimento, validação com revalidação automática,
-importação, indicadores) + app Next.js (login compartilhado, dashboard,
-cadastros com mapa, importação via UI, consulta de passagens/validações)
-— tudo aplicado e verificado no Supabase (`wduypqixkafimcndytiz`).
+importação no layout real do fornecedor, indicadores, papéis de acesso
+admin/operador) + app Next.js (login compartilhado, dashboard, cadastros
+com mapa, importação via UI, consulta de passagens/validações, gestão de
+usuários) — tudo aplicado e verificado no Supabase
+(`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
-Nenhum item pendente do plano original. Próximos passos dependem do uso
+Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — ver "Decisões em aberto" abaixo para itens que ficaram
-conscientemente de fora (carga de GPS em lote, papéis de acesso, etc.).
+conscientemente de fora (carga de GPS em lote, cadastro próprio de
+viagem/embarcador, etc.).

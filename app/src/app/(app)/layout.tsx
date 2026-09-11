@@ -1,4 +1,4 @@
-import { requireAutenticado } from "@/lib/auth/guards";
+import { requireAutorizado } from "@/lib/auth/guards";
 import { AppHeader } from "@/components/app-header";
 
 export default async function AppLayout({
@@ -6,11 +6,11 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAutenticado();
+  const { papel } = await requireAutorizado();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AppHeader />
+      <AppHeader papel={papel} />
       {children}
     </div>
   );
