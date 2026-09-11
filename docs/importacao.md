@@ -38,6 +38,21 @@ sempre normalizado pela condição (ver tabela acima), porque o arquivo
 real do fornecedor não é consistente nisso — já apareceu linha de
 crédito com valor positivo.
 
+### Duplicidade
+
+Reenviar o mesmo arquivo (ou uma linha já importada antes) é seguro: uma
+linha com a mesma combinação de `placa` + `data_hora` + `condicao` +
+`valor_cobrado` de uma passagem já existente é contada como erro do lote
+e **não** cria uma linha nova. Débito e crédito pareados na mesma
+passagem (mesma placa/horário) continuam sendo tratados como linhas
+diferentes, já que têm condição/valor distintos.
+
+**Limitação conhecida:** se o fornecedor reemitir a mesma fatura
+corrigida mas mantendo veículo, horário, condição e valor idênticos ao
+original, a linha corrigida seria ignorada como se fosse duplicata. Não
+apareceu esse caso na prática ainda — se aparecer, revisar a chave de
+deduplicação (hoje não inclui `numero_fatura`).
+
 ### `tipo_uso_texto = contrato`
 
 Linhas de contrato não representam uma passagem física por uma praça
@@ -97,9 +112,43 @@ where placa_informada = 'ABC1D23' and status_validacao = 'sem_cadastro'
 select pedagio.processar_validacoes_pendentes();
 ```
 
-## Posições de GPS (carga em lote)
+## Posições de GPS (carga em lote — FASE 09)
 
-Este documento cobre a importação de **passagens**. A carga em lote de
-`posicao_veiculo` (antes da API existir) segue o mesmo padrão de staging,
-mas ainda não tem uma tabela/função dedicada — avaliar se vale a pena
-replicar esta mesma abordagem quando a necessidade aparecer.
+Mesmo padrão da importação de passagens: tela **Importação** (`/importacao`)
+→ seção "Nova importação de posições de GPS" → escolhe o CSV → o app grava
+na staging e chama `processar_staging_posicoes` automaticamente. Ao
+importar, os pings novos disparam a revalidação automática (FASE 03) das
+passagens `pendente`/`sem_dados_gps` do mesmo veículo que caírem dentro da
+janela de tolerância — não é preciso rodar nada manualmente depois.
+
+### Formato do arquivo
+
+| coluna | formato esperado | exemplo |
+|---|---|---|
+| `placa` | texto | `URS4D35` |
+| `latitude` | graus decimais (`-90` a `90`) | `-29.8807867` |
+| `longitude` | graus decimais (`-180` a `180`) | `-51.1899153` |
+| `data` | **`DD/MM/YYYY`** | `31/08/2026` |
+| `horario` | `HH24:MI:SS` ou `HH24:MI` | `10:00:20` |
+
+Uma linha conta como erro (`total_erros` do lote) e **não** é importada
+quando: `data`/`horario`/`latitude`/`longitude` estão fora do formato ou
+fora do intervalo válido, a `placa` não corresponde a nenhum veículo
+cadastrado (diferente da importação de passagens, aqui não existe um
+status "sem cadastro" — o vínculo com o veículo é obrigatório), ou o ping
+é duplicado (mesmo veículo + mesmo horário já importado antes — a
+importação pode ser reenviada sem medo de duplicar dado).
+
+`fonte` é sempre gravado como `carga_arquivo` nessa importação — o valor
+`api` no mesmo campo fica reservado para uma eventual integração direta
+com o provedor de rastreamento no futuro.
+
+### Caminho manual (Supabase Studio)
+
+Mesmo fluxo do de passagens: importe o CSV na tabela
+`pedagio.staging_posicao_veiculo` (Table Editor → Insert → Import data
+from CSV, com as colunas da tabela acima) e rode:
+
+```sql
+select * from pedagio.processar_staging_posicoes('nome_do_arquivo.csv', 'seu_nome');
+```

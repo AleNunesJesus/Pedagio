@@ -15,8 +15,8 @@ depende dela:
   2026-09-10: sim, via trigger.**
 - ~~Tratamento de placa/praça não reconhecida na importação~~ —
   **resolvido em 2026-09-10: importa como `sem_cadastro`, não bloqueia.**
-- Carga em lote de `posicao_veiculo` (GPS) — ainda sem staging/função
-  dedicada; avaliar quando a necessidade aparecer.
+- ~~Carga em lote de `posicao_veiculo` (GPS)~~ — **resolvido em
+  2026-09-11: staging + função dedicada, FASE 09.**
 - ~~Stack de frontend/dashboard~~ — **resolvido em 2026-09-10: Next.js,
   auth compartilhado com o sistema de tickets, acesso liberado para
   qualquer autenticado.**
@@ -568,6 +568,79 @@ por controle de acesso real com dois papéis: **admin** (acesso total) e
 
 ---
 
+## FASE 09 — Carga em lote de posições de GPS
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** staging + função dedicada para importar `posicao_veiculo`
+em lote, mesmo padrão da importação de passagens (FASE 04/07), para
+alimentar o motor de validação (FASE 03) com pings de GPS reais.
+
+**Decisões fechadas (2026-09-11):**
+- Quem importa: **admin e operador** (mesmo papel da importação de
+  passagens — FASE 08).
+- Placa não cadastrada: linha pulada, conta como erro do lote (a tabela
+  exige `veiculo_id`, não existe um status "sem cadastro" como em
+  `passagem_pedagio`).
+- Duplicidade: **bloqueada** — `unique (veiculo_id, data_hora)` em
+  `posicao_veiculo`; reenviar o mesmo arquivo conta as linhas repetidas
+  como erro, sem duplicar o ping.
+- Formato do arquivo confirmado com o usuário: colunas `placa`,
+  `latitude`, `longitude` (graus decimais), `data` (`DD/MM/YYYY`),
+  `horario` (`HH24:MI:SS`). Integração direta com o provedor de
+  rastreamento (API) fica para depois — por ora só carga via CSV.
+
+**Checklist:**
+- [x] `unique (veiculo_id, data_hora)` em `posicao_veiculo`
+- [x] Tabela `pedagio.staging_posicao_veiculo` (colunas cruas em texto)
+- [x] Helper `pedagio.parse_coordenada` (reaproveita `parse_data_hora_planilha`
+  já existente para data/hora)
+- [x] Função `pedagio.processar_staging_posicoes` — casa placa → veiculo,
+  valida faixa de lat/lon, insere em `posicao_veiculo` com
+  `fonte = 'carga_arquivo'`, ignora duplicados (`on conflict do nothing`),
+  limpa a staging; a revalidação automática das passagens acontece via
+  trigger já existente da FASE 03 (sem chamada explícita necessária)
+- [x] RLS: `staging_posicao_veiculo` liberada a qualquer autorizado;
+  `posicao_veiculo` passou a aceitar INSERT de autorizado (antes só admin)
+- [x] Frontend: seção "Nova importação de posições de GPS" em
+  `/importacao`, reaproveitando o padrão do form de passagens; histórico
+  de lotes (`LoteList`) ganhou coluna "Tipo" pra diferenciar
+  Passagens/GPS
+- [x] `get_advisors` — sem achados novos além do padrão já esperado
+- [x] Verificação via REST com usuário operador real: fluxo feliz
+  (ping dentro do polígono e da janela → passagem revalidada
+  automaticamente para `ok`, com `dentro_poligono=true`), duplicado
+  (conta como erro, não duplica), placa não cadastrada + coordenada
+  inválida (erro), usuário sem papel bloqueado — 7/7 checks, zero resíduo
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `docs/importacao.md` atualizado com a seção de GPS
+
+**Notas de implementação:**
+- Migrations aplicadas: `20260911171359_pedagio_fase09_importacao_gps` e
+  `20260911171616_pedagio_fix_tipo_lote_posicoes_gps` (mirror local em
+  `supabase/migrations/`).
+- `lote_importacao.tipo` já tinha um `check` desde a FASE 02 restringindo
+  a `'passagens'`/`'posicoes_gps'` — a primeira versão da função usava
+  `'posicoes'` por engano; corrigido na segunda migration.
+- `parse_coordenada` é só um cast numérico com trim/try-catch — não há
+  formato BR (vírgula) aqui, coordenadas de GPS vêm sempre em ponto
+  decimal simples.
+- Ao contrário de `passagem_pedagio`, `posicao_veiculo.veiculo_id` é
+  `NOT NULL` — não existe conceito de "sem_cadastro" pra ping de GPS, uma
+  placa não reconhecida simplesmente não pode ser armazenada.
+- `processar_staging_posicoes` é `SECURITY INVOKER` (mesmo padrão das
+  outras funções de importação/validação) — o trigger de revalidação
+  (`trg_revalidar_passagens_por_posicao`, também invoker) roda como quem
+  importou, por isso a policy de INSERT em `posicao_veiculo` precisou
+  virar `usuario_autorizado()` em vez de `eh_admin()`.
+- Verificação inicial teve um bug do próprio script de teste (não do
+  código): a passagem de teste foi criada com horário em `-03:00` (BRT)
+  enquanto `parse_data_hora_planilha` interpreta o texto do CSV como UTC
+  direto (via `to_timestamp` sem timezone, no timezone da sessão) —
+  corrigido usando o mesmo referencial (UTC) nos dois lados do teste.
+
+---
+
 ## Ajuste pós-FASE 07 — códigos reais do fornecedor (2026-09-11)
 
 Primeiro arquivo real de teste (`teste_pedagio.csv`, 16 linhas) importou
@@ -615,19 +688,56 @@ como fizemos aqui.
 
 ---
 
+## Ajuste pós-FASE 09 — duplicidade em passagem_pedagio (2026-09-11)
+
+Ao testar o cruzamento GPS×passagem, o usuário tinha reimportado o mesmo
+`teste_pedagio.csv` de passagens 3 vezes durante a depuração dos ajustes
+anteriores — como `passagem_pedagio` não tinha nenhuma trava contra
+duplicidade (diferente de `posicao_veiculo`, que já ganhou `unique` na
+FASE 09), isso deixou **19 linhas duplicadas** no banco.
+
+**Erro cometido na limpeza:** a primeira tentativa de deduplicar usou a
+chave (`numero_fatura`, `placa_informada`, `data_hora`) — mas 3 pares de
+linhas legítimas de débito+crédito (mesma passagem, condição/valor
+diferentes) compartilham exatamente essa combinação. O `DELETE` acabou
+removendo 3 linhas de crédito reais, não duplicatas. Corrigido apagando
+o lote de teste inteiro e reimportando o arquivo original uma vez (dado
+100% de teste, sem impacto real).
+
+**Correção definitiva** (migration
+`20260911173126_pedagio_fix_duplicidade_passagem_pedagio`):
+- `unique (placa_informada, data_hora, condicao, valor_cobrado)` em
+  `passagem_pedagio` — a chave inclui `condicao`/`valor_cobrado`
+  justamente para não colidir com pares débito/crédito legítimos.
+- `processar_staging_passagens` ganhou `on conflict ... do nothing`,
+  contando a linha duplicada como erro do lote (mesmo padrão já usado em
+  `processar_staging_posicoes` na FASE 09).
+
+**Verificação:** reimportar as 16 linhas reais duas vezes seguidas — 1ª
+vez 16/16 sem erro (pares débito/crédito preservados), 2ª vez (mesmo
+arquivo) 16/16 erro por duplicidade, sem criar nenhuma linha nova.
+Dados de teste da verificação removidos ao final.
+
+**Limitação conhecida (decisão adiada):** uma fatura reemitida/corrigida
+pelo fornecedor com veículo+horário+condição+valor idênticos ao
+original seria silenciosamente tratada como duplicata (a chave não inclui
+`numero_fatura`). Revisitar se esse cenário aparecer no uso real.
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 08) até o plano atual.** Schema
+**Projeto completo (FASE 01 a FASE 09) até o plano atual.** Schema
 `pedagio` (cadastros, movimento, validação com revalidação automática,
-importação no layout real do fornecedor, indicadores, papéis de acesso
-admin/operador) + app Next.js (login compartilhado, dashboard, cadastros
-com mapa, importação via UI, consulta de passagens/validações, gestão de
-usuários) — tudo aplicado e verificado no Supabase
-(`wduypqixkafimcndytiz`).
+importação de passagens e de GPS no layout real do fornecedor,
+indicadores, papéis de acesso admin/operador) + app Next.js (login
+compartilhado, dashboard, cadastros com mapa, importação via UI,
+consulta de passagens/validações, gestão de usuários) — tudo aplicado e
+verificado no Supabase (`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
-real do sistema — ver "Decisões em aberto" abaixo para itens que ficaram
-conscientemente de fora (carga de GPS em lote, cadastro próprio de
-viagem/embarcador, etc.).
+real do sistema — ver "Decisões em aberto" abaixo para o único item que
+ainda ficou conscientemente de fora (cadastro próprio de
+viagem/embarcador).
