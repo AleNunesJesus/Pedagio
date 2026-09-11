@@ -157,3 +157,58 @@ from CSV, com as colunas da tabela acima) e rode:
 ```sql
 select * from pedagio.processar_staging_posicoes('nome_do_arquivo.csv', 'seu_nome');
 ```
+
+## Viagens de transporte / documento fiscal (carga em lote — FASE 13)
+
+Mesmo padrão das demais: tela **Importação** (`/importacao`) → seção
+"Nova importação de viagens (documento fiscal)" → escolhe o CSV → o app
+grava na staging e chama `processar_staging_viagens_transporte`
+automaticamente. Consulta pela tela **Viagens** (`/viagens-transporte`).
+
+Essa é uma entidade independente de `pedagio.viagem` (a tabela
+auto-cadastrada a partir do campo `viagem` da planilha de passagens) —
+`numero_transporte` não é a mesma numeração de `viagem_informada`, são
+conceitos diferentes vindos de sistemas diferentes.
+
+### Formato do arquivo
+
+| coluna | formato esperado | exemplo |
+|---|---|---|
+| `placa` | texto | `UGF9B40` |
+| `numero_transporte` | texto livre (número do documento fiscal/transporte), único | `26232` |
+| `cidade_origem` | texto | `PORTO ALEGRE` |
+| `uf_origem` | texto | `RS` |
+| `cidade_destino` | texto | `SÃO PAULO` |
+| `uf_destino` | texto | `SP` |
+| `data_hora_saida` | **`DD/MM/YYYY HH24:MI`** (data e hora num único campo, diferente das outras planilhas) | `30/08/2026 10:00` |
+| `data_hora_chegada` | mesmo formato de `data_hora_saida` | `01/09/2026 18:00` |
+| `carreta1` | texto livre (placa/código da carreta), opcional — indica configuração de 6/7 eixos quando preenchido | `ABC1234` |
+| `carreta2` | texto livre, opcional — indica configuração de 9 eixos quando preenchido (junto com `carreta1`) | vazio |
+| `tipo_viagem` | `carregado` ou `vazio` (aceita também `carregada`/`vazia`, com ou sem acento, case-insensitive) | `CARREGADO` |
+
+Não existe coluna de embarcador nesta planilha — o `embarcador_id` é
+descoberto automaticamente cruzando `placa` + a janela
+`data_hora_saida`/`data_hora_chegada` contra as passagens de pedágio
+(`passagem_pedagio.embarcador_informada`) do mesmo veículo naquele
+período. Se nenhuma passagem com embarcador cair dentro da janela, o
+campo fica `null` — não é erro, só fica sem embarcador identificado.
+
+Uma linha conta como erro (`total_erros` do lote) e **não** é importada
+quando: `numero_transporte`/`placa` estão vazios, `data_hora_saida`/
+`data_hora_chegada` estão fora do formato, `tipo_viagem` não é
+reconhecido, ou o `numero_transporte` já existe (duplicidade — reenviar
+o mesmo arquivo é seguro, não duplica). Placa não cadastrada **não** é
+erro (mesmo espírito do "sem_cadastro" de passagens): a viagem é
+importada mesmo assim, só sem `veiculo_id`.
+
+### Caminho manual (Supabase Studio)
+
+Mesmo fluxo das demais: importe o CSV na tabela
+`pedagio.staging_viagem_transporte` (colunas da tabela acima, exceto que
+`data_hora_saida`/`data_hora_chegada`/`tipo_viagem` viram
+`data_hora_saida_texto`/`data_hora_chegada_texto`/`tipo_viagem_texto` na
+staging) e rode:
+
+```sql
+select * from pedagio.processar_staging_viagens_transporte('nome_do_arquivo.csv', 'seu_nome');
+```

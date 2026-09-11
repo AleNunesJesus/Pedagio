@@ -39,6 +39,12 @@ export function AppHeader({ papel }: { papel: string }) {
             >
               Rastreamento
             </Link>
+            <Link
+              href="/viagens-transporte"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              Viagens
+            </Link>
             {papel === "admin" && (
               <Link
                 href="/usuarios"

@@ -369,6 +369,111 @@ export type Database = {
         };
         Relationships: [];
       };
+      viagem_transporte: {
+        Row: {
+          id: string;
+          numero_transporte: string;
+          veiculo_id: string | null;
+          placa_informada: string;
+          cidade_origem: string | null;
+          uf_origem: string | null;
+          cidade_destino: string | null;
+          uf_destino: string | null;
+          data_hora_saida: string;
+          data_hora_chegada: string;
+          carreta1: string | null;
+          carreta2: string | null;
+          tipo_viagem: string;
+          embarcador_id: string | null;
+          lote_importacao_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          numero_transporte: string;
+          veiculo_id?: string | null;
+          placa_informada: string;
+          cidade_origem?: string | null;
+          uf_origem?: string | null;
+          cidade_destino?: string | null;
+          uf_destino?: string | null;
+          data_hora_saida: string;
+          data_hora_chegada: string;
+          carreta1?: string | null;
+          carreta2?: string | null;
+          tipo_viagem: string;
+          embarcador_id?: string | null;
+          lote_importacao_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          numero_transporte?: string;
+          veiculo_id?: string | null;
+          placa_informada?: string;
+          cidade_origem?: string | null;
+          uf_origem?: string | null;
+          cidade_destino?: string | null;
+          uf_destino?: string | null;
+          data_hora_saida?: string;
+          data_hora_chegada?: string;
+          carreta1?: string | null;
+          carreta2?: string | null;
+          tipo_viagem?: string;
+          embarcador_id?: string | null;
+          lote_importacao_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      staging_viagem_transporte: {
+        Row: {
+          id: number;
+          placa: string | null;
+          numero_transporte: string | null;
+          cidade_origem: string | null;
+          uf_origem: string | null;
+          cidade_destino: string | null;
+          uf_destino: string | null;
+          data_hora_saida_texto: string | null;
+          data_hora_chegada_texto: string | null;
+          carreta1: string | null;
+          carreta2: string | null;
+          tipo_viagem_texto: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: number;
+          placa?: string | null;
+          numero_transporte?: string | null;
+          cidade_origem?: string | null;
+          uf_origem?: string | null;
+          cidade_destino?: string | null;
+          uf_destino?: string | null;
+          data_hora_saida_texto?: string | null;
+          data_hora_chegada_texto?: string | null;
+          carreta1?: string | null;
+          carreta2?: string | null;
+          tipo_viagem_texto?: string | null;
+          criado_em?: string;
+        };
+        Update: {
+          id?: number;
+          placa?: string | null;
+          numero_transporte?: string | null;
+          cidade_origem?: string | null;
+          uf_origem?: string | null;
+          cidade_destino?: string | null;
+          uf_destino?: string | null;
+          data_hora_saida_texto?: string | null;
+          data_hora_chegada_texto?: string | null;
+          carreta1?: string | null;
+          carreta2?: string | null;
+          tipo_viagem_texto?: string | null;
+          criado_em?: string;
+        };
+        Relationships: [];
+      };
       validacao_passagem: {
         Row: {
           id: string;
@@ -584,6 +689,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_viagem_transporte_detalhado: {
+        Row: {
+          id: string | null;
+          numero_transporte: string | null;
+          veiculo_id: string | null;
+          placa_informada: string | null;
+          cidade_origem: string | null;
+          uf_origem: string | null;
+          cidade_destino: string | null;
+          uf_destino: string | null;
+          data_hora_saida: string | null;
+          data_hora_chegada: string | null;
+          carreta1: string | null;
+          carreta2: string | null;
+          tipo_viagem: string | null;
+          embarcador_id: string | null;
+          embarcador_nome: string | null;
+          lote_importacao_id: string | null;
+          created_at: string | null;
+        };
+        Relationships: [];
+      };
       vw_financeiro_mensal: {
         Row: {
           mes: string | null;
@@ -756,6 +883,18 @@ export type Database = {
         Returns: number | null;
       };
       processar_staging_posicoes: {
+        Args: { p_arquivo_nome?: string | null; p_usuario?: string | null };
+        Returns: Database["pedagio"]["Tables"]["lote_importacao"]["Row"];
+      };
+      parse_data_hora_combinada: {
+        Args: { p_texto: string };
+        Returns: string | null;
+      };
+      normalizar_tipo_viagem: {
+        Args: { p_texto: string };
+        Returns: string | null;
+      };
+      processar_staging_viagens_transporte: {
         Args: { p_arquivo_nome?: string | null; p_usuario?: string | null };
         Returns: Database["pedagio"]["Tables"]["lote_importacao"]["Row"];
       };

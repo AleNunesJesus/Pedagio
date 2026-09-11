@@ -37,6 +37,9 @@ erDiagram
     POSICAO_VEICULO ||--o{ VALIDACAO_PASSAGEM : evidencia
     VIAGEM ||--o{ PASSAGEM_PEDAGIO : agrupa
     EMBARCADOR ||--o{ PASSAGEM_PEDAGIO : credita
+    VEICULO ||--o{ VIAGEM_TRANSPORTE : realiza
+    EMBARCADOR ||--o{ VIAGEM_TRANSPORTE : credita
+    LOTE_IMPORTACAO ||--o{ VIAGEM_TRANSPORTE : origina
 ```
 
 ## Tabelas
@@ -195,3 +198,25 @@ Resultado do cruzamento geoespacial + tarifário para cada passagem.
 
 Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo que popula esta
 tabela.
+
+### `viagem_transporte` (FASE 13)
+Uma linha do documento fiscal/transporte importado (planilha do sistema
+de logística, formato real do fornecedor). Entidade independente de
+`viagem` (FASE 10) — numeração e origem de dado diferentes.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| numero_transporte | text unique | número do documento fiscal/transporte |
+| veiculo_id | fk veiculo null | null se `placa_informada` não reconhecida |
+| placa_informada | text | valor bruto da planilha (auditoria) |
+| cidade_origem / uf_origem | text | |
+| cidade_destino / uf_destino | text | |
+| data_hora_saida | timestamptz | |
+| data_hora_chegada | timestamptz | |
+| carreta1 | text null | placa/código da carreta; preenchido indica 6/7 eixos |
+| carreta2 | text null | preenchido junto com `carreta1` indica 9 eixos |
+| tipo_viagem | text | `carregado` \| `vazio` |
+| embarcador_id | fk embarcador null | descoberto cruzando placa + janela saída/chegada contra `passagem_pedagio.embarcador_informada` — não vem na planilha |
+| lote_importacao_id | fk lote_importacao | |
+| created_at | timestamptz | |

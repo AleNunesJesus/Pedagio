@@ -112,6 +112,98 @@ export async function importarPlanilha(
   };
 }
 
+const COLUNAS_ESPERADAS_VIAGENS = [
+  "placa",
+  "numero_transporte",
+  "cidade_origem",
+  "uf_origem",
+  "cidade_destino",
+  "uf_destino",
+  "data_hora_saida",
+  "data_hora_chegada",
+  "carreta1",
+  "carreta2",
+  "tipo_viagem",
+] as const;
+
+export async function importarViagensTransporte(
+  _prevState: ImportacaoState,
+  formData: FormData,
+): Promise<ImportacaoState> {
+  const arquivo = formData.get("arquivo");
+
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { error: "Selecione um arquivo CSV." };
+  }
+
+  const texto = await arquivo.text();
+  const resultado = Papa.parse<Record<string, string>>(texto, {
+    header: true,
+    skipEmptyLines: true,
+  });
+
+  if (resultado.errors.length > 0) {
+    return { error: `Erro ao ler o CSV: ${resultado.errors[0].message}` };
+  }
+
+  const linhas = resultado.data;
+  if (linhas.length === 0) {
+    return { error: "O arquivo não tem nenhuma linha de dados." };
+  }
+
+  const colunasEncontradas = Object.keys(linhas[0]);
+  const temAlgumaColunaEsperada = COLUNAS_ESPERADAS_VIAGENS.some((c) =>
+    colunasEncontradas.includes(c),
+  );
+  if (!temAlgumaColunaEsperada) {
+    return {
+      error:
+        "Nenhuma coluna esperada foi encontrada no CSV. Confira os cabeçalhos em docs/importacao.md " +
+        `(esperado: ${COLUNAS_ESPERADAS_VIAGENS.join(", ")}).`,
+    };
+  }
+
+  if (linhas.length > LIMITE_LINHAS) {
+    return { error: `O arquivo tem ${linhas.length} linhas — o limite por importação é ${LIMITE_LINHAS}.` };
+  }
+
+  const linhasParaStaging = linhas.map((linha) => ({
+    placa: vazio(linha.placa),
+    numero_transporte: vazio(linha.numero_transporte),
+    cidade_origem: vazio(linha.cidade_origem),
+    uf_origem: vazio(linha.uf_origem),
+    cidade_destino: vazio(linha.cidade_destino),
+    uf_destino: vazio(linha.uf_destino),
+    data_hora_saida_texto: vazio(linha.data_hora_saida),
+    data_hora_chegada_texto: vazio(linha.data_hora_chegada),
+    carreta1: vazio(linha.carreta1),
+    carreta2: vazio(linha.carreta2),
+    tipo_viagem_texto: vazio(linha.tipo_viagem),
+  }));
+
+  const supabase = await createClient();
+
+  const { error: insertError } = await supabase
+    .from("staging_viagem_transporte")
+    .insert(linhasParaStaging);
+  if (insertError) return { error: `Erro ao gravar na staging: ${insertError.message}` };
+
+  const { data: claims } = await supabase.auth.getClaims();
+  const usuario = (claims?.claims?.email as string | undefined) ?? null;
+
+  const { data: lote, error: rpcError } = await supabase.rpc("processar_staging_viagens_transporte", {
+    p_arquivo_nome: arquivo.name,
+    p_usuario: usuario,
+  });
+  if (rpcError) return { error: `Erro ao processar a importação: ${rpcError.message}` };
+
+  revalidatePath("/importacao");
+  revalidatePath("/viagens-transporte");
+  return {
+    lote: { id: lote.id, total_linhas: lote.total_linhas, total_erros: lote.total_erros },
+  };
+}
+
 const COLUNAS_ESPERADAS_POSICOES = ["placa", "latitude", "longitude", "data", "horario"] as const;
 
 export async function importarPosicoes(

@@ -1,6 +1,7 @@
 import { listLotesImportacao } from "@/features/importacao/queries";
 import { ImportarForm } from "@/features/importacao/components/importar-form";
 import { ImportarPosicoesForm } from "@/features/importacao/components/importar-posicoes-form";
+import { ImportarViagensForm } from "@/features/importacao/components/importar-viagens-form";
 import { LoteList } from "@/features/importacao/components/lote-list";
 
 export default async function ImportacaoPage() {
@@ -22,6 +23,13 @@ export default async function ImportacaoPage() {
           Nova importação de posições de GPS
         </h2>
         <ImportarPosicoesForm />
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+          Nova importação de viagens (documento fiscal)
+        </h2>
+        <ImportarViagensForm />
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">

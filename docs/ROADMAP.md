@@ -920,36 +920,75 @@ visualmente no navegador (sem ferramenta de browser neste ambiente).
 
 ---
 
+## FASE 13 — Viagem completa (documento fiscal)
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** importar o documento fiscal/transporte (planilha do
+sistema de logística) pra saber se o veículo viajou carregado ou vazio e
+com qual embarcador — entidade independente de `pedagio.viagem` (FASE
+10), que vem da numeração da planilha de passagens.
+
+**Formato real confirmado com o usuário (2026-09-11):** `placa`,
+`numero_transporte`, `cidade_origem`/`uf_origem`, `cidade_destino`/
+`uf_destino`, `data_hora_saida`/`data_hora_chegada` (data+hora num único
+campo `DD/MM/YYYY HH24:MI`, diferente das outras planilhas),
+`carreta1`/`carreta2` (placa/código da carreta — preenchido indica 6/7 ou
+9 eixos), `tipo_viagem` (`CARREGADO`/`VAZIO`, forma real do fornecedor).
+
+**Checklist:**
+- [x] Tabela `pedagio.viagem_transporte` (`numero_transporte` unique,
+  `veiculo_id` fk nullable, `embarcador_id` fk nullable, demais colunas
+  conforme planilha) + `staging_viagem_transporte`
+- [x] `lote_importacao_tipo_check` ganhou `'viagens_transporte'`
+- [x] `pedagio.parse_data_hora_combinada` — parser novo pro formato
+  data+hora num único campo, mesmo tratamento de fuso do fix pós-FASE
+  04/09 (interpreta como `America/Sao_Paulo`, converte pra UTC)
+- [x] `pedagio.normalizar_tipo_viagem` — aceita `carregado`/`vazio` (real
+  do fornecedor) e `carregada`/`vazia`, case-insensitive
+- [x] `processar_staging_viagens_transporte`: casa placa → veiculo (sem
+  erro se não achar, mesmo espírito do "sem_cadastro"), descobre
+  `embarcador_id` cruzando placa + janela saída/chegada contra
+  `passagem_pedagio.embarcador_informada` (pega o mais antigo dentro da
+  janela com embarcador preenchido), bloqueia duplicidade por
+  `numero_transporte` (`on conflict do nothing`), erro por linha nunca
+  aborta o lote (mesmo padrão do fix pós-FASE07)
+- [x] View `vw_viagem_transporte_detalhado` (junta nome do embarcador)
+- [x] Frontend: seção "Nova importação de viagens (documento fiscal)" em
+  `/importacao`; tela `/viagens-transporte` (filtro por veículo/tipo/
+  embarcador/período, tabela com origem→destino, saída/chegada, tipo,
+  embarcador); `LoteList` ganhou label "Viagens"; link no menu
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `get_advisors` — sem achados novos
+- [x] Verificação via SQL direto com a planilha de exemplo real (2
+  linhas, mesmo veículo, uma viagem carregada e uma vazia): 2/2 sem
+  erro, veículo casado, embarcador descoberto corretamente só na viagem
+  cuja janela continha uma passagem com embarcador (a vazia ficou sem,
+  como esperado); reimportar as mesmas 2 linhas: 2/2 erro por
+  duplicidade, sem linha nova. Dados de teste removidos ao final.
+
+**Limitação conhecida:** não testei visualmente no navegador (sem
+ferramenta de browser neste ambiente). A regra de cruzamento de
+embarcador (mais antigo dentro da janela) é uma heurística inicial — se
+aparecer caso real com mais de um embarcador possível na mesma janela,
+revisitar.
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 12).** Schema `pedagio` (cadastros
+**Projeto completo (FASE 01 a FASE 13).** Schema `pedagio` (cadastros
 incluindo viagem/embarcador, movimento, validação com revalidação
-automática, importação de passagens e de GPS no layout real do
-fornecedor, indicadores, papéis de acesso admin/operador, visibilidade
-de GPS por veículo) + app Next.js (login compartilhado, dashboard,
-cadastros com mapa, importação via UI, consulta de passagens/validações
-com mapa da validação geoespacial, rastreamento de GPS, gestão de
+automática, importação de passagens, de GPS e de viagens de transporte
+(documento fiscal) no layout real do fornecedor, indicadores, papéis de
+acesso admin/operador, visibilidade de GPS por veículo) + app Next.js
+(login compartilhado, dashboard, cadastros com mapa, importação via UI,
+consulta de passagens/validações com mapa da validação geoespacial,
+rastreamento de GPS, consulta de viagens de transporte, gestão de
 usuários) — tudo aplicado e verificado no Supabase
 (`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
-**FASE 13 (planejada, não iniciada) — Viagem completa (documento
-fiscal).** Discutido em 2026-09-11, aguardando planilha real antes de
-implementar:
-
-- Tabela nova e independente `pedagio.viagem_transporte` (não mexe na
-  `pedagio.viagem` existente — são conceitos e numerações diferentes).
-- Colunas: `placa`, `numero_transporte`, `cidade_origem`/`uf_origem`,
-  `cidade_destino`/`uf_destino`, `data_hora_saida`/`data_hora_chegada`,
-  `carreta_1` (indica 6/7 eixos), `carreta_2` (indica 9 eixos),
-  `tipo_viagem` (`vazia`/`carregada` — coluna nova que ainda será
-  adicionada na planilha do fornecedor).
-- `embarcador_id`: **não** vem na planilha — precisa ser descoberto
-  cruzando `placa` + janela `data_hora_saida`/`data_hora_chegada` contra
-  `passagem_pedagio.embarcador_informada` do mesmo veículo (regra de
-  cruzamento ainda por definir em detalhe).
-- Importação em lote (mesmo padrão staging + função das demais).
-- Falta: planilha real de exemplo para fechar formato exato de cada
-  coluna (em especial `carreta_1`/`carreta_2`/`tipo_viagem`) antes de
-  implementar — não adivinhar formato.
+Nenhum item pendente do plano atual. Próximos passos dependem do uso
+real do sistema — trazer necessidades concretas conforme aparecerem.

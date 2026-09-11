@@ -14,6 +14,7 @@ type Lote = {
 const TIPO_LABEL: Record<string, string> = {
   passagens: "Passagens",
   posicoes_gps: "GPS",
+  viagens_transporte: "Viagens",
 };
 
 export function LoteList({ rows }: { rows: Lote[] }) {
