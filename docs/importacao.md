@@ -29,14 +29,19 @@ em que a planilha do fornecedor as traz:
 | `sentido` | texto — usado junto com `praca_nome` para casar com o cadastro da praça | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
-formato, ou `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
-valores listados na tabela acima), é contada como erro (`total_erros` do
-lote) e **não** é importada — não há tentativa de adivinhar formatos
-alternativos além dos já mapeados, para não arriscar interpretar um dado
-errado silenciosamente. O sinal do valor **não** é motivo de erro: é
-sempre normalizado pela condição (ver tabela acima), porque o arquivo
-real do fornecedor não é consistente nisso — já apareceu linha de
-crédito com valor positivo.
+formato, `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
+valores listados na tabela acima), ou `praca_nome`/`sentido` vazios, é
+contada como erro (`total_erros` do lote) e **não** é importada — não há
+tentativa de adivinhar formatos alternativos além dos já mapeados, para
+não arriscar interpretar um dado errado silenciosamente. O sinal do valor
+**não** é motivo de erro: é sempre normalizado pela condição (ver tabela
+acima), porque o arquivo real do fornecedor não é consistente nisso — já
+apareceu linha de crédito com valor positivo.
+
+Qualquer outro erro inesperado ao processar uma linha (ex.: violação de
+constraint não prevista pelas checagens acima) também é contado como erro
+daquela linha, e nunca aborta o lote inteiro — uma linha ruim não pode
+travar as demais nem deixar lixo na staging.
 
 ### Duplicidade
 
