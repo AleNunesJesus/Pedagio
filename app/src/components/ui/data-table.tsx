@@ -47,7 +47,7 @@ export function DataTable<T>({
               {columns.map((col) => (
                 <td
                   key={col.header}
-                  className={`py-2 text-gray-700 dark:text-gray-300 ${col.align === "right" ? "text-right tabular-nums" : "text-left"}`}
+                  className={`py-2 text-gray-900 dark:text-gray-100 ${col.align === "right" ? "text-right tabular-nums" : "text-left"}`}
                 >
                   {col.render(row)}
                 </td>
