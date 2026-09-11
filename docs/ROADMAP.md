@@ -23,8 +23,9 @@ depende dela:
 - ~~Biblioteca de mapa~~ — **resolvido em 2026-09-10/11: Leaflet + Leaflet.draw + OpenStreetMap.**
 - ~~Validação geo/tarifária para linhas `tipo_uso = contrato`~~ — **resolvido
   em 2026-09-11: pulam a validação (`status_validacao = nao_aplicavel`).**
-- ~~Viagem/embarcador~~ — **resolvido em 2026-09-11: campos texto simples,
-  sem cadastro próprio por ora.**
+- ~~Viagem/embarcador~~ — resolvido em 2026-09-11 (campos texto simples,
+  FASE 07); **revisto em 2026-09-11: cadastro próprio com FK e
+  auto-cadastro na importação, FASE 10.**
 - ~~Casamento de praça na importação~~ — **resolvido em 2026-09-11: por
   (nome, sentido) juntos, não só nome.**
 
@@ -725,19 +726,82 @@ original seria silenciosamente tratada como duplicata (a chave não inclui
 
 ---
 
+## FASE 10 — Cadastro próprio de viagem/embarcador
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** sair dos campos texto livre `viagem`/`embarcador` em
+`passagem_pedagio` para tabelas com FK, permitindo filtro/relatório mais
+confiável — único item que ainda restava das "Decisões em aberto".
+
+**Decisões fechadas (2026-09-11):**
+- Escopo de `embarcador`: nome + CNPJ opcional (sem contato/endereço).
+- Escopo de `viagem`: só o número/código (sem origem/destino/data/veículo
+  — vira só uma tabela de apoio pra dar FK).
+- Cadastro: **automático na importação** (mesmo espírito do
+  `sem_cadastro` de veículo/praça, mas aqui cria em vez de só marcar —
+  não existe "bloqueio" para viagem/embarcador).
+
+**Checklist:**
+- [x] Tabelas `pedagio.viagem` (`numero` unique) e `pedagio.embarcador`
+  (`nome` unique, `cnpj` opcional)
+- [x] RLS: leitura para qualquer autorizado, insert para qualquer
+  autorizado (precisa pro auto-cadastro funcionar com operador
+  importando), update/delete só admin (só o CNPJ é editável, e só por
+  admin)
+- [x] `passagem_pedagio`: colunas `viagem`/`embarcador` renomeadas para
+  `viagem_informada`/`embarcador_informada` (texto bruto da planilha,
+  mesmo padrão de `placa_informada`/`praca_informada`); colunas novas
+  `viagem_id`/`embarcador_id` (FK, nullable)
+- [x] `vw_passagens_detalhado` atualizada: mantém as colunas `viagem`/
+  `embarcador` com os nomes de sempre (sem quebrar o frontend existente,
+  que já lia esses nomes) e acrescenta `viagem_id`/`embarcador_id`
+- [x] `processar_staging_passagens`: auto-cadastra viagem/embarcador
+  quando o código/nome da planilha ainda não existe
+- [x] Frontend: aba "Embarcadores" em Cadastros (lista + edição de CNPJ,
+  admin-only; sem formulário de criação — só aparece o que foi
+  auto-cadastrado); filtro por Embarcador (dropdown) e Viagem (busca por
+  texto) na tela de Passagens
+- [x] `get_advisors` — sem achados novos além do padrão já esperado
+- [x] Verificação via SQL direto: reimportei as 16 linhas reais do
+  arquivo de teste — 16/16 sem erro, 3 viagens e 2 embarcadores
+  auto-cadastrados corretamente (inclusive as duas linhas do mesmo
+  embarcador em viagens diferentes apontando pro mesmo `embarcador_id`)
+- [x] Verificação via REST com usuários reais (admin/operador): operador
+  insere viagem/embarcador (necessário pro auto-cadastro), operador não
+  consegue editar CNPJ (RLS rejeita), admin consegue — 5/5 checks, zero
+  resíduo
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `docs/modelo-dados.md` e `docs/importacao.md` atualizados
+
+**Notas de implementação:**
+- Migration aplicada: `20260911174336_pedagio_fase10_viagem_embarcador`
+  (mirror local em `supabase/migrations/`).
+- Não existe tela de cadastro pra `viagem` — não haveria o que gerenciar
+  além do número, que já vem certo da planilha. O valor da FK é só
+  permitir agrupar/filtrar; se um dia precisar de mais campos (origem,
+  destino, data), a tabela já existe pra receber.
+- Casamento de embarcador é case-insensitive (`upper(nome)`) para não
+  criar quase-duplicatas por variação de maiúsculas/minúsculas entre
+  importações; `viagem.numero` é comparado exato (números de viagem não
+  têm essa ambiguidade).
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 09) até o plano atual.** Schema
-`pedagio` (cadastros, movimento, validação com revalidação automática,
-importação de passagens e de GPS no layout real do fornecedor,
-indicadores, papéis de acesso admin/operador) + app Next.js (login
-compartilhado, dashboard, cadastros com mapa, importação via UI,
-consulta de passagens/validações, gestão de usuários) — tudo aplicado e
-verificado no Supabase (`wduypqixkafimcndytiz`).
+**Projeto completo (FASE 01 a FASE 10) até o plano atual — todos os
+itens do desenho original e das "Decisões em aberto" resolvidos.**
+Schema `pedagio` (cadastros incluindo viagem/embarcador, movimento,
+validação com revalidação automática, importação de passagens e de GPS
+no layout real do fornecedor, indicadores, papéis de acesso
+admin/operador) + app Next.js (login compartilhado, dashboard,
+cadastros com mapa, importação via UI, consulta de passagens/validações,
+gestão de usuários) — tudo aplicado e verificado no Supabase
+(`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
-Nenhum item pendente do plano atual. Próximos passos dependem do uso
-real do sistema — ver "Decisões em aberto" abaixo para o único item que
-ainda ficou conscientemente de fora (cadastro próprio de
-viagem/embarcador).
+Nenhum item pendente do plano atual nem das decisões em aberto
+originais. Próximos passos dependem inteiramente do uso real do
+sistema — trazer necessidades concretas conforme aparecerem.

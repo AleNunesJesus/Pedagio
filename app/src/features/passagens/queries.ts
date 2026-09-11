@@ -7,6 +7,8 @@ export type FiltrosPassagens = {
   pracaId?: string;
   veiculoId?: string;
   tipoUso?: string;
+  embarcadorId?: string;
+  viagem?: string;
   dataInicio?: string;
   dataFim?: string;
   pagina?: number;
@@ -28,6 +30,8 @@ export async function listPassagens(filtros: FiltrosPassagens) {
   if (filtros.pracaId) query = query.eq("praca_id", filtros.pracaId);
   if (filtros.veiculoId) query = query.eq("veiculo_id", filtros.veiculoId);
   if (filtros.tipoUso) query = query.eq("tipo_uso", filtros.tipoUso);
+  if (filtros.embarcadorId) query = query.eq("embarcador_id", filtros.embarcadorId);
+  if (filtros.viagem) query = query.ilike("viagem", `%${filtros.viagem}%`);
   if (filtros.dataInicio) query = query.gte("data_hora", filtros.dataInicio);
   if (filtros.dataFim) query = query.lte("data_hora", `${filtros.dataFim}T23:59:59`);
 

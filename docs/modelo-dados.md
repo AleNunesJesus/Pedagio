@@ -35,6 +35,8 @@ erDiagram
     LOTE_IMPORTACAO ||--o{ PASSAGEM_PEDAGIO : origina
     PASSAGEM_PEDAGIO ||--|| VALIDACAO_PASSAGEM : resulta_em
     POSICAO_VEICULO ||--o{ VALIDACAO_PASSAGEM : evidencia
+    VIAGEM ||--o{ PASSAGEM_PEDAGIO : agrupa
+    EMBARCADOR ||--o{ PASSAGEM_PEDAGIO : credita
 ```
 
 ## Tabelas
@@ -139,11 +141,41 @@ FASE 07).
 | condicao | text | `debito` \| `credito` — sinal de valor_cobrado precisa bater com esta coluna |
 | data_hora | timestamptz | montada a partir de data + horário da planilha |
 | valor_cobrado | numeric(10,2) | negativo quando condicao = credito |
-| viagem | text | opcional, viagem à qual o crédito foi lançado |
-| embarcador | text | opcional, quem lançou o crédito da viagem |
+| viagem_informada | text | valor bruto da planilha (auditoria), opcional |
+| viagem_id | fk viagem null | auto-cadastrado na importação (FASE 10) quando `viagem_informada` não é vazio |
+| embarcador_informada | text | valor bruto da planilha (auditoria), opcional |
+| embarcador_id | fk embarcador null | auto-cadastrado na importação (FASE 10) quando `embarcador_informada` não é vazio |
 | lote_importacao_id | fk lote_importacao | |
 | status_validacao | text | `pendente` (default) \| ... \| `nao_aplicavel` (linhas tipo_uso = contrato) |
 | created_at | timestamptz | |
+
+Constraint: `unique (placa_informada, data_hora, condicao, valor_cobrado)`
+— evita duplicar a mesma linha ao reimportar um arquivo (débito e crédito
+pareados da mesma passagem continuam distintos porque diferem em
+`condicao`/`valor_cobrado`).
+
+### `viagem` (FASE 10)
+Auto-cadastrada na importação a partir de `viagem_informada` — sem tela
+de cadastro manual, só existe pra dar FK e permitir filtrar/agrupar
+passagens por viagem.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| numero | text unique | mesmo valor de `viagem_informada`, sem duplicar |
+| criado_em | timestamptz | default now() |
+
+### `embarcador` (FASE 10)
+Auto-cadastrado na importação a partir de `embarcador_informada`. CNPJ é
+o único campo editável manualmente (tela `/cadastros/embarcadores`,
+admin-only) — não vem da planilha.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| nome | text unique | mesmo valor de `embarcador_informada` |
+| cnpj | text null | preenchido manualmente, opcional |
+| criado_em | timestamptz | default now() |
 
 ### `validacao_passagem`
 Resultado do cruzamento geoespacial + tarifário para cada passagem.

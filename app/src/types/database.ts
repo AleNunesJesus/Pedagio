@@ -242,8 +242,10 @@ export type Database = {
           condicao: string;
           data_hora: string;
           valor_cobrado: number;
-          viagem: string | null;
-          embarcador: string | null;
+          viagem_informada: string | null;
+          viagem_id: string | null;
+          embarcador_informada: string | null;
+          embarcador_id: string | null;
           lote_importacao_id: string;
           status_validacao: string;
           created_at: string;
@@ -261,8 +263,10 @@ export type Database = {
           condicao: string;
           data_hora: string;
           valor_cobrado: number;
-          viagem?: string | null;
-          embarcador?: string | null;
+          viagem_informada?: string | null;
+          viagem_id?: string | null;
+          embarcador_informada?: string | null;
+          embarcador_id?: string | null;
           lote_importacao_id: string;
           status_validacao?: string;
           created_at?: string;
@@ -280,8 +284,10 @@ export type Database = {
           condicao?: string;
           data_hora?: string;
           valor_cobrado?: number;
-          viagem?: string | null;
-          embarcador?: string | null;
+          viagem_informada?: string | null;
+          viagem_id?: string | null;
+          embarcador_informada?: string | null;
+          embarcador_id?: string | null;
           lote_importacao_id?: string;
           status_validacao?: string;
           created_at?: string;
@@ -308,7 +314,60 @@ export type Database = {
             referencedRelation: "lote_importacao";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "passagem_pedagio_viagem_id_fkey";
+            columns: ["viagem_id"];
+            isOneToOne: false;
+            referencedRelation: "viagem";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "passagem_pedagio_embarcador_id_fkey";
+            columns: ["embarcador_id"];
+            isOneToOne: false;
+            referencedRelation: "embarcador";
+            referencedColumns: ["id"];
+          },
         ];
+      };
+      viagem: {
+        Row: {
+          id: string;
+          numero: string;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          numero: string;
+          criado_em?: string;
+        };
+        Update: {
+          id?: string;
+          numero?: string;
+          criado_em?: string;
+        };
+        Relationships: [];
+      };
+      embarcador: {
+        Row: {
+          id: string;
+          nome: string;
+          cnpj: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          cnpj?: string | null;
+          criado_em?: string;
+        };
+        Update: {
+          id?: string;
+          nome?: string;
+          cnpj?: string | null;
+          criado_em?: string;
+        };
+        Relationships: [];
       };
       validacao_passagem: {
         Row: {
@@ -506,6 +565,8 @@ export type Database = {
           condicao: string | null;
           viagem: string | null;
           embarcador: string | null;
+          viagem_id: string | null;
+          embarcador_id: string | null;
         };
         Relationships: [];
       };

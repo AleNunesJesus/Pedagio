@@ -1,5 +1,5 @@
 import { listPassagens } from "@/features/passagens/queries";
-import { listPracas, listVeiculos } from "@/features/cadastros/queries";
+import { listPracas, listVeiculos, listEmbarcadores } from "@/features/cadastros/queries";
 import { FiltrosForm } from "@/features/passagens/components/filtros-form";
 import { PassagensTable } from "@/features/passagens/components/passagens-table";
 import { Paginacao } from "@/features/passagens/components/paginacao";
@@ -9,6 +9,8 @@ type SearchParams = {
   pracaId?: string;
   veiculoId?: string;
   tipoUso?: string;
+  embarcadorId?: string;
+  viagem?: string;
   dataInicio?: string;
   dataFim?: string;
   pagina?: string;
@@ -22,18 +24,21 @@ export default async function PassagensPage({
   const params = await searchParams;
   const pagina = params.pagina ? Number(params.pagina) : 1;
 
-  const [{ rows, total, totalPaginas }, pracas, veiculos] = await Promise.all([
+  const [{ rows, total, totalPaginas }, pracas, veiculos, embarcadores] = await Promise.all([
     listPassagens({
       status: params.status,
       pracaId: params.pracaId,
       veiculoId: params.veiculoId,
       tipoUso: params.tipoUso,
+      embarcadorId: params.embarcadorId,
+      viagem: params.viagem,
       dataInicio: params.dataInicio,
       dataFim: params.dataFim,
       pagina,
     }),
     listPracas(),
     listVeiculos(),
+    listEmbarcadores(),
   ]);
 
   return (
@@ -47,6 +52,7 @@ export default async function PassagensPage({
         <FiltrosForm
           pracas={pracas.map((p) => ({ id: p.id, nome: p.nome }))}
           veiculos={veiculos.map((v) => ({ id: v.id, nome: v.placa }))}
+          embarcadores={embarcadores.map((e) => ({ id: e.id, nome: e.nome }))}
           valores={params}
         />
       </section>

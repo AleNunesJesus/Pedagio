@@ -117,3 +117,19 @@ export async function criarTarifa(
   revalidatePath("/cadastros/tarifas");
   return { success: true };
 }
+
+export async function atualizarEmbarcadorCnpj(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const id = formData.get("id") as string | null;
+  const cnpj = (formData.get("cnpj") as string | null)?.trim() || null;
+  if (!id) return { error: "Dados inválidos." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("embarcador").update({ cnpj }).eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/cadastros/embarcadores");
+  return { success: true };
+}

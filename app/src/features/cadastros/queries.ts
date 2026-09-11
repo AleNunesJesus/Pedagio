@@ -45,3 +45,9 @@ export async function listTarifas() {
     .order("vigencia_inicio", { ascending: false });
   return data ?? [];
 }
+
+export async function listEmbarcadores() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("embarcador").select("*").order("nome");
+  return data ?? [];
+}

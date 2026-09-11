@@ -5,6 +5,7 @@ const ABAS = [
   { href: "/cadastros/veiculos", label: "Veículos" },
   { href: "/cadastros/pracas", label: "Praças" },
   { href: "/cadastros/tarifas", label: "Tarifas" },
+  { href: "/cadastros/embarcadores", label: "Embarcadores" },
 ];
 
 export default function CadastrosLayout({ children }: { children: React.ReactNode }) {

@@ -24,8 +24,8 @@ em que a planilha do fornecedor as traz:
 | `tipo_uso_texto` | `passagem`/`passagens`, `contrato` ou `plano contratado` (case-insensitive) | `passagem` |
 | `valor_texto` | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00` ou `23` |
 | `condicao_texto` | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
-| `viagem` | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem | `VIAGEM-9` |
-| `embarcador` | texto livre, opcional — quem lançou o crédito da viagem | `Embarcador X` |
+| `viagem` | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
+| `embarcador` | texto livre, opcional — quem lançou o crédito da viagem. Auto-cadastrado em `pedagio.embarcador` na importação (FASE 10) se ainda não existir; CNPJ (opcional) só é preenchido manualmente depois, em `/cadastros/embarcadores` | `Embarcador X` |
 | `sentido` | texto — usado junto com `praca_nome` para casar com o cadastro da praça | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
