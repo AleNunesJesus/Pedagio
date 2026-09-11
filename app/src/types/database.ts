@@ -708,6 +708,7 @@ export type Database = {
           embarcador_nome: string | null;
           lote_importacao_id: string | null;
           created_at: string | null;
+          valor_pedagios: number | null;
         };
         Relationships: [];
       };

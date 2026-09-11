@@ -973,6 +973,15 @@ embarcador (mais antigo dentro da janela) é uma heurística inicial — se
 aparecer caso real com mais de um embarcador possível na mesma janela,
 revisitar.
 
+**Ajuste (2026-09-11) — coluna "Valor pedágios" em `/viagens-transporte`:**
+`vw_viagem_transporte_detalhado` ganhou `valor_pedagios` — soma
+`valor_cobrado` das passagens reais (`tipo_uso = 'passagem'`, decisão do
+usuário: contrato fica de fora) da mesma placa dentro da janela saída/
+chegada. Débito e crédito juntos, então o valor é líquido (crédito
+reduz). Também corrigido: faltava índice em `viagem_transporte.
+lote_importacao_id` (padrão já usado em `posicao_veiculo`/
+`passagem_pedagio`, `get_advisors` pegou o esquecimento).
+
 ---
 
 ## Estado atual

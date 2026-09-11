@@ -1,4 +1,5 @@
 import { DataTable } from "@/components/ui/data-table";
+import { formatBRL } from "@/lib/format";
 
 type Viagem = {
   id: string | null;
@@ -12,6 +13,7 @@ type Viagem = {
   data_hora_chegada: string | null;
   tipo_viagem: string | null;
   embarcador_nome: string | null;
+  valor_pedagios: number | null;
 };
 
 const LABEL_TIPO_VIAGEM: Record<string, string> = {
@@ -46,6 +48,7 @@ export function ViagensTable({ rows }: { rows: Viagem[] }) {
           render: (r) => (r.tipo_viagem ? LABEL_TIPO_VIAGEM[r.tipo_viagem] ?? r.tipo_viagem : "—"),
         },
         { header: "Embarcador", render: (r) => r.embarcador_nome ?? "—" },
+        { header: "Valor pedágios", align: "right", render: (r) => formatBRL(r.valor_pedagios) },
       ]}
     />
   );
