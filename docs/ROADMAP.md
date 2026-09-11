@@ -312,8 +312,26 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
   criação + listagem por ora — editar/desativar pode ser adicionado
   depois se for necessário.
 
-**FASE 06.5 — Importação (UI)** — 🔴 Não iniciado
-- [ ] Upload de CSV → grava em `staging_passagem_pedagio` → chama `processar_staging_passagens` → mostra resultado do lote
+**FASE 06.5 — Importação (UI)** — 🟢 Concluído
+- [x] Página `/importacao`: upload de CSV → grava em `staging_passagem_pedagio` → chama `processar_staging_passagens` → mostra total de linhas/erros do lote
+- [x] Histórico de lotes importados (arquivo, usuário, linhas, erros, data)
+- [x] Parsing de CSV robusto (`papaparse`, lida com campos entre aspas contendo vírgula) — mesmos cabeçalhos documentados em `docs/importacao.md`
+- [x] Validação prévia: erro amigável se nenhuma coluna esperada for encontrada, ou se o arquivo passar de 5000 linhas
+- [x] Verificação: parsing testado isoladamente (campo com vírgula interna, detecção de colunas); fluxo insert+RPC testado via REST com usuário real — 13/13 checks (JWT tem `email` na raiz dos claims, linha reconhecida, `sem_cadastro`, linha com erro de formato não inserida), zero resíduo
+- [x] `docs/importacao.md` atualizado: upload pelo app é o caminho normal agora, Supabase Studio vira alternativa manual
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação (06.5):**
+- Server Actions não são invocáveis via HTTP simples (protocolo próprio do
+  Next.js para RSC actions), então a verificação testou os dois pedaços
+  separadamente: parsing do CSV isolado (offline) e a sequência real
+  insert-staging + RPC via REST com um usuário autenticado de verdade —
+  cobre a mesma lógica que a Server Action executa.
+- `p_usuario` do lote vem de `supabase.auth.getClaims().data.claims.email`
+  — confirmado que o JWT do Supabase Auth traz `email` na raiz dos claims
+  (decodificado e conferido na verificação).
+- Limite de 5000 linhas por importação (mensagem de erro, não trava
+  silenciosamente) — ajustar se o volume real precisar de mais.
 
 **FASE 06.6 — Passagens e validações (consulta/detalhe)** — 🔴 Não iniciado
 - [ ] Lista de passagens com filtro por status_validacao/praça/veículo/período
@@ -372,11 +390,11 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 
 ## Estado atual
 
-FASE 01 a FASE 05 concluídas. FASE 06.1 a 06.4 concluídas (RLS/grants,
-scaffold Next.js + login, dashboard de indicadores — conferido
-visualmente pelo usuário —, e cadastros completos incluindo o mapa de
-praça). Aguardando aval para iniciar a FASE 06.5.
+FASE 01 a FASE 05 concluídas. FASE 06.1 a 06.5 concluídas (RLS/grants,
+scaffold Next.js + login, dashboard de indicadores, cadastros completos
+incluindo mapa de praça, e importação de passagens via UI). Aguardando
+aval para iniciar a FASE 06.6 — última fase do plano atual.
 
 ## Próximo passo
 
-FASE 06.5 — Importação via UI (upload de CSV → staging → processamento).
+FASE 06.6 — Consulta de passagens e validações (lista + detalhe).

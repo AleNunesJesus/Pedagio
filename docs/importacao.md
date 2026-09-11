@@ -1,10 +1,14 @@
 # Importação da Planilha de Passagens
 
-Enquanto não existe tela de upload (FASE 06), a planilha é carregada por
-uma tabela de staging + o recurso nativo do Supabase Studio de importar
-CSV direto numa tabela.
+Desde a FASE 06.5, a forma normal de importar é pela tela **Importação**
+do próprio app (`/importacao`): escolha o CSV e clique em Importar — o
+app lê o arquivo, grava na staging e chama `processar_staging_passagens`
+automaticamente, mostrando o total de linhas/erros do lote.
 
-## Passo a passo
+O caminho manual via Supabase Studio (abaixo) continua funcionando e é
+útil para cargas muito grandes ou para depuração direto no banco.
+
+## Passo a passo (via Supabase Studio, caminho manual)
 
 1. Prepare o CSV com exatamente estas colunas (nomes e formatos):
 

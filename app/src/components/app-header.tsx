@@ -21,6 +21,12 @@ export function AppHeader() {
             >
               Cadastros
             </Link>
+            <Link
+              href="/importacao"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              Importação
+            </Link>
           </nav>
         </div>
         <form action={logout}>

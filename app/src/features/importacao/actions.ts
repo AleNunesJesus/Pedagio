@@ -1,0 +1,101 @@
+"use server";
+
+import Papa from "papaparse";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+
+export type ImportacaoState = {
+  error?: string;
+  lote?: {
+    id: string;
+    total_linhas: number | null;
+    total_erros: number | null;
+  };
+};
+
+const COLUNAS_ESPERADAS = [
+  "id_externo",
+  "placa",
+  "praca_nome",
+  "data_hora_texto",
+  "valor_texto",
+  "documento",
+] as const;
+
+const LIMITE_LINHAS = 5000;
+
+function vazio(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const trimmed = valor.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+export async function importarPlanilha(
+  _prevState: ImportacaoState,
+  formData: FormData,
+): Promise<ImportacaoState> {
+  const arquivo = formData.get("arquivo");
+
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { error: "Selecione um arquivo CSV." };
+  }
+
+  const texto = await arquivo.text();
+  const resultado = Papa.parse<Record<string, string>>(texto, {
+    header: true,
+    skipEmptyLines: true,
+  });
+
+  if (resultado.errors.length > 0) {
+    return { error: `Erro ao ler o CSV: ${resultado.errors[0].message}` };
+  }
+
+  const linhas = resultado.data;
+  if (linhas.length === 0) {
+    return { error: "O arquivo não tem nenhuma linha de dados." };
+  }
+
+  const colunasEncontradas = Object.keys(linhas[0]);
+  const temAlgumaColunaEsperada = COLUNAS_ESPERADAS.some((c) => colunasEncontradas.includes(c));
+  if (!temAlgumaColunaEsperada) {
+    return {
+      error:
+        "Nenhuma coluna esperada foi encontrada no CSV. Confira os cabeçalhos em docs/importacao.md " +
+        `(esperado: ${COLUNAS_ESPERADAS.join(", ")}).`,
+    };
+  }
+
+  if (linhas.length > LIMITE_LINHAS) {
+    return { error: `O arquivo tem ${linhas.length} linhas — o limite por importação é ${LIMITE_LINHAS}.` };
+  }
+
+  const linhasParaStaging = linhas.map((linha) => ({
+    id_externo: vazio(linha.id_externo),
+    placa: vazio(linha.placa),
+    praca_nome: vazio(linha.praca_nome),
+    data_hora_texto: vazio(linha.data_hora_texto),
+    valor_texto: vazio(linha.valor_texto),
+    documento: vazio(linha.documento),
+  }));
+
+  const supabase = await createClient();
+
+  const { error: insertError } = await supabase
+    .from("staging_passagem_pedagio")
+    .insert(linhasParaStaging);
+  if (insertError) return { error: `Erro ao gravar na staging: ${insertError.message}` };
+
+  const { data: claims } = await supabase.auth.getClaims();
+  const usuario = (claims?.claims?.email as string | undefined) ?? null;
+
+  const { data: lote, error: rpcError } = await supabase.rpc("processar_staging_passagens", {
+    p_arquivo_nome: arquivo.name,
+    p_usuario: usuario,
+  });
+  if (rpcError) return { error: `Erro ao processar a importação: ${rpcError.message}` };
+
+  revalidatePath("/importacao");
+  return {
+    lote: { id: lote.id, total_linhas: lote.total_linhas, total_erros: lote.total_erros },
+  };
+}
