@@ -1,6 +1,6 @@
 import { STATUS, STATUS_VALIDACAO_INFO } from "../colors";
 import { formatNumber, formatPercent } from "@/lib/format";
-import { EmptyState } from "./card";
+import { EmptyState } from "@/components/ui/card";
 
 type StatusResumoRow = {
   status_validacao: string | null;

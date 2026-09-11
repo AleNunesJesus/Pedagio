@@ -20,8 +20,7 @@ depende dela:
 - ~~Stack de frontend/dashboard~~ — **resolvido em 2026-09-10: Next.js,
   auth compartilhado com o sistema de tickets, acesso liberado para
   qualquer autenticado.**
-- Biblioteca de mapa para desenhar o polígono da praça (FASE 06.4) — ainda
-  não escolhida (provável MapLibre GL ou Leaflet).
+- ~~Biblioteca de mapa~~ — **resolvido em 2026-09-10/11: Leaflet + Leaflet.draw + OpenStreetMap.**
 
 ---
 
@@ -278,9 +277,40 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
   conferir em `http://localhost:3001/dashboard` com dados reais importados
   antes de considerar o visual definitivo.
 
-**FASE 06.4 — Cadastros (praças, tarifas, veículos, categorias)** — 🔴 Não iniciado
-- [ ] CRUD de veículo/categoria/tarifa (formulários simples)
-- [ ] Cadastro de praça com desenho do polígono num mapa (biblioteca de mapa a definir — provável MapLibre/Leaflet)
+**FASE 06.4 — Cadastros (praças, tarifas, veículos, categorias)** — 🟢 Concluído
+- [x] Decisão: biblioteca de mapa — Leaflet + OpenStreetMap (sem chave de API)
+- [x] Backend: view `vw_praca_pedagio_mapa` (poligono como GeoJSON) + funções `criar_praca`/`atualizar_praca` (GeoJSON → geometry, valida Polygon + `ST_IsValid`)
+- [x] CRUD de categoria (form + lista)
+- [x] CRUD de veículo (form + lista, categoria via select)
+- [x] Cadastro de praça com mapa (`PolygonMapEditor`, Leaflet + Leaflet.draw puro, sem react-leaflet) — criar e editar, um polígono por vez
+- [x] Cadastro de tarifa (form + lista), com tratamento de erro amigável para sobreposição de vigência (`23P01`)
+- [x] Navegação: header com links Painel/Cadastros, abas dentro de Cadastros
+- [x] **Bug encontrado e corrigido:** `service_role` nunca tinha recebido `GRANT` no schema `pedagio` (só `authenticated`, na FASE 06.1) — descoberto porque o script de verificação usava a service key para limpar dados de teste e as exclusões falhavam silenciosamente. Corrigido com grants + `alter default privileges` para `service_role`, igual já existia para `authenticated`.
+- [x] Verificação via REST com usuário real: criar categoria/veículo, `criar_praca`/`atualizar_praca` via RPC com GeoJSON, leitura da view confirmando GeoJSON, criar tarifa, tarifa sobreposta rejeitada (`23P01`) — 10/10 checks, usuário e dados de teste removidos ao final
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação (06.4):**
+- Migrations aplicadas: `20260911000102_pedagio_fase06_4_praca_geojson`,
+  `20260911001022_pedagio_fix_service_role_grants` (mirror local em
+  `supabase/migrations/`).
+- O PostgREST devolve `geometry` como WKB hex, não GeoJSON — por isso a
+  view de leitura usa `ST_AsGeoJSON` e as escritas passam por RPC
+  (`criar_praca`/`atualizar_praca`) que fazem `ST_GeomFromGeoJSON`. O
+  frontend nunca lida com WKB diretamente.
+- `PolygonMapEditor` usa Leaflet + Leaflet.draw **imperativamente** (não
+  react-leaflet), para não depender de peer-deps de React desse
+  ecossistema (react-leaflet-draw é pouco mantido); carregado via
+  `next/dynamic({ ssr: false })` porque Leaflet toca `window` no import.
+- `DataTable`/`Card`/`EmptyState` foram movidos de
+  `features/dashboard/components/` para `components/ui/` — passaram a
+  ser usados também pelos cadastros, deixou de fazer sentido morar
+  dentro de uma feature específica.
+- Formulários usam Server Actions + Zod (mesmo padrão do login), com
+  mensagens de erro amigáveis para violações conhecidas (`23505` placa/
+  código duplicado, `23P01` tarifa sobreposta).
+- Edição só existe para praça (o mapa exige); categoria/veículo têm só
+  criação + listagem por ora — editar/desativar pode ser adicionado
+  depois se for necessário.
 
 **FASE 06.5 — Importação (UI)** — 🔴 Não iniciado
 - [ ] Upload de CSV → grava em `staging_passagem_pedagio` → chama `processar_staging_passagens` → mostra resultado do lote
@@ -342,15 +372,11 @@ autenticado vê/edita tudo** (sem papéis admin/operador por enquanto).
 
 ## Estado atual
 
-FASE 01 a FASE 05 concluídas. FASE 06.1, 06.2 e 06.3 concluídas
-(RLS/grants, scaffold Next.js + login, dashboard de indicadores). Painel
-em `/dashboard` já consome as 9 views da FASE 05, verificado com dados de
-teste reais (removidos ao final) — falta só a conferência visual num
-navegador de verdade, que o usuário pode fazer em
-`http://localhost:3001/dashboard`. Aguardando aval para iniciar a
-FASE 06.4.
+FASE 01 a FASE 05 concluídas. FASE 06.1 a 06.4 concluídas (RLS/grants,
+scaffold Next.js + login, dashboard de indicadores — conferido
+visualmente pelo usuário —, e cadastros completos incluindo o mapa de
+praça). Aguardando aval para iniciar a FASE 06.5.
 
 ## Próximo passo
 
-FASE 06.4 — Cadastros (praças, tarifas, veículos, categorias), incluindo
-escolher a biblioteca de mapa para desenhar o polígono da praça.
+FASE 06.5 — Importação via UI (upload de CSV → staging → processamento).

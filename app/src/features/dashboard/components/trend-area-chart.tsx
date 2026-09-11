@@ -12,7 +12,7 @@ import {
 import { SEQUENTIAL_BLUE, INK } from "../colors";
 import { formatDay, formatNumber } from "@/lib/format";
 import { ChartTooltipBox, toNumber, type RechartsTooltipProps } from "./chart-tooltip";
-import { EmptyState } from "./card";
+import { EmptyState } from "@/components/ui/card";
 
 type Row = {
   dia: string;

@@ -1,8 +1,8 @@
 import { getDashboardData } from "@/features/dashboard/queries";
 import { StatTile } from "@/features/dashboard/components/stat-tile";
-import { Card } from "@/features/dashboard/components/card";
+import { Card } from "@/components/ui/card";
 import { StatusResumo } from "@/features/dashboard/components/status-resumo";
-import { DataTable } from "@/features/dashboard/components/data-table";
+import { DataTable } from "@/components/ui/data-table";
 import { FinanceiroTrendChart } from "@/features/dashboard/components/financeiro-trend-chart";
 import { GastoPorPracaChart } from "@/features/dashboard/components/gasto-por-praca-chart";
 import { TrendAreaChart } from "@/features/dashboard/components/trend-area-chart";

@@ -385,6 +385,20 @@ export type Database = {
       };
     };
     Views: {
+      vw_praca_pedagio_mapa: {
+        Row: {
+          id: string | null;
+          nome: string | null;
+          rodovia: string | null;
+          concessionaria: string | null;
+          km: number | null;
+          poligono_geojson: Json | null;
+          sentido: string | null;
+          ativo: boolean | null;
+          created_at: string | null;
+        };
+        Relationships: [];
+      };
       vw_passagens_detalhado: {
         Row: {
           passagem_id: string | null;
@@ -491,6 +505,31 @@ export type Database = {
       };
     };
     Functions: {
+      criar_praca: {
+        Args: {
+          p_nome: string;
+          p_poligono_geojson: Json;
+          p_rodovia?: string | null;
+          p_concessionaria?: string | null;
+          p_km?: number | null;
+          p_sentido?: string | null;
+          p_ativo?: boolean;
+        };
+        Returns: Database["pedagio"]["Tables"]["praca_pedagio"]["Row"];
+      };
+      atualizar_praca: {
+        Args: {
+          p_id: string;
+          p_nome: string;
+          p_poligono_geojson: Json;
+          p_rodovia?: string | null;
+          p_concessionaria?: string | null;
+          p_km?: number | null;
+          p_sentido?: string | null;
+          p_ativo?: boolean;
+        };
+        Returns: Database["pedagio"]["Tables"]["praca_pedagio"]["Row"];
+      };
       validar_passagem: {
         Args: { p_passagem_id: string };
         Returns: Database["pedagio"]["Tables"]["validacao_passagem"]["Row"] | null;

@@ -13,7 +13,7 @@ import {
 import { CATEGORICAL, INK } from "../colors";
 import { formatBRL, formatMonth } from "@/lib/format";
 import { ChartTooltipBox, toNumber, type RechartsTooltipProps } from "./chart-tooltip";
-import { EmptyState } from "./card";
+import { EmptyState } from "@/components/ui/card";
 
 type Row = {
   mes: string | null;

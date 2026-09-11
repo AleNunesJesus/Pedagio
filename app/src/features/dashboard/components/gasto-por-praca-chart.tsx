@@ -13,7 +13,7 @@ import {
 import { SEQUENTIAL_BLUE, INK } from "../colors";
 import { formatBRL } from "@/lib/format";
 import { ChartTooltipBox, type RechartsTooltipProps } from "./chart-tooltip";
-import { EmptyState } from "./card";
+import { EmptyState } from "@/components/ui/card";
 
 type Row = {
   praca_id: string | null;

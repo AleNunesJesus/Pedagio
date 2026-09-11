@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "destructive" | "ghost";
@@ -52,5 +53,21 @@ export function Button({
       className={buttonClasses(variant, size, fullWidth, className)}
       {...props}
     />
+  );
+}
+
+type LinkButtonProps = ComponentPropsWithoutRef<typeof Link> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+};
+
+export function LinkButton({
+  variant = "primary",
+  size = "md",
+  className = "",
+  ...props
+}: LinkButtonProps) {
+  return (
+    <Link className={buttonClasses(variant, size, false, className)} {...props} />
   );
 }
