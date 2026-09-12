@@ -11,6 +11,13 @@ com filtros por período, praça, veículo/frota.
   = cobrado a mais, negativo = cobrado a menos).
 - **Gasto por veículo/frota ao longo do tempo** (série temporal).
 - **Gasto por praça/rodovia** — ranking das praças mais custosas.
+- **Resumo por fatura** (`vw_fatura_resumo`, FASE 15) — valor total líquido a
+  pagar, período coberto (min/max `data_hora`), breakdown passagem vs.
+  contrato e contagem por `status_validacao`, para avaliar cada fatura
+  antes de pagar. Agrupa por `numero_fatura`, com `numero_fatura is null`
+  virando um bucket "sem fatura" (GROUP BY já trata todos os `null` como um
+  único grupo). Tela: `/faturas` (lista) e `/faturas/[numero]` (detalhe,
+  incluindo breakdown por praça/veículo e as passagens da fatura).
 
 ## Auditoria / Validação
 

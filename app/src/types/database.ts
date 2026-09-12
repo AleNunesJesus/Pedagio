@@ -44,6 +44,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      carreta: {
+        Row: {
+          id: string;
+          placa: string;
+          tipo: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          placa: string;
+          tipo: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          placa?: string;
+          tipo?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       praca_pedagio: {
         Row: {
           id: string;
@@ -486,6 +507,8 @@ export type Database = {
           divergencia_valor: number | null;
           resultado: string;
           validado_em: string;
+          categoria_veiculo_id: string | null;
+          origem_categoria: string | null;
         };
         Insert: {
           id?: string;
@@ -498,6 +521,8 @@ export type Database = {
           divergencia_valor?: number | null;
           resultado: string;
           validado_em?: string;
+          categoria_veiculo_id?: string | null;
+          origem_categoria?: string | null;
         };
         Update: {
           id?: string;
@@ -510,6 +535,8 @@ export type Database = {
           divergencia_valor?: number | null;
           resultado?: string;
           validado_em?: string;
+          categoria_veiculo_id?: string | null;
+          origem_categoria?: string | null;
         };
         Relationships: [
           {
@@ -673,6 +700,10 @@ export type Database = {
           viagem_id: string | null;
           embarcador_id: string | null;
           posicao_veiculo_id: number | null;
+          categoria_veiculo_id: string | null;
+          origem_categoria: string | null;
+          categoria_codigo: string | null;
+          categoria_descricao: string | null;
         };
         Relationships: [];
       };
@@ -730,6 +761,37 @@ export type Database = {
           tipo_uso: string | null;
           qtd_passagens: number | null;
           total_cobrado: number | null;
+        };
+        Relationships: [];
+      };
+      vw_valores_por_vinculo_viagem_mensal: {
+        Row: {
+          mes: string | null;
+          vinculo: string | null;
+          qtd_passagens: number | null;
+          total_cobrado: number | null;
+        };
+        Relationships: [];
+      };
+      vw_fatura_resumo: {
+        Row: {
+          numero_fatura: string | null;
+          qtd_total: number | null;
+          qtd_passagem: number | null;
+          qtd_contrato: number | null;
+          valor_total: number | null;
+          valor_passagem: number | null;
+          valor_contrato: number | null;
+          periodo_inicio: string | null;
+          periodo_fim: string | null;
+          qtd_ok: number | null;
+          qtd_pendente: number | null;
+          qtd_sem_dados_gps: number | null;
+          qtd_sem_cadastro: number | null;
+          qtd_valor_divergente: number | null;
+          qtd_fora_poligono: number | null;
+          qtd_local_e_valor_divergentes: number | null;
+          qtd_nao_aplicavel: number | null;
         };
         Relationships: [];
       };

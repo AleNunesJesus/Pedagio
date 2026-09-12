@@ -1,5 +1,5 @@
 import { getDashboardData } from "@/features/dashboard/queries";
-import { StatTile } from "@/features/dashboard/components/stat-tile";
+import { StatTile } from "@/components/ui/stat-tile";
 import { Card } from "@/components/ui/card";
 import { StatusResumo } from "@/features/dashboard/components/status-resumo";
 import { DataTable } from "@/components/ui/data-table";

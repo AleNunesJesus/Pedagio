@@ -1039,6 +1039,105 @@ em setembro/2026) batendo com o SQL agregado direto na tabela.
 `typecheck`/`eslint`/`next build` limpos; `get_advisors` sem achados
 novos.
 
+**Ajuste (2026-09-11) — dash "Passagens por vínculo de viagem" no Painel:**
+nova view `vw_valores_por_vinculo_viagem_mensal` classifica cada passagem
+(só `tipo_uso = 'passagem'`) em `carregado`/`vazio`/`sem_vinculo` casando
+placa + `data_hora` dentro da janela saída/chegada de `viagem_transporte`
+(`left join lateral`, `order by data_hora_saida limit 1` — mesma
+heurística de desempate já usada para descobrir `embarcador_id` na
+importação de viagens de transporte, já que uma passagem pode cair
+teoricamente dentro de mais de uma janela). No Painel, seção nova com 6
+cards (valor + quantidade dos 3 vínculos) + gráfico de tendência mensal
+(`ValoresVinculoViagemChart`, 3 linhas). Paleta ganhou o 3º slot
+categórico validado (`aqua`, `#1baf7a`) em `colors.ts` para a terceira
+série. Verificado com os dados reais: 1 passagem de UGF9B40 caiu dentro
+da janela da viagem `carregado` (R$25,33); as outras 3 passagens reais
+(JCY6G24 x2, JDK8C84) não bateram placa com nenhuma viagem de transporte
+cadastrada → `sem_vinculo` (R$52,63); `contrato` fica fora da conta,
+como já decidido para `valor_pedagios`. `typecheck`/`eslint`/`next
+build` limpos; `get_advisors` sem achados novos.
+
+---
+
+## FASE 14 — Tarifa por composição real (cavalo + carreta(s))
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** corrigir um problema estrutural apontado pelo usuário
+(2026-09-11): a planilha de passagens só traz a placa do cavalo
+mecânico, nunca da(s) carreta(s) — mas o número de eixos (e portanto a
+tarifa correta) depende da composição real: cavalo (3 eixos) + carreta
+comum (3 eixos) = 6; + vanderleia (4 eixos) = 7; + duas carretas (bitrem)
+= 9. Até aqui a tarifa sempre usava a categoria fixa cadastrada no
+veículo, ignorando qual carreta estava engatada naquela viagem
+específica — `categoria_veiculo` já tinha `EIXO_6`/`EIXO_7`/`EIXO_9`
+prontos, mas nada os alimentava dinamicamente.
+
+**Decisões tomadas com o usuário:**
+- Criar cadastro de carretas (`pedagio.carreta`: placa/código → tipo
+  comum [3 eixos] ou vanderleia [4 eixos]) — sem isso não dá pra saber
+  quantos eixos uma carreta adiciona, já que `viagem_transporte.carreta1`/
+  `carreta2` só guardam a placa/código, não o tipo.
+- Quando não for possível determinar a composição (sem viagem de
+  transporte casando a janela, ou carreta não cadastrada), cai no
+  comportamento antigo: usa a categoria cadastrada do veículo
+  (fallback), em vez de deixar a passagem sem tarifa nenhuma.
+
+**Checklist:**
+- [x] Tabela `pedagio.carreta` (`placa` unique, `tipo` check comum/
+  vanderleia) + RLS (leitura autorizados, escrita admin — mesmo padrão
+  de `veiculo`)
+- [x] `pedagio.categoria_por_composicao(placa, data_hora)`: acha a
+  `viagem_transporte` da janela (mesma heurística de desempate do
+  vínculo de embarcador — `order by data_hora_saida limit 1`), soma
+  eixos de cavalo (3, fixo) + carreta1 + carreta2 (via cadastro
+  `pedagio.carreta`), resolve `categoria_veiculo` por `codigo = 'EIXO_'
+  || total`; retorna `null` se não der pra determinar (sem viagem, sem
+  carreta1, ou carreta não cadastrada)
+- [x] `validar_passagem` passa a resolver a categoria em duas etapas
+  (composição real → fallback cadastro do veículo) e grava as duas
+  novas colunas de `validacao_passagem`: `categoria_veiculo_id` (qual
+  categoria foi usada) e `origem_categoria` (`composicao_viagem` \|
+  `cadastro_veiculo`), pra dar transparência/auditoria
+- [x] Revalidação automática (mesmo espírito da revalidação por exclusão
+  de GPS já existente): importar uma viagem de transporte revalida as
+  passagens que passam a cair na janela dela; cadastrar/alterar/excluir
+  uma carreta (trigger) revalida as passagens afetadas; excluir uma
+  viagem de transporte ou um lote inteiro revalida de volta pro fallback
+  as passagens que dependiam dela (`excluir_viagens_transporte`/
+  `excluir_lote_importacao` reescritas pra capturar as passagens
+  afetadas antes de excluir, mesmo padrão do `excluir_posicoes`)
+- [x] `vw_passagens_detalhado` ganhou `categoria_veiculo_id`,
+  `origem_categoria`, `categoria_codigo`, `categoria_descricao` (colunas
+  novas sempre no final, restrição do Postgres pra `CREATE OR REPLACE
+  VIEW`)
+- [x] Frontend: cadastro `/cadastros/carretas` (admin cria, qualquer
+  autorizado lê); detalhe da passagem mostra "Categoria usada (tarifa)"
+  + "Origem da categoria"; listagem de passagens ganhou coluna
+  "Categoria" (com "(estimado)" quando é fallback, pra deixar claro
+  quando o valor esperado não é garantido pela composição real)
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `get_advisors` — pegou índice faltante em
+  `validacao_passagem.categoria_veiculo_id`, corrigido
+- [x] Verificação via SQL direto: `categoria_por_composicao` testado nos
+  5 casos (6 eixos, 7 eixos, 9 eixos, carreta não cadastrada, sem viagem
+  de transporte) — todos corretos; passagem de teste confirma que
+  cadastrar a carreta depois da passagem já existir revalida
+  automaticamente e troca o valor esperado; excluir a viagem de
+  transporte reverte pro fallback automaticamente. Dados reais (4
+  passagens, carreta real `ABC1234` ainda não cadastrada) seguem
+  corretamente em fallback até a carreta ser cadastrada de verdade.
+  Dados de teste removidos ao final, zero resíduo.
+
+**Limitação conhecida:** não testei visualmente no navegador (sem
+ferramenta de browser neste ambiente). A heurística de desempate (viagem
+de transporte mais antiga dentro da janela) é a mesma já usada pro
+vínculo de embarcador — se aparecer caso real com mais de uma viagem
+possível na mesma janela, revisitar. Categoria pra cavalo sozinho sem
+nenhuma carreta (3 eixos) não existe ainda em `categoria_veiculo`
+(`EIXO_3`) — não observado nos dados reais até agora; se acontecer,
+cadastrar a categoria normalmente.
+
 ---
 
 ## Ajuste — exclusão de tarifas (admin-only) (2026-09-12)
@@ -1074,20 +1173,124 @@ uma tarifa equivocada em produção.
 
 ---
 
+## FASE 15 — Dashboard de faturas
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** hoje `numero_fatura` só existe como coluna de exibição por
+passagem (sem nenhuma agregação) — cada linha da planilha de passagens vem
+vinculada a uma fatura que mistura passagem física e contrato, mas não há
+como ver o valor total daquela fatura, o período que ela cobre, nem se há
+algo pendente de revisão antes de pagar. Esta fase cria uma visão por
+fatura: lista agregada + detalhe com drill-down.
+
+**Decisões fechadas (2026-09-12):**
+- Escopo: lista `/faturas` (resumo agregado) **e** detalhe `/faturas/[numero]`
+  (breakdown + passagens daquela fatura).
+- `numero_fatura` nulo: agrupado como uma linha própria "Sem fatura" (não
+  excluído da agregação).
+- "Valor total a pagar": líquido — passagem + contrato, débito/crédito
+  somados (mesma convenção já usada nas views financeiras existentes,
+  crédito já é negativo).
+- Resumo por fatura inclui contagem por `status_validacao`, para sinalizar
+  fatura com passagem divergente/sem_cadastro/fora_poligono pendente de
+  revisão antes de pagar.
+
+**Checklist:**
+- [x] View `pedagio.vw_fatura_resumo` (agrupada por `numero_fatura`,
+  tratando `null` como bucket próprio): valor total líquido, período
+  (min/max `data_hora`), contagem de passagens, breakdown por `tipo_uso`
+  (passagem/contrato — valor e quantidade de cada), contagem por
+  `status_validacao`
+  `security_invoker = true`, mesma convenção das views existentes
+- [x] Página `/faturas`: lista com valor total, período, quantidade de
+  passagens, indicador visual de pendência (baseado no breakdown de
+  status), filtro por período; reaproveita `DataTable`
+- [x] Página `/faturas/[numero]`: breakdown financeiro (passagem vs.
+  contrato), breakdown por status de validação, breakdown por praça/
+  veículo, lista das passagens daquela fatura (reaproveitando
+  `PassagensTable`/`vw_passagens_detalhado`, já existentes de `/passagens`)
+- [x] Link "Faturas" no header
+- [x] `get_advisors` — sem achados novos (índice novo aparece como "unused"
+  até a primeira consulta real, mesmo padrão de todo índice recém-criado)
+- [x] Verificação via SQL direto: casos com fatura com só passagem, só
+  contrato, mistura dos dois, fatura com passagem divergente/sem_cadastro,
+  e fatura nula — valores/período/contagens batendo com o esperado;
+  cleanup confirmado (zero resíduo)
+- [x] Verificação via REST: `anon` bloqueado (`permission denied for schema
+  pedagio`, mesmo comportamento de todas as demais tabelas/views do
+  schema) — ver limitação abaixo sobre teste com usuário autenticado real
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `docs/indicadores.md` atualizado (a view nova documentada na seção
+  Financeiro; `modelo-dados.md` não mudou — nenhuma tabela/coluna nova
+  nesta fase, só índice + view)
+
+**Notas de implementação:**
+- Migration aplicada: `20260912113000_pedagio_fase15_dashboard_faturas.sql`
+  (mirror local em `supabase/migrations/`) — cria o índice
+  `passagem_pedagio_numero_fatura_idx` (nenhum índice existia em
+  `numero_fatura` até aqui, apesar de já ser usada em filtro/exibição desde
+  a FASE 07) e a view `pedagio.vw_fatura_resumo`.
+- `GROUP BY numero_fatura` já trata todos os valores `null` como um único
+  grupo no Postgres — não foi preciso `coalesce`/tratamento especial para
+  o bucket "sem fatura" na view; só no frontend (label "Sem fatura" e a
+  rota usa o segmento literal `sem-fatura` para representar esse grupo,
+  já que `null` não é representável na URL).
+- Contagem "pendente" da lista/detalhe (`qtdAtencao` em
+  `features/faturas/queries.ts`) é derivada em TypeScript
+  (`qtd_total - qtd_ok - qtd_nao_aplicavel`), não uma coluna da view — evita
+  mais uma coluna só pra uma subtração simples que já tem todos os
+  componentes disponíveis.
+- Breakdown por praça/veículo na tela de detalhe é calculado em JS a partir
+  das passagens já buscadas para aquela fatura (`agruparPorChave` em
+  `app/(app)/faturas/[numero]/page.tsx`) — não virou view nova, o volume
+  por fatura é pequeno (dezenas de linhas) e não justifica.
+- `StatTile` (antes só usado pelo Painel) foi movido de
+  `features/dashboard/components/` para `components/ui/` — passou a ser
+  usado também pela tela de fatura, mesmo precedente já aberto na FASE
+  06.4 para `DataTable`/`Card`/`EmptyState`.
+- Tela de detalhe reaproveita `PassagensTable` (mesmo componente de
+  `/passagens`, incluindo seleção múltipla + exclusão admin-only) para
+  listar as passagens da fatura — sem paginação nessa lista (uma fatura
+  isolada não tem volume que justifique).
+- Filtro de período em `/faturas` usa lógica de sobreposição (`periodo_fim
+  >= dataInicio` e `periodo_inicio <= dataFim`), não igualdade de uma
+  única coluna de data — diferente dos outros filtros de período do app,
+  porque aqui cada linha representa um intervalo (a fatura), não um
+  instante.
+
+**Limitação conhecida:** a verificação via REST desta fase não incluiu um
+usuário autenticado real criado via Admin API (padrão das fases
+anteriores) — esta sessão não tinha a `service_role key` disponível para
+criar um usuário de teste descartável. A cobertura ficou em: (1) lógica de
+agregação validada com dados sintéticos via SQL direto (todos os casos
+batendo, cleanup confirmado), e (2) `anon` bloqueado via REST igual a
+todas as demais tabelas/views. Isso é uma garantia mais fraca que o padrão
+usual do projeto, porque `vw_fatura_resumo` não introduz nenhuma policy
+nova — é `security_invoker = true` sobre `passagem_pedagio`, cuja policy
+de leitura (`usuario_autorizado()`) já foi extensivamente verificada com
+usuários reais na FASE 08. Recomenda-se conferir visualmente em
+`/faturas` com um usuário real na primeira vez que usar.
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 13).** Schema `pedagio` (cadastros
+**Projeto completo (FASE 01 a FASE 15).** Schema `pedagio` (cadastros
 incluindo viagem/embarcador, movimento, validação com revalidação
 automática, importação de passagens, de GPS e de viagens de transporte
-(documento fiscal) no layout real do fornecedor, indicadores, papéis de
-acesso admin/operador, visibilidade de GPS por veículo) + app Next.js
-(login compartilhado, dashboard, cadastros com mapa, importação via UI,
-consulta de passagens/validações com mapa da validação geoespacial,
-rastreamento de GPS, consulta de viagens de transporte, gestão de
-usuários) — tudo aplicado e verificado no Supabase
-(`wduypqixkafimcndytiz`).
+(documento fiscal) no layout real do fornecedor, indicadores incluindo
+resumo por fatura, papéis de acesso admin/operador, visibilidade de GPS
+por veículo) + app Next.js (login compartilhado, dashboard, cadastros com
+mapa, importação via UI, consulta de passagens/validações com mapa da
+validação geoespacial, rastreamento de GPS, consulta de viagens de
+transporte, dashboard de faturas, gestão de usuários) — tudo aplicado e
+verificado no Supabase (`wduypqixkafimcndytiz`).
 
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — trazer necessidades concretas conforme aparecerem.
+Pendência conhecida da FASE 15: conferir `/faturas` visualmente com um
+usuário autenticado real (a verificação desta fase não teve acesso à
+`service_role key` para criar um usuário de teste via Admin API).
