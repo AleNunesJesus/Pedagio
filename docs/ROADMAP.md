@@ -1025,6 +1025,20 @@ selecionados" (só visível para admin, escondido pra operador). Backend:
   `get_advisors` sem achados novos. Dados de teste removidos ao final,
   zero resíduo.
 
+**Ajuste (2026-09-11) — dash "Passagens por tipo de uso" no Painel:** nova
+view `vw_valores_por_tipo_uso_mensal` (`mes, tipo_uso, qtd_passagens,
+total_cobrado`, agrupada a partir de `vw_passagens_detalhado`). No Painel,
+seção nova com 4 cards (total e quantidade de `passagem` e de `contrato`)
++ gráfico de tendência mensal (`ValoresTipoUsoChart`, mesmo padrão visual
+do gráfico "Cobrado vs. esperado" já existente) comparando os dois tipos
+de uso mês a mês. Pivotamento do formato longo da view para o formato
+largo do gráfico (uma coluna por tipo_uso) feito em `queries.ts`, mesmo
+padrão já usado para `volumeTotalPorDia`. Verificado com os dados reais
+importados (1 `contrato` de R$25,30 e 4 `passagem` somando R$77,96, ambos
+em setembro/2026) batendo com o SQL agregado direto na tabela.
+`typecheck`/`eslint`/`next build` limpos; `get_advisors` sem achados
+novos.
+
 ---
 
 ## Estado atual

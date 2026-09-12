@@ -7,6 +7,7 @@ export async function getDashboardData() {
     { count: totalPracas },
     { count: totalVeiculos },
     { data: financeiroMensal },
+    { data: valoresPorTipoUso },
     { data: gastoPorVeiculo },
     { data: gastoPorPraca },
     { data: statusResumo },
@@ -19,6 +20,7 @@ export async function getDashboardData() {
     supabase.from("praca_pedagio").select("*", { count: "exact", head: true }),
     supabase.from("veiculo").select("*", { count: "exact", head: true }),
     supabase.from("vw_financeiro_mensal").select("*").order("mes"),
+    supabase.from("vw_valores_por_tipo_uso_mensal").select("*").order("mes"),
     supabase
       .from("vw_gasto_por_veiculo_mensal")
       .select("*")
@@ -63,6 +65,43 @@ export async function getDashboardData() {
     .map(([dia, qtd_passagens]) => ({ dia, qtd_passagens }))
     .sort((a, b) => a.dia.localeCompare(b.dia));
 
+  // vw_valores_por_tipo_uso_mensal vem em formato longo (uma linha por
+  // mês+tipo_uso); o gráfico de tendência precisa de uma linha por mês com
+  // uma coluna por tipo_uso, então pivotamos aqui.
+  const tipoUsoPorMesMap = new Map<
+    string,
+    { mes: string; valor_passagem: number; valor_contrato: number; qtd_passagem: number; qtd_contrato: number }
+  >();
+  let totalValorPassagem = 0;
+  let totalQtdPassagem = 0;
+  let totalValorContrato = 0;
+  let totalQtdContrato = 0;
+  for (const linha of valoresPorTipoUso ?? []) {
+    if (!linha.mes) continue;
+    const entry = tipoUsoPorMesMap.get(linha.mes) ?? {
+      mes: linha.mes,
+      valor_passagem: 0,
+      valor_contrato: 0,
+      qtd_passagem: 0,
+      qtd_contrato: 0,
+    };
+    if (linha.tipo_uso === "passagem") {
+      entry.valor_passagem += linha.total_cobrado ?? 0;
+      entry.qtd_passagem += linha.qtd_passagens ?? 0;
+      totalValorPassagem += linha.total_cobrado ?? 0;
+      totalQtdPassagem += linha.qtd_passagens ?? 0;
+    } else if (linha.tipo_uso === "contrato") {
+      entry.valor_contrato += linha.total_cobrado ?? 0;
+      entry.qtd_contrato += linha.qtd_passagens ?? 0;
+      totalValorContrato += linha.total_cobrado ?? 0;
+      totalQtdContrato += linha.qtd_passagens ?? 0;
+    }
+    tipoUsoPorMesMap.set(linha.mes, entry);
+  }
+  const valoresPorTipoUsoMensal = Array.from(tipoUsoPorMesMap.values()).sort((a, b) =>
+    a.mes.localeCompare(b.mes),
+  );
+
   return {
     totalPracas: totalPracas ?? 0,
     totalVeiculos: totalVeiculos ?? 0,
@@ -75,6 +114,11 @@ export async function getDashboardData() {
     semDadosGpsPorDia: semDadosGpsPorDia ?? [],
     diferencaTempoMedia: diferencaTempoMedia ?? [],
     volumeTotalPorDia,
+    valoresPorTipoUsoMensal,
+    totalValorPassagem,
+    totalQtdPassagem,
+    totalValorContrato,
+    totalQtdContrato,
   };
 }
 

@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { StatusResumo } from "@/features/dashboard/components/status-resumo";
 import { DataTable } from "@/components/ui/data-table";
 import { FinanceiroTrendChart } from "@/features/dashboard/components/financeiro-trend-chart";
+import { ValoresTipoUsoChart } from "@/features/dashboard/components/valores-tipo-uso-chart";
 import { GastoPorPracaChart } from "@/features/dashboard/components/gasto-por-praca-chart";
 import { TrendAreaChart } from "@/features/dashboard/components/trend-area-chart";
 import { formatBRL, formatMonth, formatNumber, formatPercent } from "@/lib/format";
@@ -69,6 +70,29 @@ export default async function DashboardPage() {
                 },
               ]}
             />
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Passagens por tipo de uso
+        </h2>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatTile
+              label="Total em passagens"
+              value={formatBRL(data.totalValorPassagem)}
+            />
+            <StatTile label="Qtd. passagens" value={formatNumber(data.totalQtdPassagem)} />
+            <StatTile
+              label="Total em contratos"
+              value={formatBRL(data.totalValorContrato)}
+            />
+            <StatTile label="Qtd. contratos" value={formatNumber(data.totalQtdContrato)} />
+          </div>
+          <Card title="Valores por tipo de uso por mês" subtitle="passagem x contrato">
+            <ValoresTipoUsoChart rows={data.valoresPorTipoUsoMensal} />
           </Card>
         </div>
       </section>

@@ -724,6 +724,15 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_valores_por_tipo_uso_mensal: {
+        Row: {
+          mes: string | null;
+          tipo_uso: string | null;
+          qtd_passagens: number | null;
+          total_cobrado: number | null;
+        };
+        Relationships: [];
+      };
       vw_gasto_por_veiculo_mensal: {
         Row: {
           veiculo_id: string | null;
