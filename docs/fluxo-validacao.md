@@ -40,8 +40,41 @@ disparada logo após cada importação.
 
 ## 2. Validação tarifária
 
-1. Buscar em `tarifa_praca` o valor vigente para `praca_id` +
-   `categoria_veiculo_id` (do veículo) onde
+**A categoria usada na tarifa não é sempre a cadastrada no veículo.** O
+cavalo mecânico sozinho não define a quantidade de eixos — depende de
+quantas/quais carretas estão engatadas naquela viagem específica (uma
+carreta comum = 3 eixos, vanderleia = 4 eixos; cavalo = 3 eixos fixos).
+Essa informação só existe em `viagem_transporte.carreta1`/`carreta2`
+(vem da importação do documento de transporte, FASE 13), não na planilha
+de passagens. Por isso a categoria é resolvida em duas etapas
+(`pedagio.categoria_por_composicao`, ver [modelo-dados.md](modelo-dados.md)):
+
+1. **Composição real da viagem** (preferencial): casa a passagem (placa +
+   `data_hora`) com a `viagem_transporte` cuja janela saída/chegada a
+   contém (mesma heurística de desempate do vínculo de embarcador —
+   `order by data_hora_saida limit 1`, já que teoricamente uma passagem
+   pode cair em mais de uma janela). Soma os eixos: 3 (cavalo) +
+   eixos da carreta1 + eixos da carreta2 (cadastro `pedagio.carreta`,
+   ver abaixo). Categoria = `categoria_veiculo` com `codigo = 'EIXO_' ||
+   total_eixos`.
+2. **Fallback: categoria cadastrada do veículo** — usada sempre que a
+   etapa 1 não resolver (sem viagem de transporte casando a janela, sem
+   carreta1, ou carreta não cadastrada em `pedagio.carreta`). É o
+   comportamento antigo (único que existia antes desse ajuste).
+
+`validacao_passagem.origem_categoria` grava qual das duas foi usada
+(`composicao_viagem` | `cadastro_veiculo`), pra dar transparência/
+auditoria — fica visível na tela de detalhe da passagem e como coluna
+"Categoria" (marcada "(estimado)" quando é fallback) na listagem.
+
+Cadastro `pedagio.carreta` (placa/código → `tipo` `comum` [3 eixos] ou
+`vanderleia` [4 eixos]) é gerenciado em `/cadastros/carretas`
+(admin-only para escrever, leitura para qualquer usuário autorizado).
+
+Com a categoria resolvida:
+
+1. Buscar em `tarifa_praca` o valor vigente para `praca_id` + a
+   `categoria_veiculo_id` resolvida acima onde
    `vigencia_inicio <= (passagem.data_hora at time zone 'America/Sao_Paulo')::date`
    e (`vigencia_fim is null` ou `vigencia_fim >= (passagem.data_hora at time zone 'America/Sao_Paulo')::date`).
    A data é sempre convertida para o horário local (Brasil) antes do
@@ -51,6 +84,19 @@ disparada logo após cada importação.
    - Igual (ou dentro de uma tolerância de centavos) → ok.
    - Diferente → `divergencia_valor = valor_cobrado - valor_esperado`,
      contribui para `resultado = valor_divergente`.
+
+**Revalidação automática:** como a composição depende de dados que
+podem chegar depois da passagem (viagem de transporte importada depois,
+carreta cadastrada depois), qualquer uma dessas ações revalida
+automaticamente as passagens afetadas (mesmo padrão já usado quando um
+ping de GPS é excluído):
+- Importar uma viagem de transporte (`processar_staging_viagens_transporte`)
+  revalida as passagens que passam a cair na janela dela.
+- Cadastrar, alterar ou excluir uma carreta (trigger em `pedagio.carreta`)
+  revalida as passagens de todas as viagens que usam aquela carreta.
+- Excluir uma viagem de transporte ou um lote inteiro
+  (`excluir_viagens_transporte`/`excluir_lote_importacao`) revalida as
+  passagens que dependiam dela (voltam pro fallback).
 
 ## Combinando os dois resultados
 

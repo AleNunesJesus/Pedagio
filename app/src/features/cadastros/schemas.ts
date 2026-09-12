@@ -5,6 +5,11 @@ export const categoriaSchema = z.object({
   descricao: z.string().trim().min(1, "Informe a descrição."),
 });
 
+export const carretaSchema = z.object({
+  placa: z.string().trim().min(1, "Informe a placa/código."),
+  tipo: z.enum(["comum", "vanderleia"], { message: "Selecione o tipo." }),
+});
+
 export const veiculoSchema = z.object({
   placa: z.string().trim().min(1, "Informe a placa."),
   categoria_veiculo_id: z.string().trim().min(1, "Selecione a categoria."),

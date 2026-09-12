@@ -17,6 +17,8 @@ type Passagem = {
   tipo_uso: string | null;
   valor_cobrado: number | null;
   status_validacao: string | null;
+  categoria_codigo: string | null;
+  origem_categoria: string | null;
 };
 
 const LABEL_TIPO_USO: Record<string, string> = {
@@ -63,6 +65,20 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
           { header: "Placa", render: (r) => r.placa ?? "—" },
           { header: "Praça", render: (r) => r.praca_nome ?? "—" },
           { header: "Tipo", render: (r) => (r.tipo_uso ? LABEL_TIPO_USO[r.tipo_uso] ?? r.tipo_uso : "—") },
+          {
+            header: "Categoria",
+            render: (r) =>
+              r.categoria_codigo ? (
+                <span title={r.origem_categoria === "cadastro_veiculo" ? "Composição da viagem não identificada — usando categoria cadastrada do veículo" : "Composição da viagem (cavalo + carreta(s))"}>
+                  {r.categoria_codigo}
+                  {r.origem_categoria === "cadastro_veiculo" && (
+                    <span className="text-gray-400"> (estimado)</span>
+                  )}
+                </span>
+              ) : (
+                "—"
+              ),
+          },
           { header: "Valor", align: "right", render: (r) => formatBRL(r.valor_cobrado) },
           {
             header: "Status",

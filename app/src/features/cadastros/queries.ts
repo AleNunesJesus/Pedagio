@@ -18,6 +18,12 @@ export async function listVeiculos() {
   return data ?? [];
 }
 
+export async function listCarretas() {
+  const supabase = await createClient();
+  const { data } = await supabase.from("carreta").select("*").order("placa");
+  return data ?? [];
+}
+
 export async function listPracas() {
   const supabase = await createClient();
   const { data } = await supabase

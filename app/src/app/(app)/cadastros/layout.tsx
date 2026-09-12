@@ -3,6 +3,7 @@ import Link from "next/link";
 const ABAS = [
   { href: "/cadastros/categorias", label: "Categorias" },
   { href: "/cadastros/veiculos", label: "Veículos" },
+  { href: "/cadastros/carretas", label: "Carretas" },
   { href: "/cadastros/pracas", label: "Praças" },
   { href: "/cadastros/tarifas", label: "Tarifas" },
   { href: "/cadastros/embarcadores", label: "Embarcadores" },

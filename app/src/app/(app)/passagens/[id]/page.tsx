@@ -17,6 +17,11 @@ const LABEL_CONDICAO: Record<string, string> = {
   credito: "Crédito",
 };
 
+const LABEL_ORIGEM_CATEGORIA: Record<string, string> = {
+  composicao_viagem: "Composição da viagem (cavalo + carreta(s))",
+  cadastro_veiculo: "Cadastro do veículo (composição não identificada)",
+};
+
 type Campo = { label: string; valor: React.ReactNode };
 
 function Campos({ campos }: { campos: Campo[] }) {
@@ -125,6 +130,18 @@ export default async function PassagemDetalhePage({
                 passagem.diferenca_segundos !== null
                   ? `${formatNumber(passagem.diferenca_segundos)}s`
                   : "—",
+            },
+            {
+              label: "Categoria usada (tarifa)",
+              valor: passagem.categoria_codigo
+                ? `${passagem.categoria_codigo} — ${passagem.categoria_descricao}`
+                : "—",
+            },
+            {
+              label: "Origem da categoria",
+              valor: passagem.origem_categoria
+                ? LABEL_ORIGEM_CATEGORIA[passagem.origem_categoria] ?? passagem.origem_categoria
+                : "—",
             },
             { label: "Valor esperado (tarifa vigente)", valor: formatBRL(passagem.valor_esperado) },
             {

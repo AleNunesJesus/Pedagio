@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { categoriaSchema, veiculoSchema, pracaSchema, tarifaSchema } from "./schemas";
+import { categoriaSchema, carretaSchema, veiculoSchema, pracaSchema, tarifaSchema } from "./schemas";
 
 export type FormState = { error?: string; success?: boolean };
 
@@ -29,6 +29,28 @@ export async function criarCategoria(
   }
 
   revalidatePath("/cadastros/categorias");
+  return { success: true };
+}
+
+export async function criarCarreta(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = carretaSchema.safeParse({
+    placa: formData.get("placa"),
+    tipo: formData.get("tipo"),
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("carreta").insert(parsed.data);
+  if (error) {
+    return {
+      error: error.code === "23505" ? "Já existe uma carreta com essa placa/código." : error.message,
+    };
+  }
+
+  revalidatePath("/cadastros/carretas");
   return { success: true };
 }
 

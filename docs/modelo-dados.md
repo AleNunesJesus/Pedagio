@@ -40,6 +40,8 @@ erDiagram
     VEICULO ||--o{ VIAGEM_TRANSPORTE : realiza
     EMBARCADOR ||--o{ VIAGEM_TRANSPORTE : credita
     LOTE_IMPORTACAO ||--o{ VIAGEM_TRANSPORTE : origina
+    CARRETA |o..o{ VIAGEM_TRANSPORTE : engatada_em
+    CATEGORIA_VEICULO ||--o{ VALIDACAO_PASSAGEM : usada_na_tarifa
 ```
 
 ## Tabelas
@@ -195,9 +197,30 @@ Resultado do cruzamento geoespacial + tarifário para cada passagem.
 | divergencia_valor | numeric(10,2) | valor_cobrado - valor_esperado |
 | resultado | text | `ok` \| `sem_dados_gps` \| `fora_poligono` \| `valor_divergente` \| `local_e_valor_divergentes` |
 | validado_em | timestamptz | |
+| categoria_veiculo_id | fk categoria_veiculo null | categoria usada pra achar `valor_esperado` — nem sempre é `veiculo.categoria_veiculo_id` (ver `origem_categoria`) |
+| origem_categoria | text | `composicao_viagem` (achou a viagem de transporte + carreta(s) cadastrada(s)) \| `cadastro_veiculo` (fallback: categoria fixa do veículo) |
 
 Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo que popula esta
-tabela.
+tabela, incluindo como `categoria_veiculo_id`/`origem_categoria` são
+resolvidos (`pedagio.categoria_por_composicao`).
+
+### `carreta`
+Cadastro de carretas (placa/código → tipo), usado junto com
+`viagem_transporte.carreta1`/`carreta2` pra calcular a quantidade de
+eixos de cada viagem (cavalo mecânico sozinho tem 3 eixos fixos; a
+carreta é que varia). Tela `/cadastros/carretas`, admin-only para
+escrever.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| placa | text unique | placa/código da carreta, mesmo valor usado em `viagem_transporte.carreta1`/`carreta2` |
+| tipo | text | `comum` (3 eixos) \| `vanderleia` (4 eixos) |
+| created_at | timestamptz | default now() |
+
+Inserir, alterar ou excluir uma carreta revalida automaticamente (trigger)
+todas as passagens de viagens de transporte que usam aquela carreta —
+a quantidade de eixos (e portanto a tarifa esperada) pode mudar.
 
 ### `viagem_transporte` (FASE 13)
 Uma linha do documento fiscal/transporte importado (planilha do sistema
