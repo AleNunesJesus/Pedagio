@@ -709,6 +709,8 @@ export type Database = {
           lote_importacao_id: string | null;
           created_at: string | null;
           valor_pedagios: number | null;
+          valor_tarifa_esperada: number | null;
+          divergencia_valor: number | null;
         };
         Relationships: [];
       };

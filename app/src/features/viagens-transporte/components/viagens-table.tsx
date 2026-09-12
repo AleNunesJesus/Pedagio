@@ -14,6 +14,8 @@ type Viagem = {
   tipo_viagem: string | null;
   embarcador_nome: string | null;
   valor_pedagios: number | null;
+  valor_tarifa_esperada: number | null;
+  divergencia_valor: number | null;
 };
 
 const LABEL_TIPO_VIAGEM: Record<string, string> = {
@@ -49,6 +51,8 @@ export function ViagensTable({ rows }: { rows: Viagem[] }) {
         },
         { header: "Embarcador", render: (r) => r.embarcador_nome ?? "—" },
         { header: "Valor pedágios", align: "right", render: (r) => formatBRL(r.valor_pedagios) },
+        { header: "Valor praça (tarifa)", align: "right", render: (r) => formatBRL(r.valor_tarifa_esperada) },
+        { header: "Divergência", align: "right", render: (r) => formatBRL(r.divergencia_valor) },
       ]}
     />
   );

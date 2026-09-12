@@ -982,6 +982,20 @@ reduz). Também corrigido: faltava índice em `viagem_transporte.
 lote_importacao_id` (padrão já usado em `posicao_veiculo`/
 `passagem_pedagio`, `get_advisors` pegou o esquecimento).
 
+**Ajuste (2026-09-11) — colunas "Valor praça (tarifa)" e "Divergência":**
+`vw_viagem_transporte_detalhado` ganhou `valor_tarifa_esperada` (soma
+`validacao_passagem.valor_esperado` do mesmo conjunto de passagens de
+`valor_pedagios`) e `divergencia_valor` (`valor_pedagios -
+valor_tarifa_esperada`, mesma direção do `divergencia_valor` já existente
+em `passagem_pedagio`). Implementado com `left join lateral` pra somar
+os dois valores numa única passada e permitir a subtração sem repetir a
+subquery. Também ajustado: `DataTable` (componente compartilhado) tinha
+colunas grudadas por falta de padding horizontal — ganhou `pr-4`/
+`last:pr-0`, corrigindo espaçamento em todas as tabelas do app, não só em
+Passagens. E a tabela de Passagens ganhou um "semáforo" (bolinha colorida
+por `STATUS`/`STATUS_VALIDACAO_INFO`, mesma paleta do detalhe da
+passagem) ao lado do status em cada linha.
+
 ---
 
 ## Estado atual

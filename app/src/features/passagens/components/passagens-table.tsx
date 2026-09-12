@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { formatBRL } from "@/lib/format";
-import { statusLabel } from "@/lib/status-validacao";
+import { STATUS, STATUS_VALIDACAO_INFO, statusLabel } from "@/lib/status-validacao";
 
 type Passagem = {
   passagem_id: string | null;
@@ -37,14 +37,22 @@ export function PassagensTable({ rows }: { rows: Passagem[] }) {
         { header: "Valor", align: "right", render: (r) => formatBRL(r.valor_cobrado) },
         {
           header: "Status",
-          render: (r) => (
-            <Link
-              href={`/passagens/${r.passagem_id}`}
-              className="text-blue-600 hover:underline dark:text-blue-400"
-            >
-              {statusLabel(r.status_validacao)}
-            </Link>
-          ),
+          render: (r) => {
+            const role = r.status_validacao ? STATUS_VALIDACAO_INFO[r.status_validacao]?.role : undefined;
+            return (
+              <Link
+                href={`/passagens/${r.passagem_id}`}
+                className="inline-flex items-center gap-2 text-blue-600 hover:underline dark:text-blue-400"
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: STATUS[role ?? "neutral"] }}
+                  aria-hidden
+                />
+                {statusLabel(r.status_validacao)}
+              </Link>
+            );
+          },
         },
       ]}
     />
