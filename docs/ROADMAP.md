@@ -996,6 +996,35 @@ Passagens. E a tabela de Passagens ganhou um "semáforo" (bolinha colorida
 por `STATUS`/`STATUS_VALIDACAO_INFO`, mesma paleta do detalhe da
 passagem) ao lado do status em cada linha.
 
+**Ajuste (2026-09-11) — exclusão de registros (admin-only):** Passagens,
+Rastreamento (posições de GPS), Viagens de transporte e o histórico de
+lotes em Importação ganharam seleção múltipla + botão "Excluir
+selecionados" (só visível para admin, escondido pra operador). Backend:
+- `validacao_passagem_passagem_id_fkey` virou `on delete cascade`
+  (excluir a passagem leva a validação junto).
+- `validacao_passagem_posicao_veiculo_id_fkey` virou `on delete set
+  null` — excluir um ping de GPS não apaga a validação, só a evidência;
+  a(s) passagem(ns) afetada(s) são revalidadas na hora (dentro da mesma
+  função), pra não deixar status desatualizado (ex.: continuar "ok" sem
+  nenhum ping de evidência).
+- Funções `pedagio.excluir_passagens`, `excluir_posicoes`,
+  `excluir_viagens_transporte` e `excluir_lote_importacao` (essa última
+  remove passagens/posições/viagens do lote e o próprio lote, numa
+  transação só) — todas com checagem explícita de `eh_admin()` (além da
+  policy RLS `exclusao_admin` que já existia nas 4 tabelas desde as
+  fases originais).
+- Frontend: `DataTable` (componente compartilhado) ganhou suporte
+  opcional a seleção (checkbox por linha + "selecionar todos"); hook
+  `useSelecaoExclusao` compartilhado entre as 4 telas cuida do estado de
+  seleção + confirmação (`window.confirm`) + chamada da server action.
+- Verificação: SQL direto simulando admin (`set local
+  request.jwt.claims`) — excluir posição revalida a passagem afetada
+  (status saiu de resultado com evidência para `sem_dados_gps`); excluir
+  passagem arrasta a validação (cascade); excluir lote remove viagem de
+  transporte + o lote; usuário sem papel admin bloqueado em todas.
+  `get_advisors` sem achados novos. Dados de teste removidos ao final,
+  zero resíduo.
+
 ---
 
 ## Estado atual

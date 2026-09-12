@@ -3,6 +3,7 @@ import { listPosicoes } from "@/features/rastreamento/queries";
 import { FiltrosForm } from "@/features/rastreamento/components/filtros-form";
 import { MapaTrajetoLoader } from "@/features/rastreamento/components/mapa-trajeto-loader";
 import { PosicoesList } from "@/features/rastreamento/components/posicoes-list";
+import { getMeuPapel } from "@/lib/auth/guards";
 
 type SearchParams = {
   veiculoId?: string;
@@ -16,8 +17,11 @@ export default async function RastreamentoPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const veiculos = await listVeiculos();
-  const posicoes = params.veiculoId ? await listPosicoes(params) : [];
+  const [veiculos, papel, posicoes] = await Promise.all([
+    listVeiculos(),
+    getMeuPapel(),
+    params.veiculoId ? listPosicoes(params) : Promise.resolve([]),
+  ]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -46,7 +50,7 @@ export default async function RastreamentoPage({
             <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
               {posicoes.length} posição(ões) encontrada(s).
             </p>
-            <PosicoesList rows={posicoes} />
+            <PosicoesList rows={posicoes} podeExcluir={papel === "admin"} />
           </section>
         </>
       ) : (

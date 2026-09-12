@@ -3,6 +3,7 @@ import { listPracas, listVeiculos, listEmbarcadores } from "@/features/cadastros
 import { FiltrosForm } from "@/features/passagens/components/filtros-form";
 import { PassagensTable } from "@/features/passagens/components/passagens-table";
 import { Paginacao } from "@/features/passagens/components/paginacao";
+import { getMeuPapel } from "@/lib/auth/guards";
 
 type SearchParams = {
   status?: string;
@@ -24,7 +25,7 @@ export default async function PassagensPage({
   const params = await searchParams;
   const pagina = params.pagina ? Number(params.pagina) : 1;
 
-  const [{ rows, total, totalPaginas }, pracas, veiculos, embarcadores] = await Promise.all([
+  const [{ rows, total, totalPaginas }, pracas, veiculos, embarcadores, papel] = await Promise.all([
     listPassagens({
       status: params.status,
       pracaId: params.pracaId,
@@ -39,6 +40,7 @@ export default async function PassagensPage({
     listPracas(),
     listVeiculos(),
     listEmbarcadores(),
+    getMeuPapel(),
   ]);
 
   return (
@@ -58,7 +60,7 @@ export default async function PassagensPage({
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <PassagensTable rows={rows} />
+        <PassagensTable rows={rows} podeExcluir={papel === "admin"} />
         <Paginacao pagina={pagina} totalPaginas={totalPaginas} searchParams={params} />
       </section>
     </main>

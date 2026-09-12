@@ -6,11 +6,19 @@ export type DataTableColumn<T> = {
   render: (row: T) => React.ReactNode;
 };
 
+export type DataTableSelecao = {
+  selecionados: Set<string>;
+  onToggle: (id: string) => void;
+  onToggleTodos: () => void;
+  todosSelecionados: boolean;
+};
+
 type DataTableProps<T> = {
   rows: T[];
   columns: DataTableColumn<T>[];
-  keyField: (row: T) => React.Key;
+  keyField: (row: T) => string;
   emptyMessage: string;
+  selecao?: DataTableSelecao;
 };
 
 export function DataTable<T>({
@@ -18,6 +26,7 @@ export function DataTable<T>({
   columns,
   keyField,
   emptyMessage,
+  selecao,
 }: DataTableProps<T>) {
   if (rows.length === 0) {
     return <EmptyState>{emptyMessage}</EmptyState>;
@@ -28,6 +37,16 @@ export function DataTable<T>({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-gray-800 dark:text-gray-400">
+            {selecao && (
+              <th className="w-8 py-2 pr-2">
+                <input
+                  type="checkbox"
+                  checked={selecao.todosSelecionados}
+                  onChange={selecao.onToggleTodos}
+                  aria-label="Selecionar todos"
+                />
+              </th>
+            )}
             {columns.map((col) => (
               <th
                 key={col.header}
@@ -39,21 +58,34 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={keyField(row)}
-              className="border-b border-gray-100 last:border-0 dark:border-gray-900"
-            >
-              {columns.map((col) => (
-                <td
-                  key={col.header}
-                  className={`py-2 pr-4 text-gray-900 last:pr-0 dark:text-gray-100 ${col.align === "right" ? "text-right tabular-nums" : "text-left"}`}
-                >
-                  {col.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const id = keyField(row);
+            return (
+              <tr
+                key={id}
+                className="border-b border-gray-100 last:border-0 dark:border-gray-900"
+              >
+                {selecao && (
+                  <td className="w-8 py-2 pr-2">
+                    <input
+                      type="checkbox"
+                      checked={selecao.selecionados.has(id)}
+                      onChange={() => selecao.onToggle(id)}
+                      aria-label="Selecionar linha"
+                    />
+                  </td>
+                )}
+                {columns.map((col) => (
+                  <td
+                    key={col.header}
+                    className={`py-2 pr-4 text-gray-900 last:pr-0 dark:text-gray-100 ${col.align === "right" ? "text-right tabular-nums" : "text-left"}`}
+                  >
+                    {col.render(row)}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

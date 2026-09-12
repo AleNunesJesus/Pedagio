@@ -1,3 +1,10 @@
+"use client";
+
+import { DataTable } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
+import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
+import { excluirPosicoes } from "../actions";
+
 type Posicao = {
   id: number | null;
   latitude: number | null;
@@ -11,37 +18,46 @@ const FONTE_LABEL: Record<string, string> = {
   api: "API",
 };
 
-export function PosicoesList({ rows }: { rows: Posicao[] }) {
-  if (rows.length === 0) {
-    return <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma posição encontrada.</p>;
-  }
+export function PosicoesList({ rows, podeExcluir }: { rows: Posicao[]; podeExcluir: boolean }) {
+  const { selecionados, toggle, toggleTodos, excluirSelecionados, pending, erro } =
+    useSelecaoExclusao(excluirPosicoes);
+  const ids = rows.map((r) => String(r.id ?? ""));
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 text-gray-500 dark:border-gray-800 dark:text-gray-400">
-            <th className="py-2 pr-4 font-medium">Data/hora</th>
-            <th className="py-2 pr-4 font-medium">Latitude</th>
-            <th className="py-2 pr-4 font-medium">Longitude</th>
-            <th className="py-2 pr-4 font-medium">Fonte</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-b border-gray-100 dark:border-gray-900">
-              <td className="py-2 pr-4 text-gray-900 dark:text-gray-100">
-                {row.data_hora ? new Date(row.data_hora).toLocaleString("pt-BR") : "—"}
-              </td>
-              <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">{row.latitude ?? "—"}</td>
-              <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">{row.longitude ?? "—"}</td>
-              <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
-                {row.fonte ? (FONTE_LABEL[row.fonte] ?? row.fonte) : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {podeExcluir && selecionados.size > 0 && (
+        <div className="flex items-center gap-3">
+          <Button variant="destructive" size="sm" disabled={pending} onClick={excluirSelecionados}>
+            {pending ? "Excluindo..." : `Excluir selecionadas (${selecionados.size})`}
+          </Button>
+          {erro && <span className="text-sm text-red-600 dark:text-red-400">{erro}</span>}
+        </div>
+      )}
+
+      <DataTable
+        rows={rows}
+        keyField={(row) => String(row.id ?? "")}
+        emptyMessage="Nenhuma posição encontrada."
+        selecao={
+          podeExcluir
+            ? {
+                selecionados,
+                onToggle: toggle,
+                onToggleTodos: () => toggleTodos(ids),
+                todosSelecionados: ids.length > 0 && ids.every((id) => selecionados.has(id)),
+              }
+            : undefined
+        }
+        columns={[
+          {
+            header: "Data/hora",
+            render: (r) => (r.data_hora ? new Date(r.data_hora).toLocaleString("pt-BR") : "—"),
+          },
+          { header: "Latitude", render: (r) => r.latitude ?? "—" },
+          { header: "Longitude", render: (r) => r.longitude ?? "—" },
+          { header: "Fonte", render: (r) => (r.fonte ? FONTE_LABEL[r.fonte] ?? r.fonte : "—") },
+        ]}
+      />
     </div>
   );
 }

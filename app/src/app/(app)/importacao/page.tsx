@@ -3,9 +3,10 @@ import { ImportarForm } from "@/features/importacao/components/importar-form";
 import { ImportarPosicoesForm } from "@/features/importacao/components/importar-posicoes-form";
 import { ImportarViagensForm } from "@/features/importacao/components/importar-viagens-form";
 import { LoteList } from "@/features/importacao/components/lote-list";
+import { getMeuPapel } from "@/lib/auth/guards";
 
 export default async function ImportacaoPage() {
-  const lotes = await listLotesImportacao();
+  const [lotes, papel] = await Promise.all([listLotesImportacao(), getMeuPapel()]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -36,7 +37,7 @@ export default async function ImportacaoPage() {
         <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
           Histórico de importações
         </h2>
-        <LoteList rows={lotes} />
+        <LoteList rows={lotes} podeExcluir={papel === "admin"} />
       </section>
     </main>
   );

@@ -3,6 +3,7 @@ import { listViagensTransporte } from "@/features/viagens-transporte/queries";
 import { FiltrosForm } from "@/features/viagens-transporte/components/filtros-form";
 import { ViagensTable } from "@/features/viagens-transporte/components/viagens-table";
 import { Paginacao } from "@/features/viagens-transporte/components/paginacao";
+import { getMeuPapel } from "@/lib/auth/guards";
 
 type SearchParams = {
   veiculoId?: string;
@@ -21,7 +22,7 @@ export default async function ViagensTransportePage({
   const params = await searchParams;
   const pagina = params.pagina ? Number(params.pagina) : 1;
 
-  const [{ rows, total, totalPaginas }, veiculos, embarcadores] = await Promise.all([
+  const [{ rows, total, totalPaginas }, veiculos, embarcadores, papel] = await Promise.all([
     listViagensTransporte({
       veiculoId: params.veiculoId,
       tipoViagem: params.tipoViagem,
@@ -32,6 +33,7 @@ export default async function ViagensTransportePage({
     }),
     listVeiculos(),
     listEmbarcadores(),
+    getMeuPapel(),
   ]);
 
   return (
@@ -50,7 +52,7 @@ export default async function ViagensTransportePage({
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <ViagensTable rows={rows} />
+        <ViagensTable rows={rows} podeExcluir={papel === "admin"} />
         <Paginacao pagina={pagina} totalPaginas={totalPaginas} searchParams={params} />
       </section>
     </main>

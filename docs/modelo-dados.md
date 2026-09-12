@@ -186,8 +186,8 @@ Resultado do cruzamento geoespacial + tarifário para cada passagem.
 | coluna | tipo | notas |
 |---|---|---|
 | id | uuid pk | |
-| passagem_id | fk passagem_pedagio unique | 1:1 |
-| posicao_veiculo_id | fk posicao_veiculo null | ping usado como evidência |
+| passagem_id | fk passagem_pedagio unique | 1:1, `on delete cascade` — some junto se a passagem for excluída |
+| posicao_veiculo_id | fk posicao_veiculo null | ping usado como evidência; `on delete set null` — some só a evidência, a passagem é revalidada em seguida |
 | dentro_poligono | boolean | |
 | distancia_metros | numeric | distância do ping ao centróide/borda, se fora |
 | diferenca_segundos | int | |ping.data_hora - passagem.data_hora| |

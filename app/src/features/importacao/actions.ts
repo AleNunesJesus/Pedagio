@@ -204,6 +204,21 @@ export async function importarViagensTransporte(
   };
 }
 
+export async function excluirLotes(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+
+  for (const id of ids) {
+    const { error } = await supabase.rpc("excluir_lote_importacao", { p_lote_id: id });
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/importacao");
+  revalidatePath("/passagens");
+  revalidatePath("/rastreamento");
+  revalidatePath("/viagens-transporte");
+  return {};
+}
+
 const COLUNAS_ESPERADAS_POSICOES = ["placa", "latitude", "longitude", "data", "horario"] as const;
 
 export async function importarPosicoes(

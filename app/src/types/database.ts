@@ -901,6 +901,22 @@ export type Database = {
         Args: { p_arquivo_nome?: string | null; p_usuario?: string | null };
         Returns: Database["pedagio"]["Tables"]["lote_importacao"]["Row"];
       };
+      excluir_passagens: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_posicoes: {
+        Args: { p_ids: number[] };
+        Returns: undefined;
+      };
+      excluir_viagens_transporte: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_lote_importacao: {
+        Args: { p_lote_id: string };
+        Returns: undefined;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
