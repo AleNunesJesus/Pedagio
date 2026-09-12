@@ -8,6 +8,7 @@ export async function getDashboardData() {
     { count: totalVeiculos },
     { data: financeiroMensal },
     { data: valoresPorTipoUso },
+    { data: valoresPorVinculoViagem },
     { data: gastoPorVeiculo },
     { data: gastoPorPraca },
     { data: statusResumo },
@@ -21,6 +22,7 @@ export async function getDashboardData() {
     supabase.from("veiculo").select("*", { count: "exact", head: true }),
     supabase.from("vw_financeiro_mensal").select("*").order("mes"),
     supabase.from("vw_valores_por_tipo_uso_mensal").select("*").order("mes"),
+    supabase.from("vw_valores_por_vinculo_viagem_mensal").select("*").order("mes"),
     supabase
       .from("vw_gasto_por_veiculo_mensal")
       .select("*")
@@ -102,6 +104,45 @@ export async function getDashboardData() {
     a.mes.localeCompare(b.mes),
   );
 
+  // vw_valores_por_vinculo_viagem_mensal também vem em formato longo (uma
+  // linha por mês+vínculo); mesmo pivotamento usado para tipo_uso acima.
+  const vinculoViagemPorMesMap = new Map<
+    string,
+    { mes: string; valor_carregado: number; valor_vazio: number; valor_sem_vinculo: number }
+  >();
+  let totalValorCarregado = 0;
+  let totalQtdCarregado = 0;
+  let totalValorVazio = 0;
+  let totalQtdVazio = 0;
+  let totalValorSemVinculo = 0;
+  let totalQtdSemVinculo = 0;
+  for (const linha of valoresPorVinculoViagem ?? []) {
+    if (!linha.mes) continue;
+    const entry = vinculoViagemPorMesMap.get(linha.mes) ?? {
+      mes: linha.mes,
+      valor_carregado: 0,
+      valor_vazio: 0,
+      valor_sem_vinculo: 0,
+    };
+    if (linha.vinculo === "carregado") {
+      entry.valor_carregado += linha.total_cobrado ?? 0;
+      totalValorCarregado += linha.total_cobrado ?? 0;
+      totalQtdCarregado += linha.qtd_passagens ?? 0;
+    } else if (linha.vinculo === "vazio") {
+      entry.valor_vazio += linha.total_cobrado ?? 0;
+      totalValorVazio += linha.total_cobrado ?? 0;
+      totalQtdVazio += linha.qtd_passagens ?? 0;
+    } else {
+      entry.valor_sem_vinculo += linha.total_cobrado ?? 0;
+      totalValorSemVinculo += linha.total_cobrado ?? 0;
+      totalQtdSemVinculo += linha.qtd_passagens ?? 0;
+    }
+    vinculoViagemPorMesMap.set(linha.mes, entry);
+  }
+  const valoresPorVinculoViagemMensal = Array.from(vinculoViagemPorMesMap.values()).sort((a, b) =>
+    a.mes.localeCompare(b.mes),
+  );
+
   return {
     totalPracas: totalPracas ?? 0,
     totalVeiculos: totalVeiculos ?? 0,
@@ -119,6 +160,13 @@ export async function getDashboardData() {
     totalQtdPassagem,
     totalValorContrato,
     totalQtdContrato,
+    valoresPorVinculoViagemMensal,
+    totalValorCarregado,
+    totalQtdCarregado,
+    totalValorVazio,
+    totalQtdVazio,
+    totalValorSemVinculo,
+    totalQtdSemVinculo,
   };
 }
 

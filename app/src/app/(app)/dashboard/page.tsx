@@ -5,6 +5,7 @@ import { StatusResumo } from "@/features/dashboard/components/status-resumo";
 import { DataTable } from "@/components/ui/data-table";
 import { FinanceiroTrendChart } from "@/features/dashboard/components/financeiro-trend-chart";
 import { ValoresTipoUsoChart } from "@/features/dashboard/components/valores-tipo-uso-chart";
+import { ValoresVinculoViagemChart } from "@/features/dashboard/components/valores-vinculo-viagem-chart";
 import { GastoPorPracaChart } from "@/features/dashboard/components/gasto-por-praca-chart";
 import { TrendAreaChart } from "@/features/dashboard/components/trend-area-chart";
 import { formatBRL, formatMonth, formatNumber, formatPercent } from "@/lib/format";
@@ -93,6 +94,28 @@ export default async function DashboardPage() {
           </div>
           <Card title="Valores por tipo de uso por mês" subtitle="passagem x contrato">
             <ValoresTipoUsoChart rows={data.valoresPorTipoUsoMensal} />
+          </Card>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Passagens por vínculo de viagem
+        </h2>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+            <StatTile label="Carregado" value={formatBRL(data.totalValorCarregado)} />
+            <StatTile label="Qtd. carregado" value={formatNumber(data.totalQtdCarregado)} />
+            <StatTile label="Vazio" value={formatBRL(data.totalValorVazio)} />
+            <StatTile label="Qtd. vazio" value={formatNumber(data.totalQtdVazio)} />
+            <StatTile label="Sem vínculo" value={formatBRL(data.totalValorSemVinculo)} />
+            <StatTile label="Qtd. sem vínculo" value={formatNumber(data.totalQtdSemVinculo)} />
+          </div>
+          <Card
+            title="Valores por vínculo de viagem por mês"
+            subtitle="carregado x vazio x sem vínculo; só passagens reais (tipo_uso = passagem)"
+          >
+            <ValoresVinculoViagemChart rows={data.valoresPorVinculoViagemMensal} />
           </Card>
         </div>
       </section>

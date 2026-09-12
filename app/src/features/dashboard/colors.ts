@@ -4,6 +4,7 @@
 export const CATEGORICAL = {
   blue: "#2a78d6",
   orange: "#eb6834",
+  aqua: "#1baf7a",
 } as const;
 
 export const SEQUENTIAL_BLUE = "#2a78d6";
