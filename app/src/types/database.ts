@@ -922,6 +922,10 @@ export type Database = {
         Args: { p_ids: string[] };
         Returns: undefined;
       };
+      excluir_tarifas: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
       excluir_lote_importacao: {
         Args: { p_lote_id: string };
         Returns: undefined;

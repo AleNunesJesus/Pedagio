@@ -1041,6 +1041,39 @@ novos.
 
 ---
 
+## Ajuste — exclusão de tarifas (admin-only) (2026-09-12)
+
+**Pedido do usuário:** cadastro de tarifas precisa de forma de excluir uma
+tarifa cadastrada por engano — restrita a admin, pelo risco financeiro de
+uma tarifa equivocada em produção.
+
+- A policy RLS `exclusao_admin` em `tarifa_praca` já existia desde a FASE
+  08 (`insercao_admin`/`atualizacao_admin`/`exclusao_admin` só
+  `eh_admin()`); faltava só a exposição no app — mesma lacuna do restante
+  dos cadastros (categoria/veículo/carreta/praça ainda não têm exclusão
+  pela UI).
+- Função `pedagio.excluir_tarifas(p_ids uuid[])` (migration
+  `20260912103000_pedagio_exclusao_admin_tarifas`), mesmo padrão de
+  `excluir_passagens`/`excluir_posicoes`/`excluir_viagens_transporte`
+  (checagem explícita de `eh_admin()` dentro da função, além da RLS).
+  `tarifa_praca` não tem nenhuma tabela dependente, então a exclusão é
+  direta, sem revalidação em cascata.
+- Frontend: `TarifaList` ganhou seleção múltipla + botão "Excluir
+  selecionadas" (reaproveitando `DataTable` com `selecao` e o hook
+  `useSelecaoExclusao`, mesmo padrão já usado em Passagens/Rastreamento/
+  Viagens de transporte/lotes de Importação), visível só quando
+  `papel === "admin"`; nova server action `excluirTarifas` em
+  `features/cadastros/actions.ts`.
+- `typecheck`/`eslint`/`next build` limpos; `get_advisors` sem achados
+  novos.
+- Verificação via REST com usuários reais (admin/operador criados via
+  Admin API): operador bloqueado ao chamar `excluir_tarifas` (RPC retorna
+  o erro esperado, tarifa continua no banco), admin exclui com sucesso —
+  6/6 checks, dados de teste (usuários, categoria, praça, tarifas)
+  removidos ao final, zero resíduo.
+
+---
+
 ## Estado atual
 
 **Projeto completo (FASE 01 a FASE 13).** Schema `pedagio` (cadastros

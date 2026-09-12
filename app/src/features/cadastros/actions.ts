@@ -118,6 +118,15 @@ export async function criarTarifa(
   return { success: true };
 }
 
+export async function excluirTarifas(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_tarifas", { p_ids: ids });
+  if (error) return { error: error.message };
+
+  revalidatePath("/cadastros/tarifas");
+  return {};
+}
+
 export async function atualizarEmbarcadorCnpj(
   _prevState: FormState,
   formData: FormData,
