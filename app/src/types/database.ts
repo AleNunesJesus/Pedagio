@@ -810,6 +810,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_divergencia_por_status: {
+        Row: {
+          status_validacao: string | null;
+          qtd_passagens: number | null;
+          total_cobrado: number | null;
+          total_esperado: number | null;
+          divergencia_valor: number | null;
+        };
+        Relationships: [];
+      };
+      vw_divergencia_por_praca: {
+        Row: {
+          praca_id: string | null;
+          praca_nome: string | null;
+          rodovia: string | null;
+          qtd_passagens: number | null;
+          total_cobrado: number | null;
+          total_esperado: number | null;
+          divergencia_valor: number | null;
+        };
+        Relationships: [];
+      };
+      vw_divergencia_por_veiculo: {
+        Row: {
+          veiculo_id: string | null;
+          placa: string | null;
+          qtd_passagens: number | null;
+          total_cobrado: number | null;
+          total_esperado: number | null;
+          divergencia_valor: number | null;
+        };
+        Relationships: [];
+      };
       vw_status_resumo: {
         Row: {
           status_validacao: string | null;

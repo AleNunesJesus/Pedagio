@@ -1599,12 +1599,68 @@ tem essa cor; este era um `<select>` cru, escrito à mão).
   estava aberto numa aba ociosa, pode ser necessário `F5` (problema
   conhecido do Next dev, não relacionado a esta mudança).
 
+## FASE 17 — Divergência explicada (por causa, praça e veículo)
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** o card "Divergência total" do Painel só mostrava um número
+líquido agregado (`total_cobrado - total_esperado`), sem nenhuma forma de
+saber de onde vinha aquele valor. Esta fase quebra a divergência em causas
+explicáveis, mantendo uma visão de gestão (poucos números, não uma tela
+analítica).
+
+**Decisão fechada com o usuário (2026-09-14):** quebrar por status de
+validação (a causa) **e** por praça/veículo (onde se concentra), mas como
+visão gerencial — top 5 por maior desvio em módulo, não listagem completa.
+
+**Checklist:**
+- [x] 3 views novas (`security_invoker = true`, mesmo padrão da FASE 05):
+  `vw_divergencia_por_status`, `vw_divergencia_por_praca`,
+  `vw_divergencia_por_veiculo` — todas agregando `total_cobrado`,
+  `total_esperado` e `divergencia_valor` (soma de `coalesce(divergencia_valor,
+  0)`) a partir de `vw_passagens_detalhado`, ordenadas por
+  `abs(divergencia_valor)` desc
+- [x] Painel: nova seção "Divergência" (entre os StatTiles do topo e
+  "Financeiro") com 3 cards: por causa (status), maiores desvios por praça,
+  maiores desvios por veículo (top 5 em módulo, calculado em
+  `queries.ts`, mesmo padrão já usado para os outros pivotamentos em JS)
+- [x] Componente `DivergenciaValor` (cor critical/good pelo sinal, sempre com
+  o número assinado no texto — nunca só cor) e `valorEsperadoLabel` (mostra
+  "sem tarifa de referência" em vez de R$0,00 quando `total_esperado` é
+  `null`, para não confundir "sem tarifa calculada" com "divergência zero")
+- [x] `get_advisors` — sem achados novos
+- [x] Verificação via SQL direto: 5 passagens sintéticas cobrindo `ok`,
+  `valor_divergente`, `fora_poligono`, `sem_cadastro` e `nao_aplicavel`, 2
+  praças, 2 veículos — os 3 agregados batendo exatamente com o cálculo
+  manual (inclusive `total_esperado = null` e `divergencia_valor = 0` para
+  `sem_cadastro`/`nao_aplicavel`, confirmando que essas causas não inflam
+  nem escondem divergência real); cleanup confirmado (zero resíduo)
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação:**
+- Migration aplicada: `20260914150000_pedagio_fase17_divergencia_explicada`
+  (mirror local em `supabase/migrations/`).
+- Nenhuma migration em `validar_passagem`/`categoria_por_composicao` — só
+  views de leitura novas sobre `vw_passagens_detalhado`, que já tinha todas
+  as colunas necessárias desde a FASE 05/07/14.
+- O card "Divergência total" no topo do Painel não mudou — a nova seção
+  só adiciona a explicação abaixo dele.
+- Top 5 por praça/veículo é filtrado para excluir linhas com divergência
+  exatamente zero (`!== 0`), pra não desperdiçar um dos 5 slots com "sem
+  divergência" quando há poucas praças/veículos com desvio real.
+
+**Limitação conhecida:** não testado visualmente no navegador nem via REST
+com usuário real (mesma limitação já registrada nas FASEs 15/16 — sem
+`service_role key` nesta sessão). Cobertura ficou em SQL direto (views) +
+build/typecheck/lint. Recomenda-se conferir `/dashboard` visualmente na
+primeira vez que usar.
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — trazer necessidades concretas conforme aparecerem.
 Pendências conhecidas: conferir `/faturas` (FASE 15),
-`/cadastros/categorias`/`/cadastros/veiculos` (FASE 16) com um usuário
-autenticado real, e o modo escuro/claro (ajuste acima) visualmente no
-navegador — nenhuma sessão recente teve `service_role key` nem
-ferramenta de navegador disponível.
+`/cadastros/categorias`/`/cadastros/veiculos` (FASE 16), a nova seção
+"Divergência" do Painel (FASE 17) com um usuário autenticado real, e o
+modo escuro/claro (ajuste acima) visualmente no navegador — nenhuma sessão
+recente teve `service_role key` nem ferramenta de navegador disponível.

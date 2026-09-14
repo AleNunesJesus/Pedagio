@@ -8,6 +8,8 @@ import { ValoresTipoUsoChart } from "@/features/dashboard/components/valores-tip
 import { ValoresVinculoViagemChart } from "@/features/dashboard/components/valores-vinculo-viagem-chart";
 import { GastoPorPracaChart } from "@/features/dashboard/components/gasto-por-praca-chart";
 import { TrendAreaChart } from "@/features/dashboard/components/trend-area-chart";
+import { DivergenciaValor, valorEsperadoLabel } from "@/features/dashboard/components/divergencia-valor";
+import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { formatBRL, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 
 export default async function DashboardPage() {
@@ -39,6 +41,100 @@ export default async function DashboardPage() {
         <StatTile label="Total cobrado" value={formatBRL(totalCobradoGeral)} />
         <StatTile label="Divergência total" value={formatBRL(divergenciaTotalGeral)} />
       </div>
+
+      <section>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Divergência
+        </h2>
+        <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          Divergência = valor cobrado − tarifa vigente esperada. Positivo (
+          <DivergenciaValor valor={1} />) é cobrado a mais que a tarifa;
+          negativo (<DivergenciaValor valor={-1} />) é cobrado a menos.
+        </p>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card title="Por causa (status de validação)" subtitle="por que a divergência existe">
+            <DataTable
+              rows={data.divergenciaPorStatus}
+              keyField={(row) => row.status_validacao ?? "—"}
+              emptyMessage="Nenhuma passagem importada ainda."
+              columns={[
+                {
+                  header: "Status",
+                  render: (r) => {
+                    const info = r.status_validacao
+                      ? STATUS_VALIDACAO_INFO[r.status_validacao]
+                      : undefined;
+                    return (
+                      <span className="flex items-center gap-2">
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: STATUS[info?.role ?? "neutral"] }}
+                          aria-hidden
+                        />
+                        {info?.label ?? r.status_validacao ?? "—"}
+                      </span>
+                    );
+                  },
+                },
+                { header: "Qtd", align: "right", render: (r) => formatNumber(r.qtd_passagens) },
+                { header: "Cobrado", align: "right", render: (r) => formatBRL(r.total_cobrado) },
+                {
+                  header: "Esperado",
+                  align: "right",
+                  render: (r) => valorEsperadoLabel(r.total_esperado),
+                },
+                {
+                  header: "Divergência",
+                  align: "right",
+                  render: (r) => <DivergenciaValor valor={r.divergencia_valor} />,
+                },
+              ]}
+            />
+          </Card>
+          <Card title="Onde se concentra — praças" subtitle="5 maiores desvios (em módulo)">
+            <DataTable
+              rows={data.topDivergenciaPorPraca}
+              keyField={(row) => row.praca_id ?? "—"}
+              emptyMessage="Nenhuma divergência de valor encontrada."
+              columns={[
+                { header: "Praça", render: (r) => r.praca_nome ?? "—" },
+                { header: "Cobrado", align: "right", render: (r) => formatBRL(r.total_cobrado) },
+                {
+                  header: "Esperado",
+                  align: "right",
+                  render: (r) => valorEsperadoLabel(r.total_esperado),
+                },
+                {
+                  header: "Divergência",
+                  align: "right",
+                  render: (r) => <DivergenciaValor valor={r.divergencia_valor} />,
+                },
+              ]}
+            />
+          </Card>
+          <Card title="Onde se concentra — veículos" subtitle="5 maiores desvios (em módulo)">
+            <DataTable
+              rows={data.topDivergenciaPorVeiculo}
+              keyField={(row) => row.veiculo_id ?? "—"}
+              emptyMessage="Nenhuma divergência de valor encontrada."
+              columns={[
+                { header: "Placa", render: (r) => r.placa ?? "—" },
+                { header: "Cobrado", align: "right", render: (r) => formatBRL(r.total_cobrado) },
+                {
+                  header: "Esperado",
+                  align: "right",
+                  render: (r) => valorEsperadoLabel(r.total_esperado),
+                },
+                {
+                  header: "Divergência",
+                  align: "right",
+                  render: (r) => <DivergenciaValor valor={r.divergencia_valor} />,
+                },
+              ]}
+            />
+          </Card>
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">

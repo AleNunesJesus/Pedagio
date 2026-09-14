@@ -11,6 +11,9 @@ export async function getDashboardData() {
     { data: valoresPorVinculoViagem },
     { data: gastoPorVeiculo },
     { data: gastoPorPraca },
+    { data: divergenciaPorStatus },
+    { data: divergenciaPorPraca },
+    { data: divergenciaPorVeiculo },
     { data: statusResumo },
     { data: pracaTaxaForaPoligono },
     { data: veiculoTaxaDivergencia },
@@ -33,6 +36,9 @@ export async function getDashboardData() {
       .select("*")
       .order("total_cobrado", { ascending: false })
       .limit(10),
+    supabase.from("vw_divergencia_por_status").select("*"),
+    supabase.from("vw_divergencia_por_praca").select("*"),
+    supabase.from("vw_divergencia_por_veiculo").select("*"),
     supabase.from("vw_status_resumo").select("*"),
     supabase
       .from("vw_praca_taxa_fora_poligono")
@@ -143,12 +149,27 @@ export async function getDashboardData() {
     a.mes.localeCompare(b.mes),
   );
 
+  // Visão de gestão, não analítica: só os 5 maiores desvios (em módulo) por
+  // praça/veículo, não a lista completa — a view já traz todas as linhas
+  // ordenadas por abs(divergência), o corte pros top 5 fica aqui.
+  const topDivergenciaPorPraca = [...(divergenciaPorPraca ?? [])]
+    .filter((r) => (r.divergencia_valor ?? 0) !== 0)
+    .sort((a, b) => Math.abs(b.divergencia_valor ?? 0) - Math.abs(a.divergencia_valor ?? 0))
+    .slice(0, 5);
+  const topDivergenciaPorVeiculo = [...(divergenciaPorVeiculo ?? [])]
+    .filter((r) => (r.divergencia_valor ?? 0) !== 0)
+    .sort((a, b) => Math.abs(b.divergencia_valor ?? 0) - Math.abs(a.divergencia_valor ?? 0))
+    .slice(0, 5);
+
   return {
     totalPracas: totalPracas ?? 0,
     totalVeiculos: totalVeiculos ?? 0,
     financeiroMensal: financeiroMensal ?? [],
     gastoPorVeiculo: gastoPorVeiculo ?? [],
     gastoPorPraca: gastoPorPraca ?? [],
+    divergenciaPorStatus: divergenciaPorStatus ?? [],
+    topDivergenciaPorPraca,
+    topDivergenciaPorVeiculo,
     statusResumo: statusResumo ?? [],
     pracaTaxaForaPoligono: pracaTaxaForaPoligono ?? [],
     veiculoTaxaDivergencia: veiculoTaxaDivergencia ?? [],

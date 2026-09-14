@@ -18,6 +18,15 @@ com filtros por período, praça, veículo/frota.
   virando um bucket "sem fatura" (GROUP BY já trata todos os `null` como um
   único grupo). Tela: `/faturas` (lista) e `/faturas/[numero]` (detalhe,
   incluindo breakdown por praça/veículo e as passagens da fatura).
+- **Divergência explicada** (`vw_divergencia_por_status`,
+  `vw_divergencia_por_praca`, `vw_divergencia_por_veiculo`, FASE 17) — quebra
+  o número agregado do card "Divergência total" do Painel em causa (status
+  de validação) e concentração (praça/veículo, top 5 por maior desvio em
+  módulo). `total_esperado = null` numa dessas views não é "esperado zero":
+  é sinal de que a passagem (`sem_cadastro`, `nao_aplicavel`, `pendente`)
+  nunca teve tarifa de referência calculada, então seu `total_cobrado` não
+  contribui para a divergência líquida mesmo representando risco financeiro
+  não conferido.
 
 ## Auditoria / Validação
 
