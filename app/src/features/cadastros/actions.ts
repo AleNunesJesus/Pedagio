@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { categoriaSchema, carretaSchema, veiculoSchema, pracaSchema, tarifaSchema } from "./schemas";
+import { categoriaSchema, veiculoSchema, pracaSchema, tarifaSchema } from "./schemas";
 
 export type FormState = { error?: string; success?: boolean };
 
@@ -10,18 +10,22 @@ function firstIssue(error: { issues: { message: string }[] }): string {
   return error.issues[0]?.message ?? "Dados inválidos.";
 }
 
-export async function criarCategoria(
+export async function salvarCategoria(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const parsed = categoriaSchema.safeParse({
     codigo: formData.get("codigo"),
     descricao: formData.get("descricao"),
+    quantidade_eixos: formData.get("quantidade_eixos"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
+  const categoriaId = formData.get("categoria_id") as string | null;
   const supabase = await createClient();
-  const { error } = await supabase.from("categoria_veiculo").insert(parsed.data);
+  const { error } = categoriaId
+    ? await supabase.from("categoria_veiculo").update(parsed.data).eq("id", categoriaId)
+    : await supabase.from("categoria_veiculo").insert(parsed.data);
   if (error) {
     return {
       error: error.code === "23505" ? "Já existe uma categoria com esse código." : error.message,
@@ -29,45 +33,54 @@ export async function criarCategoria(
   }
 
   revalidatePath("/cadastros/categorias");
+  if (categoriaId) revalidatePath(`/cadastros/categorias/${categoriaId}`);
   return { success: true };
 }
 
-export async function criarCarreta(
-  _prevState: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const parsed = carretaSchema.safeParse({
-    placa: formData.get("placa"),
-    tipo: formData.get("tipo"),
-  });
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-
+export async function excluirCategorias(ids: string[]): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const { error } = await supabase.from("carreta").insert(parsed.data);
+  const { error } = await supabase.rpc("excluir_categorias", { p_ids: ids });
   if (error) {
     return {
-      error: error.code === "23505" ? "Já existe uma carreta com essa placa/código." : error.message,
+      error:
+        error.code === "23503"
+          ? "Não é possível excluir: há veículos, tarifas ou passagens validadas usando esta categoria."
+          : error.message,
     };
   }
 
-  revalidatePath("/cadastros/carretas");
-  return { success: true };
+  revalidatePath("/cadastros/categorias");
+  return {};
 }
 
-export async function criarVeiculo(
+export async function salvarVeiculo(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
   const parsed = veiculoSchema.safeParse({
     placa: formData.get("placa"),
+    tipo: formData.get("tipo"),
     categoria_veiculo_id: formData.get("categoria_veiculo_id"),
+    categoria_fallback_id: formData.get("categoria_fallback_id") || undefined,
     frota: formData.get("frota") || undefined,
     ativo: formData.get("ativo") === "on",
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
+  const veiculoId = formData.get("veiculo_id") as string | null;
+  const payload = {
+    placa: parsed.data.placa,
+    tipo: parsed.data.tipo,
+    categoria_veiculo_id: parsed.data.categoria_veiculo_id,
+    categoria_fallback_id: parsed.data.tipo === "cavalo" ? parsed.data.categoria_fallback_id : null,
+    frota: parsed.data.frota ?? null,
+    ativo: parsed.data.ativo,
+  };
+
   const supabase = await createClient();
-  const { error } = await supabase.from("veiculo").insert(parsed.data);
+  const { error } = veiculoId
+    ? await supabase.from("veiculo").update(payload).eq("id", veiculoId)
+    : await supabase.from("veiculo").insert(payload);
   if (error) {
     return {
       error: error.code === "23505" ? "Já existe um veículo com essa placa." : error.message,
@@ -75,7 +88,24 @@ export async function criarVeiculo(
   }
 
   revalidatePath("/cadastros/veiculos");
+  if (veiculoId) revalidatePath(`/cadastros/veiculos/${veiculoId}`);
   return { success: true };
+}
+
+export async function excluirVeiculos(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_veiculos", { p_ids: ids });
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? "Não é possível excluir: há passagens, posições de GPS ou viagens de transporte vinculadas a este veículo/carreta."
+          : error.message,
+    };
+  }
+
+  revalidatePath("/cadastros/veiculos");
+  return {};
 }
 
 export async function salvarPraca(
@@ -108,7 +138,23 @@ export async function salvarPraca(
   return { success: true };
 }
 
-export async function criarTarifa(
+export async function excluirPracas(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_pracas", { p_ids: ids });
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? "Não é possível excluir: há tarifas ou passagens vinculadas a esta praça."
+          : error.message,
+    };
+  }
+
+  revalidatePath("/cadastros/pracas");
+  return {};
+}
+
+export async function salvarTarifa(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
@@ -121,11 +167,12 @@ export async function criarTarifa(
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
+  const tarifaId = formData.get("tarifa_id") as string | null;
+  const payload = { ...parsed.data, vigencia_fim: parsed.data.vigencia_fim ?? null };
   const supabase = await createClient();
-  const { error } = await supabase.from("tarifa_praca").insert({
-    ...parsed.data,
-    vigencia_fim: parsed.data.vigencia_fim ?? null,
-  });
+  const { error } = tarifaId
+    ? await supabase.from("tarifa_praca").update(payload).eq("id", tarifaId)
+    : await supabase.from("tarifa_praca").insert(payload);
 
   if (error) {
     return {
@@ -137,6 +184,7 @@ export async function criarTarifa(
   }
 
   revalidatePath("/cadastros/tarifas");
+  if (tarifaId) revalidatePath(`/cadastros/tarifas/${tarifaId}`);
   return { success: true };
 }
 
@@ -163,4 +211,20 @@ export async function atualizarEmbarcadorCnpj(
 
   revalidatePath("/cadastros/embarcadores");
   return { success: true };
+}
+
+export async function excluirEmbarcadores(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_embarcadores", { p_ids: ids });
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? "Não é possível excluir: há passagens ou viagens de transporte vinculadas a este embarcador."
+          : error.message,
+    };
+  }
+
+  revalidatePath("/cadastros/embarcadores");
+  return {};
 }

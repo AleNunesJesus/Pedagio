@@ -40,7 +40,7 @@ erDiagram
     VEICULO ||--o{ VIAGEM_TRANSPORTE : realiza
     EMBARCADOR ||--o{ VIAGEM_TRANSPORTE : credita
     LOTE_IMPORTACAO ||--o{ VIAGEM_TRANSPORTE : origina
-    CARRETA |o..o{ VIAGEM_TRANSPORTE : engatada_em
+    VEICULO |o..o{ VIAGEM_TRANSPORTE : engatada_em_como_carreta
     CATEGORIA_VEICULO ||--o{ VALIDACAO_PASSAGEM : usada_na_tarifa
 ```
 
@@ -65,14 +65,19 @@ cobrança/detecção.
 Índice: `GIST(poligono)`.
 
 ### `categoria_veiculo`
-Categorias tarifárias (ex.: eixo 2, eixo 3, moto), pois a tarifa varia por
-categoria.
+Categorias de eixos — usadas tanto para tarifação por composição total
+(ex.: `EIXO_6` = cavalo + carreta comum) quanto para os eixos próprios de
+cada veículo/carreta isolado (ex.: `EIXO_3` = cavalo sozinho ou carreta
+comum; `EIXO_4` = carreta vanderleia). `quantidade_eixos` (FASE 16) é o
+número real, usado por `pedagio.categoria_por_composicao` para somar a
+composição em vez de constantes fixas no código.
 
 | coluna | tipo | notas |
 |---|---|---|
 | id | uuid pk | |
-| codigo | text unique | ex: "EIXO_2" |
+| codigo | text unique | ex: "EIXO_6" |
 | descricao | text | |
+| quantidade_eixos | integer not null | eixos representados por esta categoria (FASE 16) |
 
 ### `tarifa_praca`
 Histórico de valores por praça + categoria, com vigência — nunca faz
@@ -91,13 +96,28 @@ Constraint: sem sobreposição de vigência para o mesmo par
 praça+categoria (via `EXCLUDE USING gist` com `daterange`).
 
 ### `veiculo`
+Cadastro único de cavalo mecânico e carreta (FASE 16 — antes eram tabelas
+separadas). `categoria_veiculo_id` significa os **eixos próprios** do
+veículo/carreta (ex.: cavalo → `EIXO_3`, carreta vanderleia → `EIXO_4`).
+`categoria_fallback_id` só se aplica a `tipo = 'cavalo'`: é a categoria de
+tarifa usada quando a composição real (cavalo + carreta(s), via
+`viagem_transporte`) não pôde ser determinada — antes da FASE 16 essa era
+a única função de `categoria_veiculo_id`.
+
 | coluna | tipo | notas |
 |---|---|---|
 | id | uuid pk | |
 | placa | text unique | |
-| categoria_veiculo_id | fk categoria_veiculo | |
+| tipo | text | `cavalo` \| `carreta` |
+| categoria_veiculo_id | fk categoria_veiculo | eixos próprios do veículo/carreta |
+| categoria_fallback_id | fk categoria_veiculo null | só para `tipo = 'cavalo'`; tarifa quando a composição não é conhecida |
 | frota / empresa | text | opcional, se multi-frota |
 | ativo | boolean | |
+
+Só `tipo = 'cavalo'` deve ser resolvido como `veiculo_id` em
+`passagem_pedagio`/`posicao_veiculo`/`viagem_transporte` (carretas nunca
+passam pedágio nem carregam rastreador próprio) — os matches por placa na
+importação filtram `tipo = 'cavalo'`.
 
 ### `posicao_veiculo`
 Pings de GPS. Tabela de maior volume — particionar por mês (`data_hora`)
@@ -204,23 +224,16 @@ Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo que popula esta
 tabela, incluindo como `categoria_veiculo_id`/`origem_categoria` são
 resolvidos (`pedagio.categoria_por_composicao`).
 
-### `carreta`
-Cadastro de carretas (placa/código → tipo), usado junto com
-`viagem_transporte.carreta1`/`carreta2` pra calcular a quantidade de
-eixos de cada viagem (cavalo mecânico sozinho tem 3 eixos fixos; a
-carreta é que varia). Tela `/cadastros/carretas`, admin-only para
-escrever.
+### Carretas (removido como tabela própria na FASE 16)
+Até a FASE 15, carretas viviam numa tabela `pedagio.carreta` separada
+(placa/código → tipo `comum`/`vanderleia`). A FASE 16 uniu esse cadastro
+em `veiculo` (`tipo = 'carreta'`, eixos vindo de `categoria_veiculo` em
+vez do campo solto `tipo`) — ver seção `veiculo` acima.
 
-| coluna | tipo | notas |
-|---|---|---|
-| id | uuid pk | |
-| placa | text unique | placa/código da carreta, mesmo valor usado em `viagem_transporte.carreta1`/`carreta2` |
-| tipo | text | `comum` (3 eixos) \| `vanderleia` (4 eixos) |
-| created_at | timestamptz | default now() |
-
-Inserir, alterar ou excluir uma carreta revalida automaticamente (trigger)
-todas as passagens de viagens de transporte que usam aquela carreta —
-a quantidade de eixos (e portanto a tarifa esperada) pode mudar.
+Inserir, alterar ou excluir uma linha `tipo = 'carreta'` em `veiculo`
+revalida automaticamente (trigger) todas as passagens de viagens de
+transporte que usam aquela placa como `carreta1`/`carreta2` — a
+quantidade de eixos (e portanto a tarifa esperada) pode mudar.
 
 ### `viagem_transporte` (FASE 13)
 Uma linha do documento fiscal/transporte importado (planilha do sistema

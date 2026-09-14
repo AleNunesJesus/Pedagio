@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/format";
@@ -15,14 +16,14 @@ type Tarifa = {
   categoria_veiculo: { codigo: string } | null;
 };
 
-export function TarifaList({ rows, podeExcluir }: { rows: Tarifa[]; podeExcluir: boolean }) {
+export function TarifaList({ rows, isAdmin }: { rows: Tarifa[]; isAdmin: boolean }) {
   const { selecionados, toggle, toggleTodos, excluirSelecionados, pending, erro } =
     useSelecaoExclusao(excluirTarifas);
   const ids = rows.map((r) => r.id);
 
   return (
     <div className="space-y-3">
-      {podeExcluir && selecionados.size > 0 && (
+      {isAdmin && selecionados.size > 0 && (
         <div className="flex items-center gap-3">
           <Button variant="destructive" size="sm" disabled={pending} onClick={excluirSelecionados}>
             {pending ? "Excluindo..." : `Excluir selecionadas (${selecionados.size})`}
@@ -36,7 +37,7 @@ export function TarifaList({ rows, podeExcluir }: { rows: Tarifa[]; podeExcluir:
         keyField={(row) => row.id}
         emptyMessage="Nenhuma tarifa cadastrada ainda."
         selecao={
-          podeExcluir
+          isAdmin
             ? {
                 selecionados,
                 onToggle: toggle,
@@ -46,7 +47,20 @@ export function TarifaList({ rows, podeExcluir }: { rows: Tarifa[]; podeExcluir:
             : undefined
         }
         columns={[
-          { header: "Praça", render: (r) => r.praca_pedagio?.nome ?? "—" },
+          {
+            header: "Praça",
+            render: (r) =>
+              isAdmin ? (
+                <Link
+                  href={`/cadastros/tarifas/${r.id}`}
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {r.praca_pedagio?.nome ?? "—"}
+                </Link>
+              ) : (
+                r.praca_pedagio?.nome ?? "—"
+              ),
+          },
           { header: "Categoria", render: (r) => r.categoria_veiculo?.codigo ?? "—" },
           { header: "Valor", align: "right", render: (r) => formatBRL(r.valor) },
           { header: "Início", render: (r) => r.vigencia_inicio },

@@ -28,39 +28,21 @@ export type Database = {
           id: string;
           codigo: string;
           descricao: string;
+          quantidade_eixos: number;
           created_at: string;
         };
         Insert: {
           id?: string;
           codigo: string;
           descricao: string;
+          quantidade_eixos: number;
           created_at?: string;
         };
         Update: {
           id?: string;
           codigo?: string;
           descricao?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      carreta: {
-        Row: {
-          id: string;
-          placa: string;
-          tipo: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          placa: string;
-          tipo: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          placa?: string;
-          tipo?: string;
+          quantidade_eixos?: number;
           created_at?: string;
         };
         Relationships: [];
@@ -150,7 +132,9 @@ export type Database = {
         Row: {
           id: string;
           placa: string;
+          tipo: string;
           categoria_veiculo_id: string;
+          categoria_fallback_id: string | null;
           frota: string | null;
           ativo: boolean;
           created_at: string;
@@ -158,7 +142,9 @@ export type Database = {
         Insert: {
           id?: string;
           placa: string;
+          tipo?: string;
           categoria_veiculo_id: string;
+          categoria_fallback_id?: string | null;
           frota?: string | null;
           ativo?: boolean;
           created_at?: string;
@@ -166,7 +152,9 @@ export type Database = {
         Update: {
           id?: string;
           placa?: string;
+          tipo?: string;
           categoria_veiculo_id?: string;
+          categoria_fallback_id?: string | null;
           frota?: string | null;
           ativo?: boolean;
           created_at?: string;
@@ -175,6 +163,13 @@ export type Database = {
           {
             foreignKeyName: "veiculo_categoria_veiculo_id_fkey";
             columns: ["categoria_veiculo_id"];
+            isOneToOne: false;
+            referencedRelation: "categoria_veiculo";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "veiculo_categoria_fallback_id_fkey";
+            columns: ["categoria_fallback_id"];
             isOneToOne: false;
             referencedRelation: "categoria_veiculo";
             referencedColumns: ["id"];
@@ -990,6 +985,22 @@ export type Database = {
       };
       excluir_lote_importacao: {
         Args: { p_lote_id: string };
+        Returns: undefined;
+      };
+      excluir_veiculos: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_categorias: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_pracas: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_embarcadores: {
+        Args: { p_ids: string[] };
         Returns: undefined;
       };
     };

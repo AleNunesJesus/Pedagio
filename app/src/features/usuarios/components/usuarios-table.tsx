@@ -33,7 +33,7 @@ function UsuarioRow({ usuario, souEu }: { usuario: Usuario; souEu: boolean }) {
           <select
             name="papel"
             defaultValue={usuario.papel ?? "sem_acesso"}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           >
             <option value="sem_acesso">Sem acesso</option>
             <option value="operador">Operador</option>

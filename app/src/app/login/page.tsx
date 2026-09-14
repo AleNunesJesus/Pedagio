@@ -1,5 +1,6 @@
 import { LoginForm } from "@/features/auth/components/login-form";
 import { Alert } from "@/components/ui/alert";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type LoginPageProps = {
   searchParams: Promise<{ sessao?: string }>;
@@ -10,7 +11,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const sessaoExpirada = params.sessao === "expirada";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
+    <main className="relative flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 shadow-sm">
         <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Controle de Pagamento de Pedágios

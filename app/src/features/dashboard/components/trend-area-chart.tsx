@@ -9,10 +9,11 @@ import {
   CartesianGrid,
   Tooltip,
 } from "recharts";
-import { SEQUENTIAL_BLUE, INK } from "../colors";
+import { SEQUENTIAL_BLUE, ink } from "../colors";
 import { formatDay, formatNumber } from "@/lib/format";
 import { ChartTooltipBox, toNumber, type RechartsTooltipProps } from "./chart-tooltip";
 import { EmptyState } from "@/components/ui/card";
+import { useTema } from "@/hooks/use-tema";
 
 type Row = {
   dia: string;
@@ -30,6 +31,8 @@ function TrendTooltip({ active, payload, label }: RechartsTooltipProps) {
 }
 
 export function TrendAreaChart({ rows }: { rows: Row[] }) {
+  const INK = ink(useTema());
+
   if (rows.length === 0) {
     return <EmptyState>Sem dados no período.</EmptyState>;
   }

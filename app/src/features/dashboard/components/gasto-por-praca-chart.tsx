@@ -10,10 +10,11 @@ import {
   Tooltip,
   LabelList,
 } from "recharts";
-import { SEQUENTIAL_BLUE, INK } from "../colors";
+import { SEQUENTIAL_BLUE, ink } from "../colors";
 import { formatBRL } from "@/lib/format";
 import { ChartTooltipBox, type RechartsTooltipProps } from "./chart-tooltip";
 import { EmptyState } from "@/components/ui/card";
+import { useTema } from "@/hooks/use-tema";
 
 type Row = {
   praca_id: string | null;
@@ -35,6 +36,8 @@ function GastoTooltip({ active, payload }: RechartsTooltipProps) {
 }
 
 export function GastoPorPracaChart({ rows }: { rows: Row[] }) {
+  const INK = ink(useTema());
+
   if (rows.length === 0) {
     return <EmptyState>Nenhuma passagem importada ainda.</EmptyState>;
   }

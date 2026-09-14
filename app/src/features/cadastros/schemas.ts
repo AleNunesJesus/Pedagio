@@ -3,19 +3,22 @@ import { z } from "zod";
 export const categoriaSchema = z.object({
   codigo: z.string().trim().min(1, "Informe o código."),
   descricao: z.string().trim().min(1, "Informe a descrição."),
+  quantidade_eixos: z.coerce.number().int().min(1, "Informe a quantidade de eixos."),
 });
 
-export const carretaSchema = z.object({
-  placa: z.string().trim().min(1, "Informe a placa/código."),
-  tipo: z.enum(["comum", "vanderleia"], { message: "Selecione o tipo." }),
-});
-
-export const veiculoSchema = z.object({
-  placa: z.string().trim().min(1, "Informe a placa."),
-  categoria_veiculo_id: z.string().trim().min(1, "Selecione a categoria."),
-  frota: z.string().trim().optional(),
-  ativo: z.coerce.boolean(),
-});
+export const veiculoSchema = z
+  .object({
+    placa: z.string().trim().min(1, "Informe a placa."),
+    tipo: z.enum(["cavalo", "carreta"], { message: "Selecione o tipo." }),
+    categoria_veiculo_id: z.string().trim().min(1, "Selecione a categoria."),
+    categoria_fallback_id: z.string().trim().optional(),
+    frota: z.string().trim().optional(),
+    ativo: z.coerce.boolean(),
+  })
+  .refine((data) => data.tipo !== "cavalo" || !!data.categoria_fallback_id, {
+    message: "Selecione a categoria de fallback de tarifa.",
+    path: ["categoria_fallback_id"],
+  });
 
 const geoJsonPolygonSchema = z.object({
   type: z.literal("Polygon"),

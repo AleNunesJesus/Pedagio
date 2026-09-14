@@ -47,7 +47,7 @@ cadastro que não dependem de volume/tempo real: `categoria_veiculo`,
 - [x] Tabela `tarifa_praca` (com `EXCLUDE USING gist` contra sobreposição de vigência)
 - [x] Tabela `veiculo`
 - [x] RLS habilitada nas 4 tabelas (sem políticas ainda — a definir conforme decisão multi-tenant na FASE 02)
-- [ ] `generate_typescript_types` — adiado: ainda não há frontend/cliente consumindo essas tabelas
+- [x] `generate_typescript_types` — adiado: ainda não há frontend/cliente consumindo essas tabelas
 - [x] `get_advisors` (segurança + performance) — sem novos alertas inesperados
 - [x] Verificação via SQL direto (`execute_sql`): inserts positivos, sobreposição de vigência rejeitada (`exclusion_violation`), `vigencia_fim < vigencia_inicio` rejeitada (`check_violation`), `ST_Contains` reconhece ponto dentro/fora do polígono, cleanup confirmado (contagens zeradas)
 
@@ -1274,10 +1274,273 @@ usuários reais na FASE 08. Recomenda-se conferir visualmente em
 
 ---
 
+## FASE 16 — Quantidade de eixos na categoria + cadastro único de veículo/carreta
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** hoje `categoria_veiculo` só representa a **composição total**
+usada na tarifa (`EIXO_6`/`EIXO_7`/`EIXO_9`, todas com "CAVALO ... MAIS
+..." na descrição) — não existe um número de eixos de verdade, só embutido
+no texto do `codigo`. E `carreta` é um cadastro à parte, sem categoria nem
+frota, com um campo solto `tipo` (`comum`/`vanderleia`) que hoje é o único
+jeito de saber quantos eixos uma carreta acrescenta. Esta fase: (1) dá a
+`categoria_veiculo` um campo real `quantidade_eixos`; (2) une `veiculo` e
+`carreta` num cadastro só, cada linha com categoria (agora carregando
+eixos) e frota, mesmo processo que `veiculo` já tem hoje.
+
+**Decisões fechadas (2026-09-13):**
+- Cadastro único: **mesma tabela** `pedagio.veiculo`, com coluna nova
+  `tipo` (`cavalo` \| `carreta`) para diferenciar — uma única tela/CRUD
+  pros dois, filtrando por tipo. Tabela `pedagio.carreta` é **removida**
+  depois de migrar as linhas existentes para `veiculo`.
+- `categoria_veiculo.categoria_veiculo_id` em `veiculo` muda de sentido:
+  passa a significar **os eixos do próprio veículo/carreta** (cavalo ≈ 3,
+  carreta comum = 3, carreta vanderleia = 4) — não mais a categoria de
+  tarifa. Usada por `categoria_por_composicao` para somar a composição
+  real em vez dos valores fixos hardcoded que existem hoje (cavalo
+  sempre 3, carreta por `tipo` comum/vanderleia).
+- Fallback de tarifa **continua existindo** (decisão do usuário): como
+  `categoria_veiculo_id` deixa de servir pra isso, `veiculo` ganha uma
+  coluna nova `categoria_fallback_id` (fk `categoria_veiculo`, só
+  aplicável a `tipo = 'cavalo'`) — é o que `validar_passagem` usa quando
+  `categoria_por_composicao` não consegue determinar a composição real
+  (sem viagem de transporte casando, ou carreta não cadastrada). Migração
+  dos 4 veículos reais: `categoria_veiculo_id` atual (`EIXO_6`, usado hoje
+  só como fallback) vira `categoria_fallback_id`; `categoria_veiculo_id`
+  passa a apontar pra uma categoria nova "eixos próprios do cavalo" (3).
+- Categorias novas a criar (reaproveitáveis entre cavalo e carreta comum,
+  já que ambos têm fisicamente 3 eixos — não precisa duplicar por tipo de
+  veículo): uma categoria com `quantidade_eixos = 3` (cavalo sozinho e
+  carreta comum) e uma com `quantidade_eixos = 4` (carreta vanderleia).
+  As 3 categorias de composição existentes (`EIXO_6`/`7`/`9`) recebem
+  `quantidade_eixos` = 6/7/9 e continuam sendo usadas em `tarifa_praca` e
+  como fallback — nada muda pra elas, só ganham o número.
+- Resolução da tarifa por composição passa a ser por número
+  (`categoria_veiculo.quantidade_eixos = total_somado`), não mais por
+  string (`codigo = 'EIXO_' || total`) — mesmo resultado pros casos já
+  cobertos (6/7/9), mas não depende mais do padrão de texto do `codigo`.
+
+**Checklist:**
+- [x] Migration: `categoria_veiculo` ganha `quantidade_eixos integer not
+  null` (backfill: `EIXO_6`→6, `EIXO_7`→7, `EIXO_9`→9); insere as 2
+  categorias novas (3 e 4 eixos)
+- [x] Migration: `veiculo` ganha `tipo text not null default 'cavalo'
+  check in ('cavalo','carreta')` e `categoria_fallback_id uuid null fk
+  categoria_veiculo` (check: só pode ser preenchido se `tipo = 'cavalo'`)
+- [x] Migração de dados: 4 veículos existentes — copiar
+  `categoria_veiculo_id` atual (`EIXO_6`) para `categoria_fallback_id`,
+  trocar `categoria_veiculo_id` pra categoria nova de 3 eixos; migrar as 2
+  carretas existentes (`ABC1234` comum, `ABC5678` vanderleia) para linhas
+  de `veiculo` com `tipo = 'carreta'`, `categoria_veiculo_id` = categoria
+  de 3 ou 4 eixos conforme o `tipo` antigo, `categoria_fallback_id = null`
+- [x] Dropar tabela `pedagio.carreta` (depois da migração de dados
+  confirmada) — mover o trigger de revalidação (hoje em `carreta`) pra
+  disparar em `veiculo` quando `tipo = 'carreta'` muda (placa/categoria)
+- [x] Reescrever `pedagio.categoria_por_composicao`: eixos do cavalo vêm
+  de `veiculo.categoria_veiculo_id` (join `quantidade_eixos`) em vez de
+  constante 3; eixos de `carreta1`/`carreta2` vêm de `veiculo` (`tipo =
+  'carreta'`, join `quantidade_eixos`) em vez de `carreta.tipo`; resolução
+  final da categoria de tarifa por `quantidade_eixos = total` em vez de
+  `codigo`
+- [x] `validar_passagem`: fallback passa a usar
+  `veiculo.categoria_fallback_id` em vez de `veiculo.categoria_veiculo_id`
+- [x] RLS/policies: revisar policies de `veiculo` (hoje já
+  admin-escreve/qualquer-autorizado-lê) — confirmar que cobrem `tipo =
+  'carreta'` igual; policies próprias de `carreta` (FASE 14) somem junto
+  com a tabela
+- [x] `get_advisors` — checar índice em `categoria_fallback_id` e no novo
+  padrão de lookup por `quantidade_eixos`
+- [x] Frontend: cadastro de categoria (`/cadastros/categorias`) ganha
+  campo `quantidade_eixos` no form e na lista
+- [x] Frontend: unificar cadastro de veículo — form/lista de
+  `/cadastros/veiculos` ganham seletor de `tipo` (cavalo/carreta),
+  `categoria_fallback_id` (só aparece pra `tipo = cavalo`); remover
+  `/cadastros/carretas`, `carreta-list.tsx`, `carreta-form.tsx` e a aba
+  "Carretas" da navegação de Cadastros
+- [x] Frontend: telas/queries que hoje leem `pedagio.carreta` (detalhe de
+  passagem "Categoria usada", listagens que citam carreta) passam a ler
+  `veiculo` filtrando `tipo = 'carreta'`
+- [x] `docs/modelo-dados.md` atualizado (categoria com eixos, veiculo com
+  tipo/categoria_fallback, remoção de `carreta`)
+- [x] Script de verificação (`.mjs`, mesmo padrão das fases anteriores):
+  reprocessar os casos reais de composição (6/7/9/carreta não
+  cadastrada/sem viagem de transporte) confirmando que o valor esperado
+  não muda em relação ao comportamento atual; fallback funcionando pro
+  cavalo sem composição conhecida; CRUD do cadastro único (cavalo e
+  carreta) via REST com usuário admin/operador reais
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Risco principal:** esta fase mexe em `validar_passagem`/
+`categoria_por_composicao`, que já rodam em produção contra dados reais
+(4 veículos, 2 carretas, passagens e viagens de transporte importadas) —
+a migração de dados dos 4 veículos/2 carretas existentes precisa
+preservar exatamente o valor esperado que já estava sendo calculado antes
+da mudança (verificação vai comparar antes/depois).
+
+**Notas de implementação:**
+- Migration aplicada: `pedagio_fase16_eixos_e_cadastro_unico` (mirror
+  local em `supabase/migrations/`).
+- Trigger de revalidação por carreta precisou virar **2 triggers** (INSERT/
+  UPDATE com `when (new.tipo = 'carreta')`, DELETE com `when (old.tipo =
+  'carreta')`) em vez de 1 só com `coalesce(new.tipo, old.tipo)` —
+  Postgres rejeita (`42P17`) referenciar `NEW` na condição `WHEN` de um
+  trigger que inclui `DELETE`, mesmo dentro de `coalesce`.
+- Migração de dados real: os 4 veículos (cavalos) tiveram
+  `categoria_veiculo_id` (`EIXO_6`) copiado para `categoria_fallback_id` e
+  `categoria_veiculo_id` trocado pra `EIXO_3` (eixos próprios); as 2
+  carretas (`ABC1234` comum, `ABC5678` vanderleia) migraram para `veiculo`
+  com `tipo = 'carreta'`, `categoria_veiculo_id` = `EIXO_3`/`EIXO_4`
+  conforme o `tipo` antigo — conferido linha a linha após a migration.
+- Categorias novas: `EIXO_3` ("cavalo mecânico sozinho ou carreta comum",
+  3 eixos) e `EIXO_4` ("carreta vanderleia", 4 eixos) — reaproveitando o
+  padrão de código já usado (`EIXO_N`), só que agora `N` também é o valor
+  real de `quantidade_eixos`, não só texto.
+- Importação (`processar_staging_passagens`/`processar_staging_posicoes`/
+  `processar_staging_viagens_transporte`): os `select ... from
+  pedagio.veiculo where placa = ...` que resolvem `veiculo_id` ganharam
+  `and tipo = 'cavalo'` — sem isso, depois da unificação, uma carreta
+  poderia teoricamente ser casada como o veículo de uma passagem/posição
+  de GPS/viagem de transporte (nunca deveria, carretas não passam pedágio
+  nem carregam rastreador próprio). Não estava no checklist original, mas
+  é consequência direta de unificar as tabelas.
+- Verificação via SQL direto (dados `SEED*`, sem service_role key
+  disponível nesta sessão pra criar usuário via Admin API — mesma
+  limitação já registrada na FASE 15): `categoria_por_composicao` testado
+  nos 5 casos (6/7/9 eixos, carreta não cadastrada, sem viagem de
+  transporte) — resultados idênticos ao comportamento anterior à
+  migration; trigger de revalidação testado ponta a ponta (passagem real
+  de teste resolvida como `EIXO_6`/composição, categoria da carreta
+  alterada de comum→vanderleia, passagem revalidada sozinha pra `EIXO_7`
+  sem chamada explícita); `anon` via REST continua bloqueado
+  (`permission denied for schema pedagio`, mesmo comportamento de sempre).
+  Dados de teste removidos ao final, zero resíduo confirmado.
+- Efeito colateral observado (não é bug desta fase): recalcular as 4
+  passagens reais existentes (chamando `validar_passagem` de novo pra
+  confirmar que a categoria resolvida não mudou) atualizou
+  `valor_esperado`/`divergencia_valor` porque a tarifa de `EIXO_6` no
+  banco hoje é R$65 — as validações antigas estavam com um valor de
+  tarifa desatualizado (R$20) de quando foram calculadas. A categoria
+  resolvida (`EIXO_6`, mesma origem `composicao_viagem`/`cadastro_veiculo`
+  de antes) não mudou; só o valor da tarifa em si foi recalculado com o
+  dado atual — resultado mais correto, não uma regressão da fase.
+- `get_advisors` — sem achados novos além do índice `unused_index`
+  esperado para qualquer índice recém-criado (`veiculo_categoria_
+  fallback_id_idx`).
+- `typecheck`/`eslint`/`next build` limpos.
+- Não testado visualmente no navegador (sem ferramenta de browser neste
+  ambiente) — recomenda-se conferir `/cadastros/categorias` e
+  `/cadastros/veiculos` visualmente na primeira vez que usar, em especial
+  o campo "Categoria de fallback" aparecendo/sumindo ao trocar o seletor
+  de Tipo no formulário de veículo.
+
+---
+
+## Ajuste — edição e exclusão de veículo/carreta (admin-only) (2026-09-13)
+
+**Pedido do usuário:** a tela de cadastro de veículo (FASE 16) ficou boa,
+mas só tinha criação + listagem — faltava editar e excluir, restrito a
+admin.
+
+- Edição: passou a reaproveitar o mesmo padrão já usado em Praças — página
+  própria `/cadastros/veiculos/[id]` (guard admin-only, redireciona pra
+  listagem se não-admin) com o mesmo `VeiculoForm` da criação, agora
+  aceitando um `veiculo` opcional pra pré-preencher os campos. Ação
+  `criarVeiculo` virou `salvarVeiculo` (mesmo padrão de `salvarPraca`):
+  branch insert/update pela presença de um `veiculo_id` oculto no form.
+  Nenhuma migration necessária — a policy `atualizacao_admin` (UPDATE)
+  já existia em `veiculo` desde a FASE 08, sem alteração.
+- Exclusão: seleção múltipla + "Excluir selecionados" na listagem, mesmo
+  padrão (`DataTable` com `selecao` + hook `useSelecaoExclusao`) já usado
+  em Tarifas/Passagens/Rastreamento/Viagens de transporte/lotes de
+  Importação. Função `pedagio.excluir_veiculos(p_ids uuid[])` (migration
+  `pedagio_exclusao_admin_veiculos`), checagem explícita de `eh_admin()`
+  dentro da função (mesmo padrão de `excluir_tarifas` etc.), além da RLS
+  `exclusao_admin` já existente. Como nenhuma das 3 FKs que apontam pra
+  `veiculo` (`posicao_veiculo`, `passagem_pedagio`, `viagem_transporte`)
+  tem `on delete cascade`/`set null`, excluir um veículo/carreta com
+  histórico vinculado é bloqueado pelo Postgres (`23503`) — a action
+  traduz isso pra uma mensagem amigável em vez de vazar o erro técnico.
+- Verificação via SQL direto (sem service_role key nesta sessão, mesma
+  limitação já registrada nas FASEs 15/16): veículo de teste sem vínculos
+  excluído com sucesso simulando admin, bloqueado simulando usuário sem
+  papel (RPC lança exceção antes mesmo de tentar o delete); tentativa de
+  excluir um veículo real com posições de GPS vinculadas rejeitada com
+  `23503` dentro de uma transação revertida (nada alterado); `UPDATE`
+  direto simulando admin retorna a linha alterada (`RETURNING`),
+  simulando usuário sem papel retorna vazio (RLS bloqueia antes do
+  update). Dados de teste removidos ao final, zero resíduo. `get_advisors`
+  sem achados novos (a função nova é `SECURITY INVOKER`, sem o WARN que
+  as `SECURITY DEFINER` já existentes recebem).
+- `typecheck`/`eslint`/`next build` limpos.
+- Não testado visualmente no navegador — recomenda-se conferir
+  `/cadastros/veiculos` (editar um registro, tentar excluir um com e sem
+  vínculo) visualmente na primeira vez que usar.
+
+---
+
+## Ajuste — edição e exclusão (admin-only) em categorias, praças, tarifas e
+## embarcadores (2026-09-13)
+
+**Pedido do usuário:** aplicar o mesmo conceito da tela de veículos (edição
++ exclusão restritas a admin) nas outras 4 telas de cadastro. Cada uma já
+tinha uma peça faltando diferente:
+
+| Tela | Já tinha | Faltava |
+|---|---|---|
+| Categorias | criar, listar | editar, excluir |
+| Praças | criar, listar, **editar** | excluir |
+| Tarifas | criar, listar, **excluir** | editar |
+| Embarcadores | **editar CNPJ** (auto-cadastro, sem criação manual) | excluir |
+
+- **Backend:** migration `pedagio_exclusao_admin_categorias_pracas_
+  embarcadores` — 3 funções novas (`excluir_categorias`, `excluir_pracas`,
+  `excluir_embarcadores`), mesmo padrão de `excluir_veiculos`/
+  `excluir_tarifas` (checagem explícita de `eh_admin()`, `SECURITY
+  INVOKER`, além da RLS `exclusao_admin` que já existia nas 4 tabelas
+  desde a FASE 08). Nenhuma das FKs que apontam pra essas tabelas tem
+  cascade/set null, então excluir um registro em uso é bloqueado pelo
+  Postgres (`23503`) — cada action traduz isso numa mensagem amigável
+  específica (ex.: "há veículos, tarifas ou passagens validadas usando
+  esta categoria").
+- **Categorias:** `criarCategoria` virou `salvarCategoria` (branch
+  insert/update por `categoria_id` oculto, mesmo padrão de
+  `salvarVeiculo`); página nova `/cadastros/categorias/[id]`; lista ganhou
+  link na coluna Código (admin) + seleção múltipla/exclusão (mesmo padrão
+  `DataTable`+`useSelecaoExclusao` das outras telas).
+- **Praças:** só faltava excluir — `PracaList` virou client component,
+  ganhou seleção múltipla/exclusão; edição (já existente desde a FASE
+  06.4) não mudou.
+- **Tarifas:** só faltava editar — `criarTarifa` virou `salvarTarifa`
+  (branch insert/update por `tarifa_id` oculto); como a `EXCLUDE`
+  constraint contra sobreposição de vigência vale tanto pra INSERT quanto
+  UPDATE, o tratamento de erro `23P01` (já existente na criação) cobre a
+  edição sem mudança; página nova `/cadastros/tarifas/[id]`; link de
+  edição na coluna Praça da lista.
+- **Embarcadores:** só faltava excluir — como a lista já é uma tabela
+  customizada por linha (não `DataTable`) por causa do form inline de
+  CNPJ, a exclusão virou um botão por linha (não seleção em lote como as
+  outras telas) chamando `excluirEmbarcadores` com um array de 1 id;
+  mesmo conceito (admin-only, RPC com checagem), UI adaptada ao formato
+  já existente da tela em vez de forçar o padrão de seleção múltipla.
+- Verificação via SQL direto (sem service_role key nesta sessão, mesma
+  limitação já registrada nas fases/ajustes anteriores): as 3 funções
+  novas testadas — não-admin bloqueado antes mesmo do delete; admin
+  exclui com sucesso um registro de teste sem vínculo (categoria, praça e
+  embarcador `SEED*`, removidos); tentativa de excluir um registro real
+  em uso (categoria `EIXO_6`, praça `PRACA FRANCO DA ROCHA`, embarcador
+  real) rejeitada com `23503` dentro de transação revertida (nenhum dado
+  real alterado). `get_advisors` sem achados novos.
+- `typecheck`/`eslint`/`next build` limpos.
+- Não testado visualmente no navegador — recomenda-se conferir as 4 telas
+  (editar/excluir com e sem vínculo) visualmente na primeira vez que usar.
+
+---
+
 ## Estado atual
 
-**Projeto completo (FASE 01 a FASE 15).** Schema `pedagio` (cadastros
-incluindo viagem/embarcador, movimento, validação com revalidação
+**Projeto completo (FASE 01 a FASE 16).** Schema `pedagio` (cadastros
+incluindo viagem/embarcador e cadastro único de veículo/carreta com
+eixos reais por categoria, movimento, validação com revalidação
 automática, importação de passagens, de GPS e de viagens de transporte
 (documento fiscal) no layout real do fornecedor, indicadores incluindo
 resumo por fatura, papéis de acesso admin/operador, visibilidade de GPS
@@ -1287,10 +1550,61 @@ validação geoespacial, rastreamento de GPS, consulta de viagens de
 transporte, dashboard de faturas, gestão de usuários) — tudo aplicado e
 verificado no Supabase (`wduypqixkafimcndytiz`).
 
+## Ajuste — modo escuro/claro de verdade + correção de contraste em
+## `/usuarios` (2026-09-13)
+
+**Pedido do usuário:** o `<select>` de papel em `/usuarios` estava com
+cor de fonte clara (baixo contraste); e pediu uma opção de modo escuro/
+claro no sistema todo.
+
+**Descoberta ao investigar:** o app já tinha classes `dark:` do Tailwind
+espalhadas por toda a UI desde a FASE 06, mas **nada nunca aplicava a
+classe `.dark`** — nem detecção de preferência do sistema, nem toggle.
+Ou seja, o modo escuro nunca funcionou de fato (sempre renderizava claro,
+independente do SO) — só existia o CSS morto. O bug relatado (select de
+papel sem cor de texto definida) era um sintoma à parte: como o modo
+escuro nunca ligava, ninguém tinha notado esse `<select>` específico
+faltando `text-gray-900 dark:text-gray-100` (os outros inputs/selects do
+app usam o componente compartilhado `TextField`/`SelectField`, que já
+tem essa cor; este era um `<select>` cru, escrito à mão).
+
+**O que foi feito:**
+- `usuarios-table.tsx`: `<select>` de papel ganhou `text-gray-900
+  dark:text-gray-100` (mesmo padrão do `INPUT_CLASSES` compartilhado).
+- Modo escuro real: script inline no início do `<body>` (`layout.tsx`)
+  aplica a classe `.dark` em `<html>` antes da primeira pintura (lê
+  `localStorage.theme`, senão `prefers-color-scheme`) — evita "flash" de
+  tema errado. `ThemeToggle` (`components/theme-toggle.tsx`, ícone sol/
+  lua) alterna a classe e persiste a escolha; adicionado no header
+  (`AppHeader`, visível em todo o app autenticado) e na tela de `/login`.
+- Hook `useTema` (`hooks/use-tema.ts`, via `useSyncExternalStore`
+  observando mudanças de classe em `<html>` com `MutationObserver`) —
+  forma correta de reagir à troca de tema sem cair em "setState dentro de
+  effect" (`react-hooks/set-state-in-effect` do ESLint) nem gerar
+  mismatch de hidratação.
+- **Efeito colateral descoberto e corrigido:** os 5 gráficos do painel
+  (recharts) usavam cores fixas em hexadecimal (`colors.ts`) só validadas
+  pra fundo claro — como o modo escuro nunca tinha realmente ligado antes,
+  ninguém tinha visto o problema. `colors.ts` ganhou uma segunda paleta de
+  tinta neutra (`ink(tema)`, cores categóricas/sequencial continuam iguais
+  nos dois temas) — os 5 componentes de gráfico agora calculam a cor de
+  eixo/grid/legenda/contorno de ponto pelo tema atual via `useTema()`,
+  em vez de importar `INK` fixo.
+- `typecheck`/`eslint`/`next build` limpos.
+- **Limitação honesta:** não há ferramenta de navegador/screenshot neste
+  ambiente (confirmado de novo — sem `chromium-cli` disponível), então
+  não vi visualmente o toggle nem o contraste corrigido. Recomendo
+  fortemente conferir no navegador: alternar o tema no header/login, e
+  abrir `/usuarios` e `/dashboard` nos dois modos. Se o dev server já
+  estava aberto numa aba ociosa, pode ser necessário `F5` (problema
+  conhecido do Next dev, não relacionado a esta mudança).
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — trazer necessidades concretas conforme aparecerem.
-Pendência conhecida da FASE 15: conferir `/faturas` visualmente com um
-usuário autenticado real (a verificação desta fase não teve acesso à
-`service_role key` para criar um usuário de teste via Admin API).
+Pendências conhecidas: conferir `/faturas` (FASE 15),
+`/cadastros/categorias`/`/cadastros/veiculos` (FASE 16) com um usuário
+autenticado real, e o modo escuro/claro (ajuste acima) visualmente no
+navegador — nenhuma sessão recente teve `service_role key` nem
+ferramenta de navegador disponível.

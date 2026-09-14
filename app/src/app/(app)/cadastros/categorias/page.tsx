@@ -17,7 +17,7 @@ export default async function CategoriasPage() {
         </section>
       )}
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <CategoriaList rows={categorias} />
+        <CategoriaList rows={categorias} isAdmin={papel === "admin"} />
       </section>
     </div>
   );

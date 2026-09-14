@@ -9,19 +9,33 @@ export async function listCategorias() {
   return data ?? [];
 }
 
+export async function getCategoria(id: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("categoria_veiculo").select("*").eq("id", id).single();
+  return data;
+}
+
+const VEICULO_SELECT =
+  "*, categoria_veiculo!veiculo_categoria_veiculo_id_fkey(codigo, descricao, quantidade_eixos), categoria_fallback:categoria_veiculo!veiculo_categoria_fallback_id_fkey(codigo, descricao)";
+
 export async function listVeiculos() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("veiculo")
-    .select("*, categoria_veiculo(codigo, descricao)")
+    .select(VEICULO_SELECT)
+    .order("tipo")
     .order("placa");
   return data ?? [];
 }
 
-export async function listCarretas() {
+export async function getVeiculo(id: string) {
   const supabase = await createClient();
-  const { data } = await supabase.from("carreta").select("*").order("placa");
-  return data ?? [];
+  const { data } = await supabase
+    .from("veiculo")
+    .select(VEICULO_SELECT)
+    .eq("id", id)
+    .single();
+  return data;
 }
 
 export async function listPracas() {
@@ -50,6 +64,12 @@ export async function listTarifas() {
     .select("*, praca_pedagio(nome), categoria_veiculo(codigo)")
     .order("vigencia_inicio", { ascending: false });
   return data ?? [];
+}
+
+export async function getTarifa(id: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("tarifa_praca").select("*").eq("id", id).single();
+  return data;
 }
 
 export async function listEmbarcadores() {

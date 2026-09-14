@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { atualizarEmbarcadorCnpj, type FormState } from "../actions";
+import { useRouter } from "next/navigation";
+import { atualizarEmbarcadorCnpj, excluirEmbarcadores, type FormState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form-message";
 import { EmptyState } from "@/components/ui/card";
@@ -17,6 +18,34 @@ function SubmitButton() {
     <Button type="submit" size="sm" variant="secondary" disabled={pending}>
       {pending ? "Salvando..." : "Salvar"}
     </Button>
+  );
+}
+
+function ExcluirButton({ id }: { id: string }) {
+  const [pending, startTransition] = useTransition();
+  const [erro, setErro] = useState<string | null>(null);
+  const router = useRouter();
+
+  function excluir() {
+    if (!window.confirm("Excluir este embarcador? Essa ação não pode ser desfeita.")) return;
+    setErro(null);
+    startTransition(async () => {
+      const resultado = await excluirEmbarcadores([id]);
+      if (resultado.error) {
+        setErro(resultado.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Button type="button" size="sm" variant="destructive" disabled={pending} onClick={excluir}>
+        {pending ? "Excluindo..." : "Excluir"}
+      </Button>
+      {erro && <span className="text-xs text-red-600 dark:text-red-400">{erro}</span>}
+    </div>
   );
 }
 
@@ -41,6 +70,9 @@ function EmbarcadorRow({ embarcador }: { embarcador: Embarcador }) {
             <span className="text-xs text-green-600 dark:text-green-400">Salvo</span>
           )}
         </form>
+      </td>
+      <td className="py-2">
+        <ExcluirButton id={embarcador.id} />
       </td>
     </tr>
   );
@@ -69,6 +101,7 @@ export function EmbarcadorList({
           <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-gray-800 dark:text-gray-400">
             <th className="py-2 font-medium">Nome</th>
             <th className="py-2 font-medium">CNPJ</th>
+            {podeEditar && <th className="py-2 font-medium">Ações</th>}
           </tr>
         </thead>
         <tbody>

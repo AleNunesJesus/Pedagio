@@ -10,10 +10,11 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { CATEGORICAL, INK } from "../colors";
+import { CATEGORICAL, ink } from "../colors";
 import { formatBRL, formatMonth } from "@/lib/format";
 import { ChartTooltipBox, toNumber, type RechartsTooltipProps } from "./chart-tooltip";
 import { EmptyState } from "@/components/ui/card";
+import { useTema } from "@/hooks/use-tema";
 
 type Row = {
   mes: string;
@@ -55,6 +56,8 @@ const LEGEND_LABEL: Record<string, string> = {
 };
 
 export function ValoresVinculoViagemChart({ rows }: { rows: Row[] }) {
+  const INK = ink(useTema());
+
   if (rows.length === 0) {
     return <EmptyState>Nenhuma passagem importada ainda.</EmptyState>;
   }
@@ -92,21 +95,21 @@ export function ValoresVinculoViagemChart({ rows }: { rows: Row[] }) {
             dataKey="valor_carregado"
             stroke={CATEGORICAL.blue}
             strokeWidth={2}
-            dot={{ r: 4, fill: CATEGORICAL.blue, stroke: "#fcfcfb", strokeWidth: 2 }}
+            dot={{ r: 4, fill: CATEGORICAL.blue, stroke: INK.dotStroke, strokeWidth: 2 }}
           />
           <Line
             type="monotone"
             dataKey="valor_vazio"
             stroke={CATEGORICAL.orange}
             strokeWidth={2}
-            dot={{ r: 4, fill: CATEGORICAL.orange, stroke: "#fcfcfb", strokeWidth: 2 }}
+            dot={{ r: 4, fill: CATEGORICAL.orange, stroke: INK.dotStroke, strokeWidth: 2 }}
           />
           <Line
             type="monotone"
             dataKey="valor_sem_vinculo"
             stroke={CATEGORICAL.aqua}
             strokeWidth={2}
-            dot={{ r: 4, fill: CATEGORICAL.aqua, stroke: "#fcfcfb", strokeWidth: 2 }}
+            dot={{ r: 4, fill: CATEGORICAL.aqua, stroke: INK.dotStroke, strokeWidth: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>
