@@ -14,6 +14,7 @@ export async function getDashboardData() {
     { data: divergenciaPorStatus },
     { data: divergenciaPorPraca },
     { data: divergenciaPorVeiculo },
+    { data: creditoDebitoPorViagem },
     { data: statusResumo },
     { data: pracaTaxaForaPoligono },
     { data: veiculoTaxaDivergencia },
@@ -39,6 +40,7 @@ export async function getDashboardData() {
     supabase.from("vw_divergencia_por_status").select("*"),
     supabase.from("vw_divergencia_por_praca").select("*"),
     supabase.from("vw_divergencia_por_veiculo").select("*"),
+    supabase.from("vw_credito_debito_por_viagem").select("*"),
     supabase.from("vw_status_resumo").select("*"),
     supabase
       .from("vw_praca_taxa_fora_poligono")
@@ -161,6 +163,25 @@ export async function getDashboardData() {
     .sort((a, b) => Math.abs(b.divergencia_valor ?? 0) - Math.abs(a.divergencia_valor ?? 0))
     .slice(0, 5);
 
+  // Diferença entre o que o embarcador creditou e o que a praça debitou,
+  // por viagem — mesma visão de gestão (top 5 em módulo) usada acima pra
+  // divergência de tarifa.
+  let totalCredito = 0;
+  let totalDebito = 0;
+  let totalDiferencaCreditoDebito = 0;
+  for (const linha of creditoDebitoPorViagem ?? []) {
+    totalCredito += linha.valor_credito ?? 0;
+    totalDebito += linha.valor_debito ?? 0;
+    totalDiferencaCreditoDebito += linha.diferenca ?? 0;
+  }
+  const qtdViagensComDiferenca = (creditoDebitoPorViagem ?? []).filter(
+    (r) => (r.diferenca ?? 0) !== 0,
+  ).length;
+  const topCreditoDebitoPorViagem = [...(creditoDebitoPorViagem ?? [])]
+    .filter((r) => (r.diferenca ?? 0) !== 0)
+    .sort((a, b) => Math.abs(b.diferenca ?? 0) - Math.abs(a.diferenca ?? 0))
+    .slice(0, 5);
+
   return {
     totalPracas: totalPracas ?? 0,
     totalVeiculos: totalVeiculos ?? 0,
@@ -170,6 +191,11 @@ export async function getDashboardData() {
     divergenciaPorStatus: divergenciaPorStatus ?? [],
     topDivergenciaPorPraca,
     topDivergenciaPorVeiculo,
+    totalCredito,
+    totalDebito,
+    totalDiferencaCreditoDebito,
+    qtdViagensComDiferenca,
+    topCreditoDebitoPorViagem,
     statusResumo: statusResumo ?? [],
     pracaTaxaForaPoligono: pracaTaxaForaPoligono ?? [],
     veiculoTaxaDivergencia: veiculoTaxaDivergencia ?? [],

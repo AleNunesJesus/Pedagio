@@ -843,6 +843,21 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_credito_debito_por_viagem: {
+        Row: {
+          viagem_id: string | null;
+          viagem_numero: string | null;
+          embarcador_id: string | null;
+          embarcador_nome: string | null;
+          qtd_credito: number | null;
+          qtd_debito: number | null;
+          valor_credito: number | null;
+          valor_debito: number | null;
+          diferenca: number | null;
+          diferenca_abs: number | null;
+        };
+        Relationships: [];
+      };
       vw_status_resumo: {
         Row: {
           status_validacao: string | null;

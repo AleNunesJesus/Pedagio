@@ -1,6 +1,6 @@
 type StatTileProps = {
   label: string;
-  value: string;
+  value: React.ReactNode;
 };
 
 export function StatTile({ label, value }: StatTileProps) {

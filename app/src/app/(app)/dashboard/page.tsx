@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDashboardData } from "@/features/dashboard/queries";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Card } from "@/components/ui/card";
@@ -8,9 +9,15 @@ import { ValoresTipoUsoChart } from "@/features/dashboard/components/valores-tip
 import { ValoresVinculoViagemChart } from "@/features/dashboard/components/valores-vinculo-viagem-chart";
 import { GastoPorPracaChart } from "@/features/dashboard/components/gasto-por-praca-chart";
 import { TrendAreaChart } from "@/features/dashboard/components/trend-area-chart";
-import { DivergenciaValor, valorEsperadoLabel } from "@/features/dashboard/components/divergencia-valor";
+import { ValorSinalizado } from "@/components/ui/valor-sinalizado";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { formatBRL, formatMonth, formatNumber, formatPercent } from "@/lib/format";
+
+// total_esperado nulo (sem_cadastro/nao_aplicavel/pendente) não é "esperado
+// zero" — é "não há tarifa de referência calculada para comparar".
+function valorEsperadoLabel(valor: number | null): string {
+  return valor === null ? "sem tarifa de referência" : formatBRL(valor);
+}
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
@@ -48,8 +55,8 @@ export default async function DashboardPage() {
         </h2>
         <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
           Divergência = valor cobrado − tarifa vigente esperada. Positivo (
-          <DivergenciaValor valor={1} />) é cobrado a mais que a tarifa;
-          negativo (<DivergenciaValor valor={-1} />) é cobrado a menos.
+          <ValorSinalizado valor={1} />) é cobrado a mais que a tarifa;
+          negativo (<ValorSinalizado valor={-1} />) é cobrado a menos.
         </p>
         <div className="grid gap-4 lg:grid-cols-3">
           <Card title="Por causa (status de validação)" subtitle="por que a divergência existe">
@@ -86,7 +93,7 @@ export default async function DashboardPage() {
                 {
                   header: "Divergência",
                   align: "right",
-                  render: (r) => <DivergenciaValor valor={r.divergencia_valor} />,
+                  render: (r) => <ValorSinalizado valor={r.divergencia_valor} />,
                 },
               ]}
             />
@@ -107,7 +114,7 @@ export default async function DashboardPage() {
                 {
                   header: "Divergência",
                   align: "right",
-                  render: (r) => <DivergenciaValor valor={r.divergencia_valor} />,
+                  render: (r) => <ValorSinalizado valor={r.divergencia_valor} />,
                 },
               ]}
             />
@@ -128,7 +135,7 @@ export default async function DashboardPage() {
                 {
                   header: "Divergência",
                   align: "right",
-                  render: (r) => <DivergenciaValor valor={r.divergencia_valor} />,
+                  render: (r) => <ValorSinalizado valor={r.divergencia_valor} />,
                 },
               ]}
             />
@@ -214,6 +221,59 @@ export default async function DashboardPage() {
             <ValoresVinculoViagemChart rows={data.valoresPorVinculoViagemMensal} />
           </Card>
         </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Crédito x débito (viagem/embarcador)
+          </h2>
+          <Link
+            href="/credito-debito"
+            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Ver todas as viagens →
+          </Link>
+        </div>
+        <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          Por viagem/embarcador: o embarcador credita um valor que deveria ser
+          compensado pelo débito na praça. Positivo (
+          <ValorSinalizado valor={1} />) é a praça debitando mais do que foi
+          creditado (prejuízo); negativo (<ValorSinalizado valor={-1} />) é o
+          embarcador creditando mais do que foi debitado (ganho). Só
+          passagens reais (tipo_uso = passagem) com viagem e embarcador
+          identificados.
+        </p>
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <StatTile
+            label="Diferença total"
+            value={<ValorSinalizado valor={data.totalDiferencaCreditoDebito} />}
+          />
+          <StatTile label="Total creditado" value={formatBRL(data.totalCredito)} />
+          <StatTile label="Total debitado" value={formatBRL(data.totalDebito)} />
+          <StatTile
+            label="Viagens com diferença"
+            value={formatNumber(data.qtdViagensComDiferenca)}
+          />
+        </div>
+        <Card title="Maiores diferenças por viagem" subtitle="top 5 em módulo">
+          <DataTable
+            rows={data.topCreditoDebitoPorViagem}
+            keyField={(row) => row.viagem_id ?? "—"}
+            emptyMessage="Nenhuma diferença entre crédito e débito encontrada."
+            columns={[
+              { header: "Viagem", render: (r) => r.viagem_numero ?? "—" },
+              { header: "Embarcador", render: (r) => r.embarcador_nome ?? "—" },
+              { header: "Creditado", align: "right", render: (r) => formatBRL(r.valor_credito) },
+              { header: "Debitado", align: "right", render: (r) => formatBRL(r.valor_debito) },
+              {
+                header: "Diferença",
+                align: "right",
+                render: (r) => <ValorSinalizado valor={r.diferenca} />,
+              },
+            ]}
+          />
+        </Card>
       </section>
 
       <section>

@@ -27,6 +27,17 @@ com filtros por período, praça, veículo/frota.
   nunca teve tarifa de referência calculada, então seu `total_cobrado` não
   contribui para a divergência líquida mesmo representando risco financeiro
   não conferido.
+- **Crédito x débito por viagem** (`vw_credito_debito_por_viagem`, FASE 18) —
+  quando o embarcador credita um valor (adiantamento) e a praça debita
+  outro pela mesma viagem, a diferença entre os dois é ganho ou prejuízo
+  não apurado em lugar nenhum antes desta view. Agrupa por
+  (`viagem_id`, `embarcador_id`), só `tipo_uso = passagem` e só linhas com
+  viagem e embarcador identificados (sem isso não há o que comparar).
+  `diferenca = valor_debito - valor_credito`: positivo é a praça debitando
+  mais do que foi creditado (prejuízo), negativo é o embarcador creditando
+  mais do que foi debitado (ganho). Painel mostra o agregado + top 5 em
+  módulo; `/credito-debito` lista todas as viagens com filtro por
+  embarcador/viagem.
 
 ## Auditoria / Validação
 

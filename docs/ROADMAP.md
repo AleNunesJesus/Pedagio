@@ -1686,13 +1686,92 @@ FASE 15 — só a apresentação juntava os dois numa string só, ex.: "01/09 �
   `periodo_inicio`/`periodo_fim` de `vw_fatura_resumo` continuam sendo
   exatamente o min/max de `data_hora` das passagens da fatura.
 
+## FASE 18 — Diferença crédito (embarcador) x débito (praça) por viagem
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** na planilha da fatura, algumas linhas têm embarcador e número
+de viagem tanto no débito (cobrado na praça) quanto no crédito (adiantamento
+do embarcador) — o crédito deveria ser exatamente compensado pelo débito,
+mas às vezes os valores não coincidem. Essa diferença é ganho ou prejuízo
+que hoje não é apurado em lugar nenhum do sistema.
+
+**Decisões fechadas com o usuário (2026-09-14):**
+- Escopo: só `tipo_uso = 'passagem'` (contrato é cobrança fixa, não entra
+  nessa lógica de crédito/débito por praça).
+- Onde exibir: nova seção no Painel (agregado + top 5 em módulo) **e** uma
+  tela própria (`/credito-debito`) com a listagem completa por
+  viagem/embarcador, com filtro por embarcador e viagem.
+
+**Checklist:**
+- [x] View `pedagio.vw_credito_debito_por_viagem` (`security_invoker = true`):
+  agrupa por (`viagem_id`, `embarcador_id`) — join direto em
+  `pedagio.viagem`/`pedagio.embarcador` (FASE 10), só linhas com os dois
+  resolvidos — somando `valor_credito`/`valor_debito` (sempre positivos) e
+  `diferenca` (= `valor_debito - valor_credito`; positivo é a praça
+  debitando mais do que foi creditado — prejuízo; negativo é o embarcador
+  creditando mais do que foi debitado — ganho). Coluna `diferenca_abs` só
+  pra permitir `.order()` explícito via PostgREST (`abs()` não é aceito
+  como coluna de ordenação pela query builder).
+- [x] Painel: nova seção "Crédito x débito (viagem/embarcador)" entre
+  "Passagens por vínculo de viagem" e "Auditoria/Validação" — 4 StatTiles
+  (diferença total, total creditado, total debitado, qtd. viagens com
+  diferença) + tabela top 5 em módulo + link "Ver todas as viagens" pra
+  `/credito-debito`
+- [x] Tela `/credito-debito`: listagem completa (`DataTable` + paginação,
+  50/página, mesmo padrão de Passagens/Faturas) com filtro por
+  embarcador (select) e viagem (texto), reaproveitando `listEmbarcadores`
+  já existente
+- [x] Componente `ValorSinalizado` (cor critical/good pelo sinal, número
+  sempre assinado no texto) promovido de `features/dashboard` pra
+  `components/ui/` — a mesma convenção de cor (positivo é desfavorável,
+  negativo é favorável) passou a valer tanto pra divergência de tarifa
+  (FASE 17) quanto pra essa diferença de crédito/débito
+- [x] `StatTile.value` ampliado de `string` pra `React.ReactNode`, pra
+  permitir o valor colorido (`ValorSinalizado`) dentro do tile
+- [x] `get_advisors` — sem achados novos (índices de `viagem_id`/
+  `embarcador_id` em `passagem_pedagio` já existiam desde a FASE 10)
+- [x] Verificação via SQL direto: 2 viagens sintéticas — uma com crédito
+  50/débito 45 (diferença -5, ganho) e outra com crédito 30/débito 40 em
+  duas praças (diferença +10, prejuízo) — view bateu exatamente com o
+  cálculo manual; cleanup confirmado (zero resíduo)
+- [x] `typecheck`/`eslint`/`next build` limpos
+
+**Notas de implementação:**
+- Migrations aplicadas: `20260914163459_pedagio_fase18_credito_debito_viagem`
+  e `20260914163814_pedagio_fix_credito_debito_ordenacao_abs` (esta última
+  só adiciona a coluna `diferenca_abs` via `create or replace view`, porque
+  PostgREST não aceita `abs(coluna)` como alvo de `.order()` — precisa de
+  uma coluna própria pra ordenar a paginação de `/credito-debito`) (mirror
+  local em `supabase/migrations/`).
+- Dados reais do projeto ainda não têm nenhuma linha de crédito importada
+  (só débito) — a verificação desta fase foi inteiramente com dados
+  sintéticos; a lógica está pronta pra quando a planilha real trouxer
+  esses pares crédito/débito.
+- Rota `/credito-debito` fica dentro do grupo `(app)`, herdando o guard de
+  autenticação do `layout.tsx` como qualquer outra tela — sem
+  admin-only, mesmo padrão de Passagens/Faturas (só leitura, qualquer
+  autorizado acessa).
+- Link "Crédito/Débito" adicionado ao header entre "Viagens" e
+  "Rastreamento" — posição escolhida por proximidade temática (viagem),
+  não confirmada explicitamente com o usuário; ajustar se quiser noutra
+  posição.
+
+**Limitação conhecida:** não testado visualmente no navegador nem via REST
+com usuário real (mesma limitação já registrada nas FASEs 15-17 — sem
+`service_role key` nesta sessão). Cobertura ficou em SQL direto (view) +
+build/typecheck/lint. Recomenda-se conferir `/dashboard` e
+`/credito-debito` visualmente na primeira vez que usar, e reconferir a
+lógica assim que a planilha real trouxer linhas de crédito de verdade.
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — trazer necessidades concretas conforme aparecerem.
 Pendências conhecidas: conferir `/faturas` (FASE 15, incluindo o ajuste de
-período inicial/final acima), `/cadastros/categorias`/`/cadastros/veiculos`
-(FASE 16), a nova seção "Divergência" do Painel (FASE 17) com um usuário
-autenticado real, e o modo escuro/claro (ajuste acima) visualmente no
-navegador — nenhuma sessão recente teve `service_role key` nem ferramenta
-de navegador disponível.
+período inicial/final), `/cadastros/categorias`/`/cadastros/veiculos`
+(FASE 16), a seção "Divergência" (FASE 17) e a seção/tela "Crédito x
+débito" (FASE 18) do Painel com um usuário autenticado real, o modo
+escuro/claro (ajuste) visualmente no navegador, e reconferir a FASE 18 com
+dados reais assim que houver linhas de crédito importadas — nenhuma sessão
+recente teve `service_role key` nem ferramenta de navegador disponível.
