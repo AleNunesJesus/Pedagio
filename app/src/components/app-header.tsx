@@ -17,16 +17,10 @@ export function AppHeader({ papel }: { papel: string }) {
               Painel
             </Link>
             <Link
-              href="/cadastros/categorias"
+              href="/faturas"
               className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
-              Cadastros
-            </Link>
-            <Link
-              href="/importacao"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              Importação
+              Faturas
             </Link>
             <Link
               href="/passagens"
@@ -35,10 +29,10 @@ export function AppHeader({ papel }: { papel: string }) {
               Passagens
             </Link>
             <Link
-              href="/faturas"
+              href="/viagens-transporte"
               className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
-              Faturas
+              Viagens
             </Link>
             <Link
               href="/rastreamento"
@@ -47,10 +41,16 @@ export function AppHeader({ papel }: { papel: string }) {
               Rastreamento
             </Link>
             <Link
-              href="/viagens-transporte"
+              href="/importacao"
               className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
-              Viagens
+              Importação
+            </Link>
+            <Link
+              href="/cadastros/categorias"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              Cadastros
             </Link>
             {papel === "admin" && (
               <Link
