@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { SituacaoCreditoDebito } from "./situacao";
 
 const POR_PAGINA = 50;
 
@@ -18,6 +19,7 @@ export type CreditoDebitoPorViagem = {
 export type FiltrosCreditoDebito = {
   embarcadorId?: string;
   viagem?: string;
+  situacao?: SituacaoCreditoDebito;
   pagina?: number;
 };
 
@@ -35,6 +37,13 @@ export async function listCreditoDebitoPorViagem(filtros: FiltrosCreditoDebito) 
 
   if (filtros.embarcadorId) query = query.eq("embarcador_id", filtros.embarcadorId);
   if (filtros.viagem) query = query.ilike("viagem_numero", `%${filtros.viagem}%`);
+  if (filtros.situacao === "ambos") {
+    query = query.gt("qtd_credito", 0).gt("qtd_debito", 0);
+  } else if (filtros.situacao === "so_credito") {
+    query = query.gt("qtd_credito", 0).eq("qtd_debito", 0);
+  } else if (filtros.situacao === "so_debito") {
+    query = query.eq("qtd_credito", 0).gt("qtd_debito", 0);
+  }
 
   const { data, count } = await query;
 

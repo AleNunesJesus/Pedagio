@@ -3,12 +3,20 @@ import { listEmbarcadores } from "@/features/cadastros/queries";
 import { FiltrosForm } from "@/features/credito-debito/components/filtros-form";
 import { CreditoDebitoTable } from "@/features/credito-debito/components/credito-debito-table";
 import { Paginacao } from "@/features/credito-debito/components/paginacao";
+import type { SituacaoCreditoDebito } from "@/features/credito-debito/situacao";
 
 type SearchParams = {
   embarcadorId?: string;
   viagem?: string;
+  situacao?: string;
   pagina?: string;
 };
+
+const SITUACOES_VALIDAS: SituacaoCreditoDebito[] = ["ambos", "so_credito", "so_debito"];
+
+function situacaoValida(valor: string | undefined): SituacaoCreditoDebito | undefined {
+  return SITUACOES_VALIDAS.find((s) => s === valor);
+}
 
 export default async function CreditoDebitoPage({
   searchParams,
@@ -22,6 +30,7 @@ export default async function CreditoDebitoPage({
     listCreditoDebitoPorViagem({
       embarcadorId: params.embarcadorId,
       viagem: params.viagem,
+      situacao: situacaoValida(params.situacao),
       pagina,
     }),
     listEmbarcadores(),
@@ -36,7 +45,8 @@ export default async function CreditoDebitoPage({
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {total} viagem(ns) encontrada(s). Diferença entre o valor creditado
           pelo embarcador e o valor debitado na praça, só passagens reais
-          com viagem e embarcador identificados.
+          com viagem e embarcador identificados. &quot;Situação&quot; mostra se
+          a viagem já tem os dois lados ou se um deles ainda está em aberto.
         </p>
       </div>
 

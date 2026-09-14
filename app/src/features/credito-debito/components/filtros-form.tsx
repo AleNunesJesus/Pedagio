@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SelectField, TextField } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
+import { SITUACAO_INFO } from "../situacao";
 
 type Opcao = { id: string; nome: string };
 
@@ -9,6 +10,7 @@ type FiltrosFormProps = {
   valores: {
     embarcadorId?: string;
     viagem?: string;
+    situacao?: string;
   };
 };
 
@@ -29,6 +31,17 @@ export function FiltrosForm({ embarcadores, valores }: FiltrosFormProps) {
         label="Viagem"
         placeholder="Número da viagem"
         defaultValue={valores.viagem ?? ""}
+      />
+      <SelectField
+        id="situacao"
+        name="situacao"
+        label="Situação"
+        placeholder="Todas"
+        defaultValue={valores.situacao ?? ""}
+        options={Object.entries(SITUACAO_INFO).map(([value, info]) => ({
+          value,
+          label: info.label,
+        }))}
       />
       <Button type="submit">Filtrar</Button>
       <Link

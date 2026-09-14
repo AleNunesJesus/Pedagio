@@ -1764,14 +1764,70 @@ build/typecheck/lint. Recomenda-se conferir `/dashboard` e
 `/credito-debito` visualmente na primeira vez que usar, e reconferir a
 lógica assim que a planilha real trouxer linhas de crédito de verdade.
 
+## Ajuste — visibilidade de crédito sem débito correspondente (2026-09-14)
+
+**Pedido do usuário:** além da diferença de valor entre crédito e débito
+(FASE 18), pode haver viagem/embarcador onde o embarcador credita um valor
+e a praça **nunca chega a debitar nada** — esse caso precisa de
+visibilidade própria, separado do número de ganho/perda.
+
+**Decisão fechada com o usuário:** separar do total de ganho/perda (só
+contam nesse total viagens com os DOIS lados — crédito e débito); crédito
+sem débito vira categoria própria ("valor em aberto"), exibida tanto no
+Painel quanto na tela `/credito-debito`.
+
+- Nenhuma migration: a classificação usa só `qtd_credito`/`qtd_debito`, já
+  expostos por `vw_credito_debito_por_viagem` desde a FASE 18. O caso
+  simétrico (débito sem nenhum crédito) existe na mesma view mas **não**
+  ganhou destaque — é o estado normal de qualquer viagem sem arranjo de
+  adiantamento com o embarcador, não uma anomalia; só fica disponível via
+  filtro "Situação" na tela de detalhe, sem card específico no Painel.
+- `features/credito-debito/situacao.ts`: helper `situacaoDaLinha` (`ambos`
+  \| `so_credito` \| `so_debito`, a partir de `qtd_credito`/`qtd_debito`) +
+  `SITUACAO_INFO` (label + `StatusRole`, reaproveitando a paleta de
+  `lib/status-validacao`: `ambos` = good, `so_credito` = warning,
+  `so_debito` = neutral).
+- `dashboard/queries.ts`: `totalCredito`/`totalDebito`/
+  `totalDiferencaCreditoDebito`/`qtdViagensComDiferenca`/
+  `topCreditoDebitoPorViagem` agora calculados só sobre viagens com
+  `qtd_credito > 0 e qtd_debito > 0` (antes considerava todas, o que
+  inflava o total com viagens só-crédito ou só-débito). Novos:
+  `qtdCreditoSemDebito`, `totalCreditoSemDebito`, `topCreditoSemDebito`.
+- Painel: subseção nova "Crédito sem débito correspondente" dentro da
+  seção "Crédito x débito" — 2 StatTiles (viagens em aberto, valor em
+  aberto) + tabela top 5 + link pra `/credito-debito?situacao=so_credito`.
+- `/credito-debito`: coluna "Situação" (dot colorido + label) em toda
+  linha da listagem; filtro novo "Situação" (Todas/Crédito e débito/Só
+  crédito sem débito/Só débito sem crédito) via `.gt()`/`.eq()` em
+  `qtd_credito`/`qtd_debito` (sem precisar de coluna nova na view).
+- `typecheck`/`eslint`/`next build` limpos.
+- Verificação via SQL direto: 3 viagens sintéticas cobrindo os 3 casos
+  (`ambos`: crédito 50/débito 45; `so_credito`: crédito 30/sem débito;
+  `so_debito`: sem crédito/débito 20) — classificação e valores batendo
+  exatamente; confirmado que o caso `so_debito` (que antes deste ajuste
+  teria entrado como "perda de 20" no total) agora fica corretamente fora
+  de ambos os totais (nem ganho/perda, nem "em aberto"); cleanup
+  confirmado (zero resíduo).
+
+**Notas de implementação:**
+- Nenhuma migration nova nesta sessão — só views/queries já existentes,
+  filtradas de forma diferente.
+- Antes deste ajuste, uma viagem só-débito (crédito nunca chegou a ser
+  importado, ou nunca existiu) já entrava no total de "diferença" como
+  uma "perda" — o que não fazia sentido, já que sem nenhum crédito
+  envolvido não há comparação real a fazer. Esse era um problema latente
+  da FASE 18 original, só percebido ao investigar o pedido de
+  visibilidade do lado oposto (crédito sem débito).
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — trazer necessidades concretas conforme aparecerem.
 Pendências conhecidas: conferir `/faturas` (FASE 15, incluindo o ajuste de
 período inicial/final), `/cadastros/categorias`/`/cadastros/veiculos`
-(FASE 16), a seção "Divergência" (FASE 17) e a seção/tela "Crédito x
-débito" (FASE 18) do Painel com um usuário autenticado real, o modo
-escuro/claro (ajuste) visualmente no navegador, e reconferir a FASE 18 com
-dados reais assim que houver linhas de crédito importadas — nenhuma sessão
-recente teve `service_role key` nem ferramenta de navegador disponível.
+(FASE 16), a seção "Divergência" (FASE 17), a seção/tela "Crédito x
+débito" com a nova subseção "Crédito sem débito" (FASE 18 + ajuste) do
+Painel com um usuário autenticado real, o modo escuro/claro (ajuste)
+visualmente no navegador, e reconferir a FASE 18 com dados reais assim
+que houver linhas de crédito importadas — nenhuma sessão recente teve
+`service_role key` nem ferramenta de navegador disponível.

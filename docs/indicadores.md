@@ -35,9 +35,15 @@ com filtros por período, praça, veículo/frota.
   viagem e embarcador identificados (sem isso não há o que comparar).
   `diferenca = valor_debito - valor_credito`: positivo é a praça debitando
   mais do que foi creditado (prejuízo), negativo é o embarcador creditando
-  mais do que foi debitado (ganho). Painel mostra o agregado + top 5 em
-  módulo; `/credito-debito` lista todas as viagens com filtro por
-  embarcador/viagem.
+  mais do que foi debitado (ganho). O ganho/perda só conta viagens com os
+  **dois** lados presentes (`qtd_credito > 0 e qtd_debito > 0`) — uma
+  viagem só com crédito (praça nunca debitou) é "valor em aberto", categoria
+  separada (`qtd_credito > 0 e qtd_debito = 0`), não é ganho confirmado.
+  Painel mostra o agregado de ganho/perda + top 5 em módulo, e uma
+  subseção própria pro valor em aberto; `/credito-debito` lista todas as
+  viagens com filtro por embarcador/viagem/situação (coluna "Situação"
+  mostra `ambos`/`só crédito`/`só débito` derivado de `qtd_credito`/
+  `qtd_debito`, sem coluna nova na view).
 
 ## Auditoria / Validação
 

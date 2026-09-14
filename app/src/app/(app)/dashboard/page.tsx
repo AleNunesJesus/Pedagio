@@ -240,9 +240,11 @@ export default async function DashboardPage() {
           compensado pelo débito na praça. Positivo (
           <ValorSinalizado valor={1} />) é a praça debitando mais do que foi
           creditado (prejuízo); negativo (<ValorSinalizado valor={-1} />) é o
-          embarcador creditando mais do que foi debitado (ganho). Só
-          passagens reais (tipo_uso = passagem) com viagem e embarcador
-          identificados.
+          embarcador creditando mais do que foi debitado (ganho). Só entram
+          aqui viagens com os dois lados (crédito e débito); crédito sem
+          nenhum débito ainda é &quot;valor em aberto&quot;, não conta nesse
+          total — ver seção abaixo. Só passagens reais (tipo_uso = passagem) com
+          viagem e embarcador identificados.
         </p>
         <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatTile
@@ -256,7 +258,7 @@ export default async function DashboardPage() {
             value={formatNumber(data.qtdViagensComDiferenca)}
           />
         </div>
-        <Card title="Maiores diferenças por viagem" subtitle="top 5 em módulo">
+        <Card title="Maiores diferenças por viagem" subtitle="top 5 em módulo, só viagens com crédito e débito">
           <DataTable
             rows={data.topCreditoDebitoPorViagem}
             keyField={(row) => row.viagem_id ?? "—"}
@@ -271,6 +273,40 @@ export default async function DashboardPage() {
                 align: "right",
                 render: (r) => <ValorSinalizado valor={r.diferenca} />,
               },
+            ]}
+          />
+        </Card>
+
+        <div className="mt-6 mb-3 flex items-baseline justify-between">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Crédito sem débito correspondente
+          </h3>
+          <Link
+            href="/credito-debito?situacao=so_credito"
+            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Ver todas →
+          </Link>
+        </div>
+        <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          O embarcador creditou um valor pra essa viagem, mas a praça ainda
+          não debitou nada — pode ser um débito que vai chegar numa fatura
+          futura, ou um valor que nunca vai ser cobrado. Não é ganho nem
+          perda confirmado, por isso fica separado.
+        </p>
+        <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-2">
+          <StatTile label="Viagens em aberto" value={formatNumber(data.qtdCreditoSemDebito)} />
+          <StatTile label="Valor em aberto" value={formatBRL(data.totalCreditoSemDebito)} />
+        </div>
+        <Card title="Maiores créditos sem débito" subtitle="top 5">
+          <DataTable
+            rows={data.topCreditoSemDebito}
+            keyField={(row) => row.viagem_id ?? "—"}
+            emptyMessage="Nenhum crédito sem débito encontrado."
+            columns={[
+              { header: "Viagem", render: (r) => r.viagem_numero ?? "—" },
+              { header: "Embarcador", render: (r) => r.embarcador_nome ?? "—" },
+              { header: "Creditado", align: "right", render: (r) => formatBRL(r.valor_credito) },
             ]}
           />
         </Card>

@@ -164,22 +164,39 @@ export async function getDashboardData() {
     .slice(0, 5);
 
   // Diferença entre o que o embarcador creditou e o que a praça debitou,
-  // por viagem — mesma visão de gestão (top 5 em módulo) usada acima pra
-  // divergência de tarifa.
+  // por viagem. Só entra no ganho/perda quem tem os DOIS lados (crédito E
+  // débito) — uma viagem só com crédito não é uma diferença "confirmada",
+  // é um valor em aberto (o débito pode chegar numa fatura futura, ou
+  // nunca chegar); por isso vira uma categoria própria, não conta no total.
+  const comCreditoEDebito = (creditoDebitoPorViagem ?? []).filter(
+    (r) => (r.qtd_credito ?? 0) > 0 && (r.qtd_debito ?? 0) > 0,
+  );
   let totalCredito = 0;
   let totalDebito = 0;
   let totalDiferencaCreditoDebito = 0;
-  for (const linha of creditoDebitoPorViagem ?? []) {
+  for (const linha of comCreditoEDebito) {
     totalCredito += linha.valor_credito ?? 0;
     totalDebito += linha.valor_debito ?? 0;
     totalDiferencaCreditoDebito += linha.diferenca ?? 0;
   }
-  const qtdViagensComDiferenca = (creditoDebitoPorViagem ?? []).filter(
-    (r) => (r.diferenca ?? 0) !== 0,
-  ).length;
-  const topCreditoDebitoPorViagem = [...(creditoDebitoPorViagem ?? [])]
+  const qtdViagensComDiferenca = comCreditoEDebito.filter((r) => (r.diferenca ?? 0) !== 0).length;
+  const topCreditoDebitoPorViagem = [...comCreditoEDebito]
     .filter((r) => (r.diferenca ?? 0) !== 0)
     .sort((a, b) => Math.abs(b.diferenca ?? 0) - Math.abs(a.diferenca ?? 0))
+    .slice(0, 5);
+
+  // Crédito sem nenhum débito correspondente pra mesma viagem/embarcador —
+  // valor em aberto, visibilidade separada pedida pelo usuário.
+  const creditoSemDebito = (creditoDebitoPorViagem ?? []).filter(
+    (r) => (r.qtd_credito ?? 0) > 0 && (r.qtd_debito ?? 0) === 0,
+  );
+  const qtdCreditoSemDebito = creditoSemDebito.length;
+  const totalCreditoSemDebito = creditoSemDebito.reduce(
+    (acc, r) => acc + (r.valor_credito ?? 0),
+    0,
+  );
+  const topCreditoSemDebito = [...creditoSemDebito]
+    .sort((a, b) => (b.valor_credito ?? 0) - (a.valor_credito ?? 0))
     .slice(0, 5);
 
   return {
@@ -196,6 +213,9 @@ export async function getDashboardData() {
     totalDiferencaCreditoDebito,
     qtdViagensComDiferenca,
     topCreditoDebitoPorViagem,
+    qtdCreditoSemDebito,
+    totalCreditoSemDebito,
+    topCreditoSemDebito,
     statusResumo: statusResumo ?? [],
     pracaTaxaForaPoligono: pracaTaxaForaPoligono ?? [],
     veiculoTaxaDivergencia: veiculoTaxaDivergencia ?? [],
