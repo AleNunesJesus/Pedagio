@@ -4,11 +4,8 @@ import { formatBRL } from "@/lib/format";
 import { STATUS } from "@/lib/status-validacao";
 import { qtdAtencao, type FaturaResumo } from "../queries";
 
-function formatPeriodo(inicio: string | null, fim: string | null) {
-  if (!inicio || !fim) return "—";
-  const di = new Date(inicio).toLocaleDateString("pt-BR");
-  const df = new Date(fim).toLocaleDateString("pt-BR");
-  return di === df ? di : `${di} – ${df}`;
+function formatData(data: string | null) {
+  return data ? new Date(data).toLocaleDateString("pt-BR") : "—";
 }
 
 export function FaturasTable({ rows }: { rows: FaturaResumo[] }) {
@@ -29,7 +26,8 @@ export function FaturasTable({ rows }: { rows: FaturaResumo[] }) {
             </Link>
           ),
         },
-        { header: "Período", render: (r) => formatPeriodo(r.periodo_inicio, r.periodo_fim) },
+        { header: "Período inicial", render: (r) => formatData(r.periodo_inicio) },
+        { header: "Período final", render: (r) => formatData(r.periodo_fim) },
         { header: "Passagens", align: "right", render: (r) => r.qtd_passagem ?? 0 },
         { header: "Contrato", align: "right", render: (r) => r.qtd_contrato ?? 0 },
         { header: "Valor total", align: "right", render: (r) => formatBRL(r.valor_total) },

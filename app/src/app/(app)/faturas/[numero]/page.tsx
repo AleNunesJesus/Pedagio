@@ -20,11 +20,8 @@ const ORDEM_STATUS = [
   "nao_aplicavel",
 ] as const;
 
-function formatPeriodo(inicio: string | null, fim: string | null) {
-  if (!inicio || !fim) return "—";
-  const di = new Date(inicio).toLocaleDateString("pt-BR");
-  const df = new Date(fim).toLocaleDateString("pt-BR");
-  return di === df ? di : `${di} – ${df}`;
+function formatData(data: string | null) {
+  return data ? new Date(data).toLocaleDateString("pt-BR") : "—";
 }
 
 function agruparPorChave<T>(
@@ -91,12 +88,11 @@ export default async function FaturaDetalhePage({
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
           Fatura {resumo.numero_fatura ?? "Sem fatura"}
         </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Período: {formatPeriodo(resumo.periodo_inicio, resumo.periodo_fim)}
-        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <StatTile label="Período inicial" value={formatData(resumo.periodo_inicio)} />
+        <StatTile label="Período final" value={formatData(resumo.periodo_fim)} />
         <StatTile label="Valor total a pagar" value={formatBRL(resumo.valor_total)} />
         <StatTile label="Valor passagens" value={formatBRL(resumo.valor_passagem)} />
         <StatTile label="Valor contrato" value={formatBRL(resumo.valor_contrato)} />

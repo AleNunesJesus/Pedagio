@@ -1638,7 +1638,7 @@ visão gerencial — top 5 por maior desvio em módulo, não listagem completa.
 - [x] `typecheck`/`eslint`/`next build` limpos
 
 **Notas de implementação:**
-- Migration aplicada: `20260914150000_pedagio_fase17_divergencia_explicada`
+- Migration aplicada: `20260914143129_pedagio_fase17_divergencia_explicada`
   (mirror local em `supabase/migrations/`).
 - Nenhuma migration em `validar_passagem`/`categoria_por_composicao` — só
   views de leitura novas sobre `vw_passagens_detalhado`, que já tinha todas
@@ -1655,12 +1655,44 @@ com usuário real (mesma limitação já registrada nas FASEs 15/16 — sem
 build/typecheck/lint. Recomenda-se conferir `/dashboard` visualmente na
 primeira vez que usar.
 
+## Ajuste — reordenação do menu do header (2026-09-14)
+
+**Pedido do usuário:** nova ordem dos links do header — Painel, Faturas,
+Passagens, Viagens, Rastreamento, Importação, Cadastros (posição
+confirmada com o usuário: antes de Usuários, já que ele não tinha
+mencionado onde entraria), Usuários (admin-only, como já era).
+
+- `app-header.tsx`: só reordenação dos `<Link>` já existentes, nenhuma
+  rota nova nem lógica alterada.
+- `typecheck`/`eslint` limpos (build completo não rodado de novo nesta
+  mudança pontual, já tinha rodado limpo imediatamente antes na FASE 17).
+
+## Ajuste — período inicial/final separados em Faturas (2026-09-14)
+
+**Pedido do usuário:** a tela de faturas só mostrava um único campo
+"Período" (`vw_fatura_resumo.periodo_inicio`/`periodo_fim` já eram o
+menor/maior `data_hora` das passagens daquela fatura, calculados desde a
+FASE 15 — só a apresentação juntava os dois numa string só, ex.: "01/09 –
+05/09"). Ajuste é só de exibição, nenhuma migration.
+
+- `FaturasTable` (lista `/faturas`): coluna única "Período" trocada por
+  duas colunas, "Período inicial" e "Período final".
+- `/faturas/[numero]` (detalhe): a linha de texto "Período: ..." abaixo do
+  título virou dois `StatTile` novos ("Período inicial"/"Período final"),
+  ao lado dos StatTiles financeiros já existentes (grid ampliado de
+  `sm:grid-cols-4` para `lg:grid-cols-6` pra acomodar os dois novos sem
+  quebrar layout em telas médias).
+- `typecheck`/`eslint`/`next build` limpos. Verificado via SQL direto que
+  `periodo_inicio`/`periodo_fim` de `vw_fatura_resumo` continuam sendo
+  exatamente o min/max de `data_hora` das passagens da fatura.
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual. Próximos passos dependem do uso
 real do sistema — trazer necessidades concretas conforme aparecerem.
-Pendências conhecidas: conferir `/faturas` (FASE 15),
-`/cadastros/categorias`/`/cadastros/veiculos` (FASE 16), a nova seção
-"Divergência" do Painel (FASE 17) com um usuário autenticado real, e o
-modo escuro/claro (ajuste acima) visualmente no navegador — nenhuma sessão
-recente teve `service_role key` nem ferramenta de navegador disponível.
+Pendências conhecidas: conferir `/faturas` (FASE 15, incluindo o ajuste de
+período inicial/final acima), `/cadastros/categorias`/`/cadastros/veiculos`
+(FASE 16), a nova seção "Divergência" do Painel (FASE 17) com um usuário
+autenticado real, e o modo escuro/claro (ajuste acima) visualmente no
+navegador — nenhuma sessão recente teve `service_role key` nem ferramenta
+de navegador disponível.
