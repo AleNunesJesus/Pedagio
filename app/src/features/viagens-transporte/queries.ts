@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 const POR_PAGINA = 50;
 
 export type FiltrosViagensTransporte = {
+  numeroTransporte?: string;
   veiculoId?: string;
   tipoViagem?: string;
   embarcadorId?: string;
@@ -23,6 +24,7 @@ export async function listViagensTransporte(filtros: FiltrosViagensTransporte) {
     .order("data_hora_saida", { ascending: false })
     .range(de, ate);
 
+  if (filtros.numeroTransporte) query = query.ilike("numero_transporte", `%${filtros.numeroTransporte}%`);
   if (filtros.veiculoId) query = query.eq("veiculo_id", filtros.veiculoId);
   if (filtros.tipoViagem) query = query.eq("tipo_viagem", filtros.tipoViagem);
   if (filtros.embarcadorId) query = query.eq("embarcador_id", filtros.embarcadorId);

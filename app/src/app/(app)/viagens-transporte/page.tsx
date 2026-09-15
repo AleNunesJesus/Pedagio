@@ -6,6 +6,7 @@ import { Paginacao } from "@/features/viagens-transporte/components/paginacao";
 import { getMeuPapel } from "@/lib/auth/guards";
 
 type SearchParams = {
+  numeroTransporte?: string;
   veiculoId?: string;
   tipoViagem?: string;
   embarcadorId?: string;
@@ -24,6 +25,7 @@ export default async function ViagensTransportePage({
 
   const [{ rows, total, totalPaginas }, veiculos, embarcadores, papel] = await Promise.all([
     listViagensTransporte({
+      numeroTransporte: params.numeroTransporte,
       veiculoId: params.veiculoId,
       tipoViagem: params.tipoViagem,
       embarcadorId: params.embarcadorId,

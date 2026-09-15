@@ -8,6 +8,7 @@ type FiltrosFormProps = {
   veiculos: Opcao[];
   embarcadores: Opcao[];
   valores: {
+    numeroTransporte?: string;
     veiculoId?: string;
     tipoViagem?: string;
     embarcadorId?: string;
@@ -24,6 +25,13 @@ const OPCOES_TIPO_VIAGEM = [
 export function FiltrosForm({ veiculos, embarcadores, valores }: FiltrosFormProps) {
   return (
     <form method="get" className="flex flex-wrap items-end gap-3">
+      <TextField
+        id="numeroTransporte"
+        name="numeroTransporte"
+        label="Transporte"
+        placeholder="Número do transporte"
+        defaultValue={valores.numeroTransporte ?? ""}
+      />
       <SelectField
         id="veiculoId"
         name="veiculoId"

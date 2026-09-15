@@ -21,6 +21,8 @@ type Viagem = {
   valor_pedagios: number | null;
   valor_tarifa_esperada: number | null;
   divergencia_valor: number | null;
+  valor_pedagios_confirmado: number | null;
+  valor_pedagios_estimado: number | null;
 };
 
 const LABEL_TIPO_VIAGEM: Record<string, string> = {
@@ -79,7 +81,20 @@ export function ViagensTable({ rows, podeExcluir }: { rows: Viagem[]; podeExclui
             render: (r) => (r.tipo_viagem ? LABEL_TIPO_VIAGEM[r.tipo_viagem] ?? r.tipo_viagem : "—"),
           },
           { header: "Embarcador", render: (r) => r.embarcador_nome ?? "—" },
-          { header: "Valor pedágios", align: "right", render: (r) => formatBRL(r.valor_pedagios) },
+          {
+            header: "Valor pedágios",
+            align: "right",
+            render: (r) => (
+              <span
+                title="Confirmado: passagem com GPS do veículo dentro do polígono da praça. Estimado: passagem que cai na janela de datas da viagem (mesma placa) mas sem confirmação por GPS — coincidência de data, não comprovação de que pertence a essa viagem."
+              >
+                {formatBRL(r.valor_pedagios_confirmado)}
+                {!!r.valor_pedagios_estimado && (
+                  <span className="text-gray-400"> + {formatBRL(r.valor_pedagios_estimado)} estimado</span>
+                )}
+              </span>
+            ),
+          },
           { header: "Valor praça (tarifa)", align: "right", render: (r) => formatBRL(r.valor_tarifa_esperada) },
           { header: "Divergência", align: "right", render: (r) => formatBRL(r.divergencia_valor) },
         ]}
