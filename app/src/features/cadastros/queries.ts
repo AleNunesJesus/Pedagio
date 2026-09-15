@@ -72,6 +72,40 @@ export async function getTarifa(id: string) {
   return data;
 }
 
+export async function listEstacionamentos() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("estacionamento")
+    .select("id, nome, ativo")
+    .order("nome");
+  return data ?? [];
+}
+
+export async function getEstacionamentoMapa(id: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("vw_estacionamento_mapa")
+    .select("*")
+    .eq("id", id)
+    .single();
+  return data;
+}
+
+export async function listTarifasEstacionamento() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tarifa_estacionamento")
+    .select("*, estacionamento(nome)")
+    .order("vigencia_inicio", { ascending: false });
+  return data ?? [];
+}
+
+export async function getTarifaEstacionamento(id: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("tarifa_estacionamento").select("*").eq("id", id).single();
+  return data;
+}
+
 export async function listEmbarcadores() {
   const supabase = await createClient();
   const { data } = await supabase.from("embarcador").select("*").order("nome");

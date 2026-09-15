@@ -10,6 +10,7 @@ import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 const LABEL_TIPO_USO: Record<string, string> = {
   passagem: "Passagem",
   contrato: "Contrato",
+  estacionamento: "Estacionamento",
 };
 
 const LABEL_CONDICAO: Record<string, string> = {
@@ -84,7 +85,10 @@ export default async function PassagemDetalhePage({
             },
             { label: "Placa", valor: passagem.placa ?? "—" },
             { label: "Tipo de veículo (informado)", valor: passagem.tipo_veiculo_informado ?? "—" },
-            { label: "Praça", valor: passagem.praca_nome ?? "—" },
+            {
+              label: passagem.tipo_uso === "estacionamento" ? "Estacionamento" : "Praça",
+              valor: passagem.praca_nome ?? passagem.estacionamento_nome ?? "—",
+            },
             { label: "Rodovia", valor: passagem.rodovia ?? "—" },
             { label: "Sentido (informado)", valor: passagem.sentido_informado ?? "—" },
             {
@@ -106,72 +110,96 @@ export default async function PassagemDetalhePage({
         <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
           Resultado da validação
         </h2>
-        <Campos
-          campos={[
-            {
-              label: "Dentro do polígono",
-              valor:
-                passagem.dentro_poligono === null
-                  ? "sem dados"
-                  : passagem.dentro_poligono
-                    ? "Sim"
-                    : "Não",
-            },
-            {
-              label: "Distância até o polígono",
-              valor:
-                passagem.distancia_metros !== null
-                  ? `${formatNumber(passagem.distancia_metros)} m`
+        {passagem.tipo_uso === "estacionamento" ? (
+          <Campos
+            campos={[
+              {
+                label: "Entrada detectada (GPS)",
+                valor: passagem.entrada_detectada
+                  ? new Date(passagem.entrada_detectada).toLocaleString("pt-BR")
                   : "—",
-            },
-            {
-              label: "Diferença de tempo (GPS x passagem)",
-              valor:
-                passagem.diferenca_segundos !== null
-                  ? `${formatNumber(passagem.diferenca_segundos)}s`
+              },
+              {
+                label: "Saída detectada (GPS)",
+                valor: passagem.saida_detectada
+                  ? new Date(passagem.saida_detectada).toLocaleString("pt-BR")
                   : "—",
-            },
-            {
-              label: "Categoria usada (tarifa)",
-              valor: passagem.categoria_codigo
-                ? `${passagem.categoria_codigo} — ${passagem.categoria_descricao}`
-                : "—",
-            },
-            {
-              label: "Origem da categoria",
-              valor: passagem.origem_categoria
-                ? LABEL_ORIGEM_CATEGORIA[passagem.origem_categoria] ?? passagem.origem_categoria
-                : "—",
-            },
-            { label: "Valor esperado (tarifa vigente)", valor: formatBRL(passagem.valor_esperado) },
-            {
-              label: "Divergência de valor",
-              valor: formatBRL(passagem.divergencia_valor),
-            },
-          ]}
-        />
-      </section>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-          Mapa da validação
-        </h2>
-        {praca?.poligono_geojson ? (
-          <MapaValidacaoLoader
-            poligono={praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] }}
-            ponto={
-              posicao && posicao.latitude !== null && posicao.longitude !== null && posicao.data_hora !== null
-                ? { latitude: posicao.latitude, longitude: posicao.longitude, data_hora: posicao.data_hora }
-                : null
-            }
-            dentroPoligono={passagem.dentro_poligono}
+              },
+              { label: "Diárias detectadas", valor: passagem.diarias_detectadas ?? "—" },
+              { label: "Valor esperado (diárias x tarifa vigente)", valor: formatBRL(passagem.valor_esperado) },
+              { label: "Divergência de valor", valor: formatBRL(passagem.divergencia_valor) },
+            ]}
           />
         ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Praça não identificada para esta passagem — sem polígono para exibir.
-          </p>
+          <Campos
+            campos={[
+              {
+                label: "Dentro do polígono",
+                valor:
+                  passagem.dentro_poligono === null
+                    ? "sem dados"
+                    : passagem.dentro_poligono
+                      ? "Sim"
+                      : "Não",
+              },
+              {
+                label: "Distância até o polígono",
+                valor:
+                  passagem.distancia_metros !== null
+                    ? `${formatNumber(passagem.distancia_metros)} m`
+                    : "—",
+              },
+              {
+                label: "Diferença de tempo (GPS x passagem)",
+                valor:
+                  passagem.diferenca_segundos !== null
+                    ? `${formatNumber(passagem.diferenca_segundos)}s`
+                    : "—",
+              },
+              {
+                label: "Categoria usada (tarifa)",
+                valor: passagem.categoria_codigo
+                  ? `${passagem.categoria_codigo} — ${passagem.categoria_descricao}`
+                  : "—",
+              },
+              {
+                label: "Origem da categoria",
+                valor: passagem.origem_categoria
+                  ? LABEL_ORIGEM_CATEGORIA[passagem.origem_categoria] ?? passagem.origem_categoria
+                  : "—",
+              },
+              { label: "Valor esperado (tarifa vigente)", valor: formatBRL(passagem.valor_esperado) },
+              {
+                label: "Divergência de valor",
+                valor: formatBRL(passagem.divergencia_valor),
+              },
+            ]}
+          />
         )}
       </section>
+
+      {passagem.tipo_uso !== "estacionamento" && (
+        <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+            Mapa da validação
+          </h2>
+          {praca?.poligono_geojson ? (
+            <MapaValidacaoLoader
+              poligono={praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] }}
+              ponto={
+                posicao && posicao.latitude !== null && posicao.longitude !== null && posicao.data_hora !== null
+                  ? { latitude: posicao.latitude, longitude: posicao.longitude, data_hora: posicao.data_hora }
+                  : null
+              }
+              dentroPoligono={passagem.dentro_poligono}
+            />
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Praça não identificada para esta passagem — sem polígono para exibir.
+            </p>
+          )}
+        </section>
+      )}
     </main>
   );
 }

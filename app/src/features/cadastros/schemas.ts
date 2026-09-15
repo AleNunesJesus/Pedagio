@@ -58,3 +58,32 @@ export const tarifaSchema = z
     (data) => !data.vigencia_fim || data.vigencia_fim >= data.vigencia_inicio,
     { message: "Fim da vigência não pode ser antes do início.", path: ["vigencia_fim"] },
   );
+
+export const estacionamentoSchema = z.object({
+  nome: z.string().trim().min(1, "Informe o nome."),
+  ativo: z.coerce.boolean(),
+  poligono_geojson: z
+    .string()
+    .min(1, "Desenhe o polígono do estacionamento no mapa.")
+    .transform((value, ctx) => {
+      try {
+        const parsed = JSON.parse(value);
+        return geoJsonPolygonSchema.parse(parsed);
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Polígono inválido — desenhe novamente." });
+        return z.NEVER;
+      }
+    }),
+});
+
+export const tarifaEstacionamentoSchema = z
+  .object({
+    estacionamento_id: z.string().trim().min(1, "Selecione o estacionamento."),
+    valor_diaria: z.coerce.number().min(0, "Valor não pode ser negativo."),
+    vigencia_inicio: z.string().trim().min(1, "Informe a data de início."),
+    vigencia_fim: z.string().trim().optional(),
+  })
+  .refine(
+    (data) => !data.vigencia_fim || data.vigencia_fim >= data.vigencia_inicio,
+    { message: "Fim da vigência não pode ser antes do início.", path: ["vigencia_fim"] },
+  );

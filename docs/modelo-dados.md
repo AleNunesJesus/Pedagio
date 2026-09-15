@@ -235,6 +235,63 @@ revalida automaticamente (trigger) todas as passagens de viagens de
 transporte que usam aquela placa como `carreta1`/`carreta2` — a
 quantidade de eixos (e portanto a tarifa esperada) pode mudar.
 
+### `estacionamento` (FASE 20)
+Cadastro de locais de pernoite/período (pátio, estacionamento) com polígono
+geográfico — mesmo modelo de `praca_pedagio`, sem o conceito de "sentido".
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| nome | text | |
+| poligono | geometry(Polygon, 4326) | área usada na detecção de permanência |
+| ativo | boolean | default true |
+| created_at | timestamptz | default now() |
+
+Índice: `GIST(poligono)`.
+
+### `tarifa_estacionamento` (FASE 20)
+Histórico de valores de diária por estacionamento, com vigência — mesmo
+padrão de `tarifa_praca` (nunca `UPDATE` do valor, sempre nova vigência).
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| estacionamento_id | fk estacionamento | |
+| valor_diaria | numeric(10,2) | |
+| vigencia_inicio | date | |
+| vigencia_fim | date null | null = vigente atualmente |
+
+Constraint: sem sobreposição de vigência para o mesmo estacionamento (via
+`EXCLUDE USING gist` com `daterange`).
+
+### `validacao_estacionamento` (FASE 20)
+Resultado da validação de permanência para cada passagem `tipo_uso =
+'estacionamento'`. Tabela própria (não reaproveita `validacao_passagem`):
+os campos são conceitualmente diferentes — permanência detectada num
+período, não um ponto único no tempo casado a uma janela curta.
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| passagem_id | fk passagem_pedagio unique | 1:1, `on delete cascade` |
+| entrada_detectada | timestamptz null | início da "corrida" de pings dentro do polígono mais próxima/relevante à `data_hora` da linha |
+| saida_detectada | timestamptz null | fim dessa corrida |
+| diarias_detectadas | integer null | `ceil(duração / 24h)`, mínimo 1 |
+| tarifa_diaria_aplicada | numeric(10,2) null | tarifa vigente usada no cálculo |
+| valor_esperado | numeric(10,2) null | `diarias_detectadas × tarifa_diaria_aplicada`; null se não há tarifa vigente cadastrada (mesma simplificação de `tarifa_praca`, FASE 03) |
+| divergencia_valor | numeric(10,2) null | `valor_cobrado - valor_esperado` |
+| resultado | text | `ok` \| `sem_dados_gps` \| `valor_divergente` — reaproveita valores já existentes do domínio de `status_validacao` |
+| validado_em | timestamptz | |
+
+Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo de detecção de
+permanência ("gaps and islands" sobre os pings dentro do polígono).
+
+`passagem_pedagio` ganhou `estacionamento_id` (FK nullable) — resolvido na
+importação junto com `veiculo_id`/`praca_id`, casando `praca_nome` (mesma
+coluna reaproveitada, sem usar `sentido`) contra `estacionamento.nome`
+quando `tipo_uso = 'estacionamento'`. `tipo_uso` passou a aceitar
+`'estacionamento'` além de `'passagem'`/`'contrato'`.
+
 ### `viagem_transporte` (FASE 13)
 Uma linha do documento fiscal/transporte importado (planilha do sistema
 de logística, formato real do fornecedor). Entidade independente de

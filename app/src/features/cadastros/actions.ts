@@ -2,7 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { categoriaSchema, veiculoSchema, pracaSchema, tarifaSchema } from "./schemas";
+import {
+  categoriaSchema,
+  veiculoSchema,
+  pracaSchema,
+  tarifaSchema,
+  estacionamentoSchema,
+  tarifaEstacionamentoSchema,
+} from "./schemas";
 
 export type FormState = { error?: string; success?: boolean };
 
@@ -194,6 +201,90 @@ export async function excluirTarifas(ids: string[]): Promise<{ error?: string }>
   if (error) return { error: error.message };
 
   revalidatePath("/cadastros/tarifas");
+  return {};
+}
+
+export async function salvarEstacionamento(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = estacionamentoSchema.safeParse({
+    nome: formData.get("nome"),
+    ativo: formData.get("ativo") === "on",
+    poligono_geojson: formData.get("poligono_geojson"),
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const estacionamentoId = formData.get("estacionamento_id") as string | null;
+  const supabase = await createClient();
+
+  const rpc = estacionamentoId ? "atualizar_estacionamento" : "criar_estacionamento";
+  const args = estacionamentoId
+    ? { p_id: estacionamentoId, p_nome: parsed.data.nome, p_poligono_geojson: parsed.data.poligono_geojson, p_ativo: parsed.data.ativo }
+    : { p_nome: parsed.data.nome, p_poligono_geojson: parsed.data.poligono_geojson, p_ativo: parsed.data.ativo };
+
+  const { error } = await supabase.rpc(rpc, args);
+  if (error) return { error: error.message };
+
+  revalidatePath("/cadastros/estacionamentos");
+  return { success: true };
+}
+
+export async function excluirEstacionamentos(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_estacionamentos", { p_ids: ids });
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? "Não é possível excluir: há tarifas ou passagens vinculadas a este estacionamento."
+          : error.message,
+    };
+  }
+
+  revalidatePath("/cadastros/estacionamentos");
+  return {};
+}
+
+export async function salvarTarifaEstacionamento(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const parsed = tarifaEstacionamentoSchema.safeParse({
+    estacionamento_id: formData.get("estacionamento_id"),
+    valor_diaria: formData.get("valor_diaria"),
+    vigencia_inicio: formData.get("vigencia_inicio"),
+    vigencia_fim: formData.get("vigencia_fim") || undefined,
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const tarifaId = formData.get("tarifa_id") as string | null;
+  const payload = { ...parsed.data, vigencia_fim: parsed.data.vigencia_fim ?? null };
+  const supabase = await createClient();
+  const { error } = tarifaId
+    ? await supabase.from("tarifa_estacionamento").update(payload).eq("id", tarifaId)
+    : await supabase.from("tarifa_estacionamento").insert(payload);
+
+  if (error) {
+    return {
+      error:
+        error.code === "23P01"
+          ? "Já existe uma tarifa vigente para esse estacionamento nesse período."
+          : error.message,
+    };
+  }
+
+  revalidatePath("/cadastros/tarifas-estacionamento");
+  if (tarifaId) revalidatePath(`/cadastros/tarifas-estacionamento/${tarifaId}`);
+  return { success: true };
+}
+
+export async function excluirTarifasEstacionamento(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("excluir_tarifas_estacionamento", { p_ids: ids });
+  if (error) return { error: error.message };
+
+  revalidatePath("/cadastros/tarifas-estacionamento");
   return {};
 }
 

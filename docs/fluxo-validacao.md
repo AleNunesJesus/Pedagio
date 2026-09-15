@@ -111,6 +111,70 @@ ping de GPS é excluído):
 `passagem_pedagio.status_validacao` é atualizado para o mesmo valor de
 `resultado`, permitindo filtrar rapidamente sem join.
 
+## Validação de permanência (estacionamento, FASE 20)
+
+Linhas `tipo_uso = 'estacionamento'` não representam uma passagem pontual
+por uma praça — representam uma cobrança por período de permanência
+(pernoite/diárias) num local com polígono cadastrado (`pedagio.estacionamento`).
+O fluxo é bem diferente do de passagem: em vez de procurar um ping perto de
+um instante único, é preciso reconstruir o período de permanência a partir
+do histórico de GPS.
+
+Parâmetros configuráveis (mesmo espírito de `janela_tolerancia_validacao`):
+- `janela_busca_estacionamento()`: até onde no passado buscar o início da
+  permanência a partir de `data_hora` da linha (referência, ex.: saída) —
+  fixo em 30 dias.
+- `gap_continuidade_estacionamento()`: gap máximo entre dois pings dentro do
+  polígono para ainda considerar "o mesmo período de permanência" — fixo em
+  6 horas (cobre trackers que não enviam ping com o veículo parado).
+
+Algoritmo, por passagem (`pedagio.validar_estacionamento`):
+
+1. Se `veiculo_id` ou `estacionamento_id` não foram resolvidos na
+   importação → `status_validacao = sem_cadastro` (mesmo padrão de
+   `validar_passagem`).
+2. Buscar todos os `posicao_veiculo` do veículo com `data_hora` entre
+   `data_hora da linha - janela_busca_estacionamento()` e
+   `data_hora da linha + janela_tolerancia_validacao()`, filtrando só os
+   que caem dentro do polígono do estacionamento (`ST_Contains`).
+3. Agrupar esses pings em "corridas" contínuas — uma técnica de SQL
+   conhecida como "gaps and islands": ordena por `data_hora`, marca como
+   início de nova corrida qualquer ping cujo gap para o anterior (dentro do
+   polígono) exceda `gap_continuidade_estacionamento()`, e agrega
+   min/max de `data_hora` por corrida. Tudo numa única query (CTEs +
+   `lag()`/`sum() over`), sem loop procedural.
+4. Escolher a corrida mais relevante: a que contém `data_hora` da linha, ou
+   (se nenhuma contém) a mais próxima dela no tempo.
+5. Se nenhuma corrida foi encontrada → `resultado = sem_dados_gps`.
+6. Caso contrário: `entrada_detectada`/`saida_detectada` = início/fim da
+   corrida escolhida; `diarias_detectadas = ceil(duração / 24h)` (mínimo 1);
+   busca a tarifa vigente (`tarifa_estacionamento`) na data de
+   `entrada_detectada`; `valor_esperado = diarias × tarifa` (null se não há
+   tarifa vigente cadastrada, mesma simplificação da FASE 03);
+   `divergencia_valor = valor_cobrado - valor_esperado`; `resultado = ok` se
+   a divergência é nula/zero, senão `valor_divergente`.
+
+O resultado grava em `pedagio.validacao_estacionamento` (tabela própria, ver
+[modelo-dados.md](modelo-dados.md)) e atualiza
+`passagem_pedagio.status_validacao` com o mesmo `resultado` — os três
+valores usados (`ok`/`sem_dados_gps`/`valor_divergente`) já existiam no
+domínio da coluna, não precisou de novo valor no `check`.
+
+**Revalidação automática:** o mesmo trigger de `posicao_veiculo` (FASE 03)
+que revalida passagens `pendente`/`sem_dados_gps` ao chegar um ping novo
+também cobre `tipo_uso = 'estacionamento'`, só que usando a janela de busca
+de 30 dias em vez da janela pontual de passagem — um ping de GPS que chega
+dias depois de uma cobrança de estacionamento ainda revalida ela
+automaticamente.
+
+**Limitação conhecida (decisão provisória):** sem arquivo real do
+fornecedor ainda para confirmar o rótulo exato de `tipo_uso_texto` — o
+sistema aceita `ESTACIONAMENTO` por enquanto (`normalizar_tipo_uso`), mesmo
+padrão da FASE 07 (revisar quando o arquivo real chegar). Também: a regra
+de diária (arredondar para cima a cada 24h) e a tolerância de gap (6h) são
+decisões provisórias, sem dado real de permanência de estacionamento para
+validar ainda — ver `docs/ROADMAP.md`, FASE 20.
+
 ## Casos a decidir com o usuário (não bloqueiam o desenho, mas afetam a
 implementação)
 

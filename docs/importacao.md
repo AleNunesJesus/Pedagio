@@ -21,22 +21,46 @@ em que a planilha do fornecedor as traz:
 | `placa` | texto | `ABC1D23` |
 | `tipo_veiculo` | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
 | `praca_nome` | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
-| `tipo_uso_texto` | `passagem`/`passagens`, `contrato` ou `plano contratado` (case-insensitive) | `passagem` |
+| `tipo_uso_texto` | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento` (case-insensitive) | `passagem` |
 | `valor_texto` | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00` ou `23` |
 | `condicao_texto` | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
 | `viagem` | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
 | `embarcador` | texto livre, opcional — quem lançou o crédito da viagem. Auto-cadastrado em `pedagio.embarcador` na importação (FASE 10) se ainda não existir; CNPJ (opcional) só é preenchido manualmente depois, em `/cadastros/embarcadores` | `Embarcador X` |
-| `sentido` | texto — usado junto com `praca_nome` para casar com o cadastro da praça | `Norte` |
+| `sentido` | texto — usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
 formato, `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
-valores listados na tabela acima), ou `praca_nome`/`sentido` vazios, é
-contada como erro (`total_erros` do lote) e **não** é importada — não há
-tentativa de adivinhar formatos alternativos além dos já mapeados, para
-não arriscar interpretar um dado errado silenciosamente. O sinal do valor
-**não** é motivo de erro: é sempre normalizado pela condição (ver tabela
-acima), porque o arquivo real do fornecedor não é consistente nisso — já
-apareceu linha de crédito com valor positivo.
+valores listados na tabela acima), `praca_nome` vazio, ou `sentido` vazio
+quando `tipo_uso_texto` não é `estacionamento`, é contada como erro
+(`total_erros` do lote) e **não** é importada — não há tentativa de
+adivinhar formatos alternativos além dos já mapeados, para não arriscar
+interpretar um dado errado silenciosamente. O sinal do valor **não** é
+motivo de erro: é sempre normalizado pela condição (ver tabela acima),
+porque o arquivo real do fornecedor não é consistente nisso — já apareceu
+linha de crédito com valor positivo.
+
+### `tipo_uso_texto = estacionamento` (FASE 20)
+
+Linhas de estacionamento representam uma cobrança por permanência (ex.:
+pernoite) num local cadastrado em `/cadastros/estacionamentos`, não uma
+passagem física por uma praça. Cada linha é uma cobrança só (sem par
+entrada/saída): `data_texto`/`horario_texto` é uma referência (ex.: data de
+saída) e `valor_texto` é o total cobrado pelo período inteiro. O sistema
+descobre a permanência real via GPS (ver
+[fluxo-validacao.md](fluxo-validacao.md#validação-de-permanência-estacionamento-fase-20)) —
+não há coluna de quantidade de diárias na planilha.
+
+O nome do local vem em `praca_nome` (coluna reaproveitada — o nome não
+muda por tipo de linha) e é casado contra `pedagio.estacionamento.nome`
+(sem usar `sentido`, que não se aplica aqui); quando não encontra, a linha
+é importada mesmo assim com `status_validacao = sem_cadastro`, mesmo
+padrão de praça/veículo.
+
+**Pendência:** o rótulo `ESTACIONAMENTO` usado hoje em
+`normalizar_tipo_uso` é provisório — ainda não há uma planilha real do
+fornecedor para confirmar o rótulo/código exato usado (mesmo tipo de
+ajuste que aconteceu na FASE 07 com `DB`/`CR`/`PLANO CONTRATADO`). Revisar
+quando o arquivo real chegar.
 
 Qualquer outro erro inesperado ao processar uma linha (ex.: violação de
 constraint não prevista pelas checagens acima) também é contado como erro

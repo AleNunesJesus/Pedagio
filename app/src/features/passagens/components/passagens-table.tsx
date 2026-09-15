@@ -14,6 +14,7 @@ type Passagem = {
   data_hora: string | null;
   placa: string | null;
   praca_nome: string | null;
+  estacionamento_nome: string | null;
   tipo_uso: string | null;
   valor_cobrado: number | null;
   status_validacao: string | null;
@@ -24,6 +25,7 @@ type Passagem = {
 const LABEL_TIPO_USO: Record<string, string> = {
   passagem: "Passagem",
   contrato: "Contrato",
+  estacionamento: "Estacionamento",
 };
 
 export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeExcluir: boolean }) {
@@ -63,7 +65,7 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
             render: (r) => (r.data_hora ? new Date(r.data_hora).toLocaleString("pt-BR") : "—"),
           },
           { header: "Placa", render: (r) => r.placa ?? "—" },
-          { header: "Praça", render: (r) => r.praca_nome ?? "—" },
+          { header: "Praça", render: (r) => r.praca_nome ?? r.estacionamento_nome ?? "—" },
           { header: "Tipo", render: (r) => (r.tipo_uso ? LABEL_TIPO_USO[r.tipo_uso] ?? r.tipo_uso : "—") },
           {
             header: "Categoria",

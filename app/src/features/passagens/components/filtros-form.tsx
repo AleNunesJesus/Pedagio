@@ -24,6 +24,7 @@ type FiltrosFormProps = {
 const OPCOES_TIPO_USO = [
   { value: "passagem", label: "Passagem" },
   { value: "contrato", label: "Contrato" },
+  { value: "estacionamento", label: "Estacionamento" },
 ];
 
 export function FiltrosForm({ pracas, veiculos, embarcadores, valores }: FiltrosFormProps) {

@@ -1819,15 +1819,247 @@ Painel quanto na tela `/credito-debito`.
   da FASE 18 original, só percebido ao investigar o pedido de
   visibilidade do lado oposto (crédito sem débito).
 
+## FASE 19 — Pedágio confirmado x estimado por viagem (viagem_transporte)
+
+**Status:** 🟢 Concluído
+
+**Objetivo:** quando a passagem da fatura não bate com o histórico de GPS
+(não dá pra confirmar geoespacialmente que o veículo passou naquela praça),
+ainda assim é possível cruzar por data: se a passagem cai dentro da janela
+saída/chegada de uma viagem da mesma placa, isso é um indício (não uma
+confirmação) de que ela pertence a essa viagem. A coluna `valor_pedagios`
+de `vw_viagem_transporte_detalhado` (FASE 13) já fazia esse cruzamento por
+placa+janela, mas misturava passagens confirmadas por GPS com as que só
+coincidem em data — sem diferenciar o que é fato do que é palpite.
+
+**Decisão fechada com o usuário:** tratar como fase própria (FASE 19),
+separando o total existente em dois: confirmado (GPS dentro do polígono da
+praça) e estimado (só coincidência de placa+data, sem confirmação
+geoespacial). Nomenclatura reaproveita o termo "estimado" já usado em
+`passagens-table.tsx` para composição inferida do veículo, em vez de
+"deduzido" (termo usado na conversa original).
+
+**Checklist:**
+- [x] Migration: `create or replace view pedagio.vw_viagem_transporte_detalhado`
+  ganha `valor_pedagios_confirmado` (soma de `valor_cobrado` filtrada por
+  `validacao_passagem.dentro_poligono = true`) e `valor_pedagios_estimado`
+  (soma filtrada por `dentro_poligono is distinct from true`, cobrindo
+  `false` e `null`/sem linha de validação) — mesmo lateral join por
+  placa+janela já usado por `valor_pedagios`/`valor_tarifa_esperada`
+  (FASE 13). `valor_pedagios` não muda: continua sendo a soma das duas
+  partes.
+- [x] Colunas novas só podem ser anexadas ao final da view — Postgres não
+  permite `create or replace view` reordenar/inserir coluna no meio
+  (`ERROR 42P16`); corrigido reposicionando as duas novas depois de
+  `divergencia_valor`.
+- [x] `app/src/types/database.ts`: `vw_viagem_transporte_detalhado.Row` ganha
+  as duas colunas manualmente (o `generate_typescript_types` do MCP só
+  cobre o schema `public`, não `pedagio` — não pode ser usado pra
+  sobrescrever esse arquivo).
+- [x] `viagens-table.tsx`: tipo local `Viagem` atualizado; coluna "Valor
+  pedágios" passa a mostrar o valor confirmado em destaque + sufixo cinza
+  `+ R$X estimado` (só quando > 0), com `title` explicando a diferença —
+  mesmo padrão visual do sufixo `(estimado)` já usado em
+  `passagens/components/passagens-table.tsx` para composição de veículo
+  inferida.
+- [x] `listViagensTransporte()` não precisou de mudança — já usa
+  `select("*")`.
+- [x] Verificação via SQL direto: 1 viagem sintética, 3 passagens (uma
+  `dentro_poligono = true` → R$10, uma `false` → R$20, uma sem linha de
+  validação/`sem_dados_gps` → R$30); resultado bateu exatamente
+  (confirmado R$10, estimado R$50, total R$60); cleanup confirmado (zero
+  resíduo).
+- [x] `typecheck`/`eslint`/`next build` limpos.
+
+**Notas de implementação:**
+- Migration aplicada: `20260914190042_pedagio_fase19_pedagios_confirmado_estimado`
+  (mirror local em `supabase/migrations/`; timestamp real do
+  `apply_migration` ficou ~20 min à frente do nome usado ao criar o
+  arquivo local — renomeado pra bater antes de qualquer commit).
+- Não há tela de detalhe própria pra `viagem_transporte` — o único
+  consumidor da view é a tabela de listagem em `/viagens-transporte`.
+
+**Limitação conhecida:** não testado visualmente no navegador (mesma
+limitação das FASEs 15-18 — sem `service_role key`/ferramenta de
+navegador nesta sessão). Cobertura ficou em SQL direto (view) +
+build/typecheck/lint.
+
+## FASE 20 — Estacionamento (cadastro + validação de permanência)
+
+**Status:** 🟢 Concluído (2026-09-15)
+
+**Objetivo:** algumas linhas da planilha de fornecedor são cobrança de
+estacionamento (veículo cobrado por pernoite/período parado num local, não
+uma passagem física por praça). Hoje essas linhas não têm cadastro nem
+validação próprios. Criar um cadastro de estacionamento (com polígono,
+igual `praca_pedagio`) e validar automaticamente, via GPS, se o veículo
+realmente ficou lá e por quanto tempo — comparando o valor cobrado contra
+`diárias reais × tarifa vigente`.
+
+**Decisões fechadas com o usuário (2026-09-15):**
+- Origem do dado: **novo valor de `tipo_uso_texto`** (`estacionamento`) na
+  mesma planilha/staging de passagens — não é um arquivo/layout separado.
+  Uma cobrança de estacionamento é **uma linha só** (não um par
+  entrada+saída como crédito/débito de viagem): `data_hora` é uma
+  referência única (ex.: saída) e `valor_cobrado` é o total do período.
+  A quantidade de diárias **não vem explícita na planilha** — o sistema
+  precisa inferir via GPS.
+- Casamento: reaproveita a coluna `praca_nome` (sem usar `sentido`, que
+  não faz sentido para estacionamento) contra o nome de
+  `pedagio.estacionamento`, mesmo padrão de "não bloqueia, marca
+  `sem_cadastro` se não achar" já usado para praça/veículo.
+- Cadastro `pedagio.estacionamento`: com **polígono geográfico** (`GIST`),
+  igual `praca_pedagio`, para permitir cruzar com GPS automaticamente (não
+  é um cadastro simples de texto).
+- Tarifação: `pedagio.tarifa_estacionamento` com **valor por diária +
+  vigência** (mesmo padrão de `tarifa_praca`, incl. `EXCLUDE gist` contra
+  sobreposição) — o sistema calcula `valor_esperado = diárias_detectadas ×
+  tarifa_diaria_aplicada` e compara com `valor_cobrado`.
+- Regra de diária: **arredondar para cima a cada 24h** de permanência
+  detectada (`ceil(duração / 24h)`, mínimo 1) — não é contagem de datas de
+  calendário (estilo hotel).
+- Tolerância de gap entre pings dentro do polígono para considerar
+  permanência contínua: **6 horas** (provisório, revisar quando houver
+  caso real com GPS de estacionamento para conferir).
+- Janela de busca do início da permanência: até **30 dias** antes de
+  `data_hora` (referência da linha).
+- Sem tarifa vigente cadastrada → `valor_esperado`/`divergencia_valor`
+  ficam `null` (mesma simplificação já adotada em `tarifa_praca`, FASE 03).
+
+**Desenho técnico (a confirmar durante a implementação):**
+- Tabelas novas: `pedagio.estacionamento` (nome, poligono, ativo — igual
+  `praca_pedagio` sem `sentido`), `pedagio.tarifa_estacionamento`
+  (estacionamento_id, valor_diaria, vigencia_inicio/fim),
+  `pedagio.validacao_estacionamento` (1:1 com `passagem_pedagio`, campos
+  próprios: `entrada_detectada`, `saida_detectada`, `diarias_detectadas`,
+  `tarifa_diaria_aplicada`, `valor_esperado`, `divergencia_valor`,
+  `resultado`, `validado_em`) — tabela própria em vez de reaproveitar
+  `validacao_passagem`, porque os campos são conceitualmente diferentes
+  (permanência num período vs. ponto único no tempo).
+- `passagem_pedagio.tipo_uso` check ganha `'estacionamento'`;
+  `estacionamento_id` (FK nullable) novo.
+- Função `pedagio.validar_estacionamento(passagem_id)`: busca
+  `posicao_veiculo` do veículo dentro da janela de 30 dias antes de
+  `data_hora`, filtra pings `ST_Contains(estacionamento.poligono, geom)`,
+  agrupa em "corridas" contínuas (gap ≤ 6h entre pings dentro do
+  polígono), escolhe a corrida mais próxima/relevante a `data_hora`,
+  deriva `entrada_detectada`/`saida_detectada`, calcula diárias e
+  `valor_esperado`. Reaproveita os valores já existentes do domínio de
+  `status_validacao` (`sem_dados_gps` se nenhum ping dentro do polígono na
+  janela, `valor_divergente` se `divergencia_valor <> 0`, `ok` caso
+  contrário) — não precisa de novos valores no check constraint.
+- Revalidação automática ao chegar GPS novo: estender (ou duplicar) o
+  trigger existente em `posicao_veiculo` para também considerar passagens
+  `tipo_uso = 'estacionamento'` `pendente`/`sem_dados_gps` do mesmo
+  veículo cujo novo ping caia dentro da janela de 30 dias — mecânica exata
+  a fechar durante a implementação.
+
+**Checklist:**
+- [x] Migration: tabelas `estacionamento`/`tarifa_estacionamento`/
+  `validacao_estacionamento` + `estacionamento_id` em `passagem_pedagio` +
+  RLS (mesmo padrão leitura-autorizado/escrita-admin dos outros cadastros;
+  `validacao_estacionamento` com leitura+insert+update autorizado/exclusão
+  admin, igual `validacao_passagem`)
+- [x] `normalizar_tipo_uso` aceita `ESTACIONAMENTO` (rótulo provisório —
+  sem arquivo real do fornecedor ainda pra confirmar, mesmo cuidado da
+  FASE 07 com `DB`/`CR`/`PLANO CONTRATADO`)
+- [x] `processar_staging_passagens`: casa `praca_nome` contra
+  `pedagio.estacionamento` quando `tipo_uso = 'estacionamento'` (sem usar
+  `sentido`), grava `sem_cadastro` se não achar
+- [x] Função `pedagio.validar_estacionamento(passagem_id)` — detecção de
+  permanência via "gaps and islands" em SQL puro (CTEs com `lag()`/
+  `sum() over`, sem loop procedural)
+- [x] `processar_validacoes_pendentes()` e o trigger de revalidação de
+  `posicao_veiculo` passam a rotear por `tipo_uso` (passagem → janela
+  pontual ±10min; estacionamento → janela de busca de 30 dias)
+- [x] RPCs `criar_estacionamento`/`atualizar_estacionamento` (GeoJSON ↔
+  geometry, mesmo padrão de `criar_praca`/`atualizar_praca`) + view
+  `vw_estacionamento_mapa`; `excluir_estacionamentos`/
+  `excluir_tarifas_estacionamento` admin-only
+- [x] `vw_passagens_detalhado` ganha `estacionamento_id`/
+  `estacionamento_nome`/`entrada_detectada`/`saida_detectada`/
+  `diarias_detectadas`; `valor_esperado`/`divergencia_valor` passam a vir
+  de `coalesce(validacao_passagem, validacao_estacionamento)` — dashboards
+  de divergência (FASE 17) e faturas já refletem estacionamento sem
+  precisar de view nova. `vw_fatura_resumo` ganha
+  `qtd_estacionamento`/`valor_estacionamento` (mesmo padrão de
+  qtd_passagem/qtd_contrato)
+- [x] Frontend: cadastro de estacionamento (`/cadastros/estacionamentos`,
+  form + mapa reaproveitando `PolygonMapEditor` da FASE 06.4) e de tarifa
+  de estacionamento (`/cadastros/tarifas-estacionamento`, mesmo padrão de
+  `/cadastros/tarifas` sem o campo categoria); abas novas no menu
+  Cadastros. `/passagens`: filtro "Tipo de uso" ganha Estacionamento,
+  coluna "Praça" cai para `estacionamento_nome` quando não há praça,
+  detalhe mostra seção de permanência (entrada/saída detectada, diárias)
+  em vez da seção de polígono/GPS pontual, sem o mapa de validação
+  (que é específico de praça)
+- [x] `get_advisors` — só o WARN esperado de `search_path` mutável nas 2
+  funções de parâmetro novas (`janela_busca_estacionamento`/
+  `gap_continuidade_estacionamento`), corrigido na mesma sessão
+- [x] Verificação via SQL direto: permanência contínua de 48h batendo
+  exatamente (2 diárias), permanência com gap de 10h tratada como duas
+  corridas (escolhe a mais próxima da referência), sem nenhum ping na
+  janela (`sem_dados_gps`), valor divergente, sem tarifa cadastrada
+  (`valor_esperado` null, resultado `ok`), `sem_cadastro` (nome não
+  reconhecido), revalidação automática via trigger ao chegar GPS tardio,
+  fluxo completo de importação via `processar_staging_passagens` (linha
+  reconhecida e não reconhecida), tarifa sobreposta rejeitada (`23P01`),
+  exclusão bloqueada pra não-admin, RPCs `criar_estacionamento`/
+  `atualizar_estacionamento` — todos os casos conferidos, cleanup
+  confirmado (zero resíduo) a cada rodada
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `docs/modelo-dados.md`, `docs/fluxo-validacao.md` e
+  `docs/importacao.md` atualizados
+
+**Notas de implementação:**
+- Migrations aplicadas: `20260915143834_pedagio_fase20_estacionamento`,
+  `20260915143851_pedagio_fase20_fix_search_path`,
+  `20260915144509_pedagio_fase20_views_estacionamento` (mirror local em
+  `supabase/migrations/`).
+- Algoritmo de detecção de permanência é 100% SQL declarativo (CTEs
+  `dentro`/`marcado`/`grupos`/`corridas`), sem loop plpgsql — mesmo
+  espírito de manter as funções de validação legíveis e auditáveis já
+  usado desde a FASE 03.
+- `valor_esperado`/`divergencia_valor` em `vw_passagens_detalhado` usam
+  `coalesce` entre as duas tabelas de validação porque cada passagem só
+  tem linha em uma delas (`validacao_passagem` OU `validacao_estacionamento`,
+  nunca as duas) — decisão que evitou ter que atualizar as views de
+  divergência/faturas (FASE 17/15) uma a uma.
+- Três parâmetros ficaram provisórios (documentados como tal em
+  `docs/fluxo-validacao.md`): regra de diária (`ceil(duração/24h)`),
+  tolerância de gap de continuidade (6h) e janela de busca (30 dias) —
+  nenhum tem dado real de estacionamento pra validar ainda; revisar
+  quando aparecer um caso real.
+- **Pendência conhecida:** ainda não há uma planilha real de estacionamento
+  do fornecedor para conferir o rótulo exato de `tipo_uso_texto` e nomes
+  reais dos locais — mesmo padrão da FASE 07 (planilha real trouxe ajustes
+  que o desenho inicial não previu), revisar assim que o arquivo real
+  aparecer. Também sem detalhe visual/mapa de permanência (a seção
+  "Mapa da validação" do detalhe de passagem é ocultada para
+  `tipo_uso = estacionamento`, já que é construída em cima de um único
+  ponto/polígono de praça) — considerar um mapa de trajetória se a
+  necessidade aparecer.
+- Mesma limitação de sempre: sem `service_role key`/ferramenta de
+  navegador nesta sessão pra conferir visualmente ou via REST com usuário
+  real — cobertura ficou em SQL direto (incluindo o bloqueio de exclusão
+  para não-admin, verificado indiretamente já que `execute_sql` roda sem
+  `auth.uid()`) + `typecheck`/`eslint`/`next build`.
+
+---
+
 ## Próximo passo
 
-Nenhum item pendente do plano atual. Próximos passos dependem do uso
-real do sistema — trazer necessidades concretas conforme aparecerem.
-Pendências conhecidas: conferir `/faturas` (FASE 15, incluindo o ajuste de
-período inicial/final), `/cadastros/categorias`/`/cadastros/veiculos`
-(FASE 16), a seção "Divergência" (FASE 17), a seção/tela "Crédito x
-débito" com a nova subseção "Crédito sem débito" (FASE 18 + ajuste) do
-Painel com um usuário autenticado real, o modo escuro/claro (ajuste)
-visualmente no navegador, e reconferir a FASE 18 com dados reais assim
-que houver linhas de crédito importadas — nenhuma sessão recente teve
-`service_role key` nem ferramenta de navegador disponível.
+Nenhum item pendente do plano atual (FASE 01 a FASE 20 concluídas) —
+próximos passos dependem do uso real do sistema. Pendências conhecidas:
+conferir `/faturas` (FASE 15, incluindo o ajuste de período inicial/final),
+`/cadastros/categorias`/`/cadastros/veiculos` (FASE 16), a seção
+"Divergência" (FASE 17), a seção/tela "Crédito x débito" com a nova
+subseção "Crédito sem débito" (FASE 18 + ajuste) do Painel, a coluna
+"Valor pedágios" confirmado/estimado em `/viagens-transporte` (FASE 19), os
+cadastros de estacionamento/tarifa e o detalhe de passagem de
+estacionamento (FASE 20) — tudo com um usuário autenticado real, o modo
+escuro/claro (ajuste) visualmente no navegador, reconferir a FASE 18 com
+dados reais assim que houver linhas de crédito importadas, e confirmar o
+rótulo real de `tipo_uso_texto = estacionamento`/nomes de locais assim que
+a planilha real do fornecedor chegar (FASE 20) — nenhuma sessão recente
+teve `service_role key` nem ferramenta de navegador disponível.

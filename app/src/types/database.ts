@@ -262,6 +262,7 @@ export type Database = {
           viagem_id: string | null;
           embarcador_informada: string | null;
           embarcador_id: string | null;
+          estacionamento_id: string | null;
           lote_importacao_id: string;
           status_validacao: string;
           created_at: string;
@@ -283,6 +284,7 @@ export type Database = {
           viagem_id?: string | null;
           embarcador_informada?: string | null;
           embarcador_id?: string | null;
+          estacionamento_id?: string | null;
           lote_importacao_id: string;
           status_validacao?: string;
           created_at?: string;
@@ -304,6 +306,7 @@ export type Database = {
           viagem_id?: string | null;
           embarcador_informada?: string | null;
           embarcador_id?: string | null;
+          estacionamento_id?: string | null;
           lote_importacao_id?: string;
           status_validacao?: string;
           created_at?: string;
@@ -342,6 +345,119 @@ export type Database = {
             columns: ["embarcador_id"];
             isOneToOne: false;
             referencedRelation: "embarcador";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "passagem_pedagio_estacionamento_id_fkey";
+            columns: ["estacionamento_id"];
+            isOneToOne: false;
+            referencedRelation: "estacionamento";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      estacionamento: {
+        Row: {
+          id: string;
+          nome: string;
+          poligono: string;
+          ativo: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          poligono: string;
+          ativo?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          nome?: string;
+          poligono?: string;
+          ativo?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      tarifa_estacionamento: {
+        Row: {
+          id: string;
+          estacionamento_id: string;
+          valor_diaria: number;
+          vigencia_inicio: string;
+          vigencia_fim: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          estacionamento_id: string;
+          valor_diaria: number;
+          vigencia_inicio: string;
+          vigencia_fim?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          estacionamento_id?: string;
+          valor_diaria?: number;
+          vigencia_inicio?: string;
+          vigencia_fim?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tarifa_estacionamento_estacionamento_id_fkey";
+            columns: ["estacionamento_id"];
+            isOneToOne: false;
+            referencedRelation: "estacionamento";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      validacao_estacionamento: {
+        Row: {
+          id: string;
+          passagem_id: string;
+          entrada_detectada: string | null;
+          saida_detectada: string | null;
+          diarias_detectadas: number | null;
+          tarifa_diaria_aplicada: number | null;
+          valor_esperado: number | null;
+          divergencia_valor: number | null;
+          resultado: string;
+          validado_em: string;
+        };
+        Insert: {
+          id?: string;
+          passagem_id: string;
+          entrada_detectada?: string | null;
+          saida_detectada?: string | null;
+          diarias_detectadas?: number | null;
+          tarifa_diaria_aplicada?: number | null;
+          valor_esperado?: number | null;
+          divergencia_valor?: number | null;
+          resultado: string;
+          validado_em?: string;
+        };
+        Update: {
+          id?: string;
+          passagem_id?: string;
+          entrada_detectada?: string | null;
+          saida_detectada?: string | null;
+          diarias_detectadas?: number | null;
+          tarifa_diaria_aplicada?: number | null;
+          valor_esperado?: number | null;
+          divergencia_valor?: number | null;
+          resultado?: string;
+          validado_em?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "validacao_estacionamento_passagem_id_fkey";
+            columns: ["passagem_id"];
+            isOneToOne: true;
+            referencedRelation: "passagem_pedagio";
             referencedColumns: ["id"];
           },
         ];
@@ -668,6 +784,16 @@ export type Database = {
         };
         Relationships: [];
       };
+      vw_estacionamento_mapa: {
+        Row: {
+          id: string | null;
+          nome: string | null;
+          poligono_geojson: Json | null;
+          ativo: boolean | null;
+          created_at: string | null;
+        };
+        Relationships: [];
+      };
       vw_passagens_detalhado: {
         Row: {
           passagem_id: string | null;
@@ -699,6 +825,11 @@ export type Database = {
           origem_categoria: string | null;
           categoria_codigo: string | null;
           categoria_descricao: string | null;
+          estacionamento_id: string | null;
+          estacionamento_nome: string | null;
+          entrada_detectada: string | null;
+          saida_detectada: string | null;
+          diarias_detectadas: number | null;
         };
         Relationships: [];
       };
@@ -737,6 +868,8 @@ export type Database = {
           valor_pedagios: number | null;
           valor_tarifa_esperada: number | null;
           divergencia_valor: number | null;
+          valor_pedagios_confirmado: number | null;
+          valor_pedagios_estimado: number | null;
         };
         Relationships: [];
       };
@@ -787,6 +920,8 @@ export type Database = {
           qtd_fora_poligono: number | null;
           qtd_local_e_valor_divergentes: number | null;
           qtd_nao_aplicavel: number | null;
+          qtd_estacionamento: number | null;
+          valor_estacionamento: number | null;
         };
         Relationships: [];
       };
@@ -939,9 +1074,21 @@ export type Database = {
         };
         Returns: Database["pedagio"]["Tables"]["praca_pedagio"]["Row"];
       };
+      criar_estacionamento: {
+        Args: { p_nome: string; p_poligono_geojson: Json; p_ativo?: boolean };
+        Returns: Database["pedagio"]["Tables"]["estacionamento"]["Row"];
+      };
+      atualizar_estacionamento: {
+        Args: { p_id: string; p_nome: string; p_poligono_geojson: Json; p_ativo?: boolean };
+        Returns: Database["pedagio"]["Tables"]["estacionamento"]["Row"];
+      };
       validar_passagem: {
         Args: { p_passagem_id: string };
         Returns: Database["pedagio"]["Tables"]["validacao_passagem"]["Row"] | null;
+      };
+      validar_estacionamento: {
+        Args: { p_passagem_id: string };
+        Returns: Database["pedagio"]["Tables"]["validacao_estacionamento"]["Row"] | null;
       };
       processar_validacoes_pendentes: {
         Args: Record<string, never>;
@@ -1048,6 +1195,14 @@ export type Database = {
         Returns: undefined;
       };
       excluir_embarcadores: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_estacionamentos: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
+      };
+      excluir_tarifas_estacionamento: {
         Args: { p_ids: string[] };
         Returns: undefined;
       };
