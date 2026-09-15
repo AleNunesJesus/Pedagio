@@ -121,12 +121,25 @@ um instante único, é preciso reconstruir o período de permanência a partir
 do histórico de GPS.
 
 Parâmetros configuráveis (mesmo espírito de `janela_tolerancia_validacao`):
-- `janela_busca_estacionamento()`: até onde no passado buscar o início da
-  permanência a partir de `data_hora` da linha (referência, ex.: saída) —
-  fixo em 30 dias.
+- `janela_busca_estacionamento()`: até onde buscar o início/fim da
+  permanência a partir de `data_hora` da linha (referência) — fixo em **2
+  dias**, **para os dois lados** (ver nota abaixo sobre por que é
+  simétrica). Deliberadamente curta (reduzida de um valor inicial de 30
+  dias) para não escanear histórico demais de `posicao_veiculo` por
+  passagem quando o volume de GPS crescer — suficiente pra permanência de
+  estacionamento (pernoite), que não deveria durar dias a fio.
 - `gap_continuidade_estacionamento()`: gap máximo entre dois pings dentro do
   polígono para ainda considerar "o mesmo período de permanência" — fixo em
   6 horas (cobre trackers que não enviam ping com o veículo parado).
+
+**Por que a janela é simétrica (não só pra trás):** a `data_hora` da linha
+é uma referência (ex.: horário registrado na fatura), mas não é garantido
+que seja exatamente o instante da saída — um caso real mostrou a fatura às
+22:51:30 enquanto o ping de saída real só chegou às 23:35 (43min depois),
+porque os pings de GPS são amostras periódicas, não eventos de entrada/
+saída. Por isso a busca cobre `janela_busca_estacionamento()` nos dois
+sentidos a partir de `data_hora`, e a escolha da corrida mais relevante
+(passo 4) é que evita pegar um período errado com essa janela mais larga.
 
 Algoritmo, por passagem (`pedagio.validar_estacionamento`):
 
@@ -135,7 +148,7 @@ Algoritmo, por passagem (`pedagio.validar_estacionamento`):
    `validar_passagem`).
 2. Buscar todos os `posicao_veiculo` do veículo com `data_hora` entre
    `data_hora da linha - janela_busca_estacionamento()` e
-   `data_hora da linha + janela_tolerancia_validacao()`, filtrando só os
+   `data_hora da linha + janela_busca_estacionamento()`, filtrando só os
    que caem dentro do polígono do estacionamento (`ST_Contains`).
 3. Agrupar esses pings em "corridas" contínuas — uma técnica de SQL
    conhecida como "gaps and islands": ordena por `data_hora`, marca como
@@ -163,9 +176,9 @@ domínio da coluna, não precisou de novo valor no `check`.
 **Revalidação automática:** o mesmo trigger de `posicao_veiculo` (FASE 03)
 que revalida passagens `pendente`/`sem_dados_gps` ao chegar um ping novo
 também cobre `tipo_uso = 'estacionamento'`, só que usando a janela de busca
-de 30 dias em vez da janela pontual de passagem — um ping de GPS que chega
-dias depois de uma cobrança de estacionamento ainda revalida ela
-automaticamente.
+de estacionamento (2 dias) em vez da janela pontual de passagem — um ping
+de GPS que chega até 2 dias depois de uma cobrança de estacionamento ainda
+revalida ela automaticamente.
 
 **Limitação conhecida (decisão provisória):** sem arquivo real do
 fornecedor ainda para confirmar o rótulo exato de `tipo_uso_texto` — o

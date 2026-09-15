@@ -2047,6 +2047,87 @@ realmente ficou lá e por quanto tempo — comparando o valor cobrado contra
 
 ---
 
+## Ajuste pós-FASE 20 — rótulo real de tipo_uso_texto (2026-09-15)
+
+Primeiro arquivo real de estacionamento (`PASSAGEM_pedagio.csv`, 1 linha)
+importou com **1 erro em 1 linha** logo na primeira tentativa pelo app.
+Causa: `tipo_uso_texto` vinha como `ESTACINOAMENTO` (letras trocadas —
+"INO" em vez de "ION"), não `ESTACIONAMENTO` como o desenho da FASE 20
+assumiu provisoriamente (sem arquivo real disponível até então) — mesmo
+tipo de achado da FASE 07 com `DB`/`CR`/`PLANO CONTRATADO`.
+
+**Correção** (migration `20260915174000_pedagio_fix_tipo_uso_estacionamento_typo_real`):
+`normalizar_tipo_uso` passa a aceitar `ESTACINOAMENTO` além de
+`ESTACIONAMENTO`.
+
+**Verificação:** reprocessei a linha real exata (mesmos valores do CSV:
+fatura `26197946126`, placa `JDG8H05`, `TERMINAL TRUCK`, `195.00`, `DB`)
+via staging + `processar_staging_passagens` — importou corretamente:
+`tipo_uso = estacionamento`, `estacionamento_id` resolvido pra "TERMINAL
+TRUCK" (já cadastrado pelo usuário), `status_validacao = sem_dados_gps`
+(esperado — ainda não há GPS importado desse veículo nesse período). Essa
+linha real ficou na base (não é dado de teste).
+
+## Ajuste pós-FASE 20 — janela de busca assimétrica (bug real, 2026-09-15)
+
+Após importar o histórico de GPS real do veículo `JDG8H05` (5 posições),
+o usuário reportou que `saida_detectada` repetia o mesmo valor de
+`entrada_detectada` (22:30), quando devia ser 23:35 — havia um segundo
+ping dentro do polígono do estacionamento "TERMINAL TRUCK" nesse horário.
+
+**Causa raiz:** `validar_estacionamento` buscava GPS numa janela
+`[data_hora - 30 dias, data_hora + janela_tolerancia_validacao()]` — o
+limite de **+10 minutos** depois da `data_hora` (reaproveitado da
+tolerância pontual de passagem em praça) era curto demais. A `data_hora`
+da fatura (22:51:30) não é garantidamente o instante exato da saída — no
+caso real, ficou **entre** a entrada (22:30) e a saída real (23:35, 43min
+depois de 22:51:30) — porque pings de GPS são amostras periódicas, não
+eventos de entrada/saída. Com o limite de +10min, o ping das 23:35
+(fora da janela) nunca era considerado.
+
+**Correção** (migration `20260915184541_pedagio_fix_janela_estacionamento_simetrica`):
+janela de busca passa a ser **simétrica** — `janela_busca_estacionamento()`
+(30 dias) nos dois sentidos a partir de `data_hora`, não só pra trás. A
+lógica de escolher a corrida mais relevante (a que contém `data_hora`, ou
+a mais próxima) já existia e continua sendo o que evita pegar um período
+errado com a janela mais larga.
+
+**Verificação:** rechamei `validar_estacionamento` pra passagem real —
+`entrada_detectada` = 22:30 (inalterado, correto), `saida_detectada` = 23:35
+(corrigido), 1 diária, `valor_esperado = R$160` (tarifa já cadastrada pelo
+usuário), `divergencia_valor = R$35` (`195 - 160`, cobrado maior que o
+esperado — achado de negócio legítimo, não é bug). Investiguei as outras
+5 linhas com o mesmo `numero_fatura` (de uma importação real anterior,
+2026-09-11) e confirmei que são dados reais de outras placas/passagens
+sob a mesma fatura — não é lixo de teste, nada foi removido.
+
+## Ajuste pós-FASE 20 — janela de busca reduzida para 2 dias (2026-09-15)
+
+Usuário pediu explicitamente reduzir `janela_busca_estacionamento()` de
+30 dias (valor original da FASE 20, mantido simétrico no ajuste anterior)
+para **2 dias**, antecipando volume massivo de histórico de GPS —
+escanear `posicao_veiculo` numa janela de 30 dias por passagem ficaria
+caro conforme o histórico crescer; 2 dias já é generoso pra uma
+permanência de estacionamento (pernoite), que não deveria durar dias a
+fio.
+
+**Correção** (migration `20260915184944_pedagio_fix_janela_estacionamento_2dias`):
+só o corpo de `janela_busca_estacionamento()` mudou (`interval '30 days'`
+→ `interval '2 days'`) — nenhuma outra função precisou de ajuste, já que
+todas leem o valor através dela (mesmo motivo de isolar esse parâmetro
+numa função própria desde o desenho original).
+
+**Verificação:** rechamei `validar_estacionamento` na mesma passagem real
+(entrada 22:30, saída 23:35 — ambas bem dentro de ±2 dias de `data_hora`)
+— resultado idêntico ao do ajuste anterior (`entrada_detectada`/
+`saida_detectada`/`diarias_detectadas`/`valor_esperado`/`divergencia_valor`
+inalterados), confirmando que a janela menor não quebrou o caso real já
+resolvido. Índice `(veiculo_id, data_hora)` em `posicao_veiculo` já existe
+desde a FASE 09 (aliás duplicado — `posicao_veiculo_veiculo_data_hora_uniq`
+e `posicao_veiculo_veiculo_data_idx` cobrem a mesma coisa; pré-existente,
+não introduzido por esse ajuste, não tocado por ora) — a janela menor só
+reduz o range escaneado por esse índice a cada validação/revalidação.
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual (FASE 01 a FASE 20 concluídas) —

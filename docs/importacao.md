@@ -21,7 +21,7 @@ em que a planilha do fornecedor as traz:
 | `placa` | texto | `ABC1D23` |
 | `tipo_veiculo` | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
 | `praca_nome` | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
-| `tipo_uso_texto` | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento` (case-insensitive) | `passagem` |
+| `tipo_uso_texto` | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento`/`estacinoamento` (case-insensitive) | `passagem` |
 | `valor_texto` | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00` ou `23` |
 | `condicao_texto` | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
 | `viagem` | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
@@ -56,11 +56,12 @@ muda por tipo de linha) e é casado contra `pedagio.estacionamento.nome`
 é importada mesmo assim com `status_validacao = sem_cadastro`, mesmo
 padrão de praça/veículo.
 
-**Pendência:** o rótulo `ESTACIONAMENTO` usado hoje em
-`normalizar_tipo_uso` é provisório — ainda não há uma planilha real do
-fornecedor para confirmar o rótulo/código exato usado (mesmo tipo de
-ajuste que aconteceu na FASE 07 com `DB`/`CR`/`PLANO CONTRATADO`). Revisar
-quando o arquivo real chegar.
+**Ajuste confirmado com arquivo real (2026-09-15):** o primeiro arquivo
+real trouxe `tipo_uso_texto = ESTACINOAMENTO` (letras trocadas — "INO" em
+vez de "ION"), não `ESTACIONAMENTO`. `normalizar_tipo_uso` passou a
+aceitar ambos. Se aparecer uma terceira variação num arquivo futuro,
+mesma regra de sempre: erro explícito até mapear o caso real, nunca
+adivinhação.
 
 Qualquer outro erro inesperado ao processar uma linha (ex.: violação de
 constraint não prevista pelas checagens acima) também é contado como erro
