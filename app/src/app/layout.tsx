@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,8 +23,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {/* Aplica a classe .dark antes da primeira pintura (evita "flash" de
             tema errado) — precisa rodar de forma síncrona e bem cedo, por
-            isso é um script inline no início do body em vez de um useEffect. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+            isso é `next/script` com strategy="beforeInteractive" em vez de
+            um useEffect. Um <script> JSX cru causava o warning "Encountered
+            a script tag while rendering React component" e, em navegações
+            que re-renderizam o layout raiz, a classe .dark (adicionada
+            imperativamente, fora do controle do React) podia ser perdida
+            quando o React recommitava o className original do <html>. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {THEME_INIT_SCRIPT}
+        </Script>
         {children}
       </body>
     </html>
