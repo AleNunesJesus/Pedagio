@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getMeuPapel } from "@/lib/auth/guards";
 import { getPracaMapa } from "@/features/cadastros/queries";
 import { PracaForm } from "@/features/cadastros/components/praca-form";
@@ -20,22 +21,30 @@ export default async function EditarPracaPage({
   if (!praca || !praca.id || !praca.nome || !praca.poligono_geojson) notFound();
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-        Editar praça
-      </h2>
-      <PracaForm
-        praca={{
-          id: praca.id,
-          nome: praca.nome,
-          rodovia: praca.rodovia,
-          concessionaria: praca.concessionaria,
-          km: praca.km,
-          sentido: praca.sentido,
-          ativo: praca.ativo ?? true,
-          poligono_geojson: praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] },
-        }}
-      />
-    </section>
+    <div className="space-y-4">
+      <Link
+        href="/cadastros/pracas"
+        className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+      >
+        ← Voltar para praças
+      </Link>
+      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+          Editar praça
+        </h2>
+        <PracaForm
+          praca={{
+            id: praca.id,
+            nome: praca.nome,
+            rodovia: praca.rodovia,
+            concessionaria: praca.concessionaria,
+            km: praca.km,
+            sentido: praca.sentido,
+            ativo: praca.ativo ?? true,
+            poligono_geojson: praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] },
+          }}
+        />
+      </section>
+    </div>
   );
 }

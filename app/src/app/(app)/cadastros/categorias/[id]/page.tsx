@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getMeuPapel } from "@/lib/auth/guards";
 import { getCategoria } from "@/features/cadastros/queries";
 import { CategoriaForm } from "@/features/cadastros/components/categoria-form";
@@ -17,11 +18,19 @@ export default async function EditarCategoriaPage({
   if (!categoria) notFound();
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-        Editar categoria — {categoria.codigo}
-      </h2>
-      <CategoriaForm categoria={categoria} />
-    </section>
+    <div className="space-y-4">
+      <Link
+        href="/cadastros/categorias"
+        className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+      >
+        ← Voltar para categorias
+      </Link>
+      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+          Editar categoria — {categoria.codigo}
+        </h2>
+        <CategoriaForm categoria={categoria} />
+      </section>
+    </div>
   );
 }

@@ -2,6 +2,23 @@ import Link from "next/link";
 import { logout } from "@/features/auth/actions";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NavDropdown } from "@/components/nav-dropdown";
+
+const FATURAS_ITEMS = [
+  { href: "/faturas", label: "Faturas" },
+  { href: "/passagens", label: "Passagens" },
+  { href: "/credito-debito", label: "Crédito/Débito" },
+];
+
+const CADASTROS_ITEMS = [
+  { href: "/cadastros/categorias", label: "Categorias" },
+  { href: "/cadastros/veiculos", label: "Veículos" },
+  { href: "/cadastros/pracas", label: "Praças" },
+  { href: "/cadastros/tarifas", label: "Tarifas" },
+  { href: "/cadastros/estacionamentos", label: "Estacionamentos" },
+  { href: "/cadastros/tarifas-estacionamento", label: "Tarifas estacionamento" },
+  { href: "/cadastros/embarcadores", label: "Embarcadores" },
+];
 
 export function AppHeader({ papel }: { papel: string }) {
   return (
@@ -16,29 +33,12 @@ export function AppHeader({ papel }: { papel: string }) {
             >
               Painel
             </Link>
-            <Link
-              href="/faturas"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              Faturas
-            </Link>
-            <Link
-              href="/passagens"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              Passagens
-            </Link>
+            <NavDropdown label="Faturas" items={FATURAS_ITEMS} />
             <Link
               href="/viagens-transporte"
               className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             >
               Viagens
-            </Link>
-            <Link
-              href="/credito-debito"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              Crédito/Débito
             </Link>
             <Link
               href="/rastreamento"
@@ -52,12 +52,7 @@ export function AppHeader({ papel }: { papel: string }) {
             >
               Importação
             </Link>
-            <Link
-              href="/cadastros/categorias"
-              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              Cadastros
-            </Link>
+            <NavDropdown label="Cadastros" items={CADASTROS_ITEMS} />
             {papel === "admin" && (
               <Link
                 href="/usuarios"

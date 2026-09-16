@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { getMeuPapel } from "@/lib/auth/guards";
 import { getEstacionamentoMapa } from "@/features/cadastros/queries";
 import { EstacionamentoForm } from "@/features/cadastros/components/estacionamento-form";
@@ -20,18 +21,26 @@ export default async function EditarEstacionamentoPage({
   if (!estacionamento || !estacionamento.id || !estacionamento.nome || !estacionamento.poligono_geojson) notFound();
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-      <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-        Editar estacionamento
-      </h2>
-      <EstacionamentoForm
-        estacionamento={{
-          id: estacionamento.id,
-          nome: estacionamento.nome,
-          ativo: estacionamento.ativo ?? true,
-          poligono_geojson: estacionamento.poligono_geojson as { type: "Polygon"; coordinates: number[][][] },
-        }}
-      />
-    </section>
+    <div className="space-y-4">
+      <Link
+        href="/cadastros/estacionamentos"
+        className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+      >
+        ← Voltar para estacionamentos
+      </Link>
+      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
+          Editar estacionamento
+        </h2>
+        <EstacionamentoForm
+          estacionamento={{
+            id: estacionamento.id,
+            nome: estacionamento.nome,
+            ativo: estacionamento.ativo ?? true,
+            poligono_geojson: estacionamento.poligono_geojson as { type: "Polygon"; coordinates: number[][][] },
+          }}
+        />
+      </section>
+    </div>
   );
 }
