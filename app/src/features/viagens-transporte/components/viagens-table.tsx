@@ -10,6 +10,7 @@ type Viagem = {
   id: string | null;
   numero_transporte: string | null;
   placa_informada: string | null;
+  frota: string | null;
   cidade_origem: string | null;
   uf_origem: string | null;
   cidade_destino: string | null;
@@ -63,6 +64,7 @@ export function ViagensTable({ rows, podeExcluir }: { rows: Viagem[]; podeExclui
         columns={[
           { header: "Transporte", render: (r) => r.numero_transporte ?? "—" },
           { header: "Placa", render: (r) => r.placa_informada ?? "—" },
+          { header: "Frota", render: (r) => r.frota ?? "—" },
           {
             header: "Origem → Destino",
             render: (r) =>

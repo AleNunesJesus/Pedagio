@@ -85,6 +85,7 @@ export default async function PassagemDetalhePage({
               valor: passagem.data_hora ? new Date(passagem.data_hora).toLocaleString("pt-BR") : "—",
             },
             { label: "Placa", valor: passagem.placa ?? "—" },
+            { label: "Frota", valor: passagem.frota ?? "—" },
             { label: "Tipo de veículo (informado)", valor: passagem.tipo_veiculo_informado ?? "—" },
             {
               label: passagem.tipo_uso === "estacionamento" ? "Estacionamento" : "Praça",

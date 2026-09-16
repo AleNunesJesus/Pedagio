@@ -847,6 +847,7 @@ export type Database = {
           vinculo_viagem_status: string | null;
           viagem_transporte_candidatas: number | null;
           numero_viagem_bate: boolean | null;
+          frota: string | null;
         };
         Relationships: [];
       };
@@ -887,6 +888,7 @@ export type Database = {
           divergencia_valor: number | null;
           valor_pedagios_confirmado: number | null;
           valor_pedagios_estimado: number | null;
+          frota: string | null;
         };
         Relationships: [];
       };

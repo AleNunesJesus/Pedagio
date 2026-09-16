@@ -14,6 +14,7 @@ type Passagem = {
   numero_fatura: string | null;
   data_hora: string | null;
   placa: string | null;
+  frota: string | null;
   praca_nome: string | null;
   estacionamento_nome: string | null;
   tipo_uso: string | null;
@@ -71,6 +72,7 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
             render: (r) => (r.data_hora ? new Date(r.data_hora).toLocaleString("pt-BR") : "—"),
           },
           { header: "Placa", render: (r) => r.placa ?? "—" },
+          { header: "Frota", render: (r) => r.frota ?? "—" },
           { header: "Praça", render: (r) => r.praca_nome ?? r.estacionamento_nome ?? "—" },
           { header: "Tipo", render: (r) => (r.tipo_uso ? LABEL_TIPO_USO[r.tipo_uso] ?? r.tipo_uso : "—") },
           {

@@ -2277,6 +2277,19 @@ de navegador nesta sessão). Cobertura ficou em SQL direto + build/typecheck/lin
 
 ---
 
+## Ajuste pós-FASE 21 — coluna "frota" em Passagens e Viagens (2026-09-16)
+
+Usuário pediu pra exibir `veiculo.frota` (texto livre já cadastrado, sem
+uso nas listagens até então) ao lado da placa em `/passagens` e
+`/viagens-transporte`. `vw_passagens_detalhado` já fazia join com
+`veiculo`; `vw_viagem_transporte_detalhado` ganhou join novo com
+`veiculo` (por `veiculo_id`) só pra isso. Colunas anexadas ao final de
+cada view (mesma restrição do Postgres já documentada). Migration:
+`20260916181210_pedagio_frota_em_passagens_e_viagens`. Frontend: coluna
+"Frota" ao lado de "Placa" nas duas tabelas + campo "Frota" no detalhe de
+passagem. Verificado com dados reais (3 veículos com frota cadastrada,
+valores batendo). `typecheck`/`eslint`/`next build` limpos.
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual (FASE 01 a FASE 21 concluídas) —
