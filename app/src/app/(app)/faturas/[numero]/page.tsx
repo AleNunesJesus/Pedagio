@@ -90,12 +90,13 @@ export default async function FaturaDetalhePage({
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
         <StatTile label="Período inicial" value={formatData(resumo.periodo_inicio)} />
         <StatTile label="Período final" value={formatData(resumo.periodo_fim)} />
         <StatTile label="Valor total a pagar" value={formatBRL(resumo.valor_total)} />
         <StatTile label="Valor passagens" value={formatBRL(resumo.valor_passagem)} />
         <StatTile label="Valor contrato" value={formatBRL(resumo.valor_contrato)} />
+        <StatTile label="Valor estacionamento" value={formatBRL(resumo.valor_estacionamento)} />
         <StatTile label="Total de linhas" value={String(resumo.qtd_total ?? 0)} />
       </div>
 

@@ -30,6 +30,7 @@ export function FaturasTable({ rows }: { rows: FaturaResumo[] }) {
         { header: "Período final", render: (r) => formatData(r.periodo_fim) },
         { header: "Passagens", align: "right", render: (r) => r.qtd_passagem ?? 0 },
         { header: "Contrato", align: "right", render: (r) => r.qtd_contrato ?? 0 },
+        { header: "Estacionamento", align: "right", render: (r) => r.qtd_estacionamento ?? 0 },
         { header: "Valor total", align: "right", render: (r) => formatBRL(r.valor_total) },
         {
           header: "Situação",

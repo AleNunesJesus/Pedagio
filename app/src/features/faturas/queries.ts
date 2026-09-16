@@ -7,9 +7,11 @@ export type FaturaResumo = {
   qtd_total: number | null;
   qtd_passagem: number | null;
   qtd_contrato: number | null;
+  qtd_estacionamento: number | null;
   valor_total: number | null;
   valor_passagem: number | null;
   valor_contrato: number | null;
+  valor_estacionamento: number | null;
   periodo_inicio: string | null;
   periodo_fim: string | null;
   qtd_ok: number | null;
