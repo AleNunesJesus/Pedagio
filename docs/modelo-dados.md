@@ -219,10 +219,15 @@ Resultado do cruzamento geoespacial + tarifário para cada passagem.
 | validado_em | timestamptz | |
 | categoria_veiculo_id | fk categoria_veiculo null | categoria usada pra achar `valor_esperado` — nem sempre é `veiculo.categoria_veiculo_id` (ver `origem_categoria`) |
 | origem_categoria | text | `composicao_viagem` (achou a viagem de transporte + carreta(s) cadastrada(s)) \| `cadastro_veiculo` (fallback: categoria fixa do veículo) |
+| viagem_transporte_id | fk viagem_transporte null | vínculo por placa + janela saída/chegada (FASE 21); null se `sem_vinculo`/`ambiguo` |
+| vinculo_viagem_status | text | `vinculado` (1 candidata) \| `ambiguo` (2+ candidatas — não escolhe sozinho) \| `sem_vinculo` (0 candidatas) — FASE 21 |
+| viagem_transporte_candidatas | int | quantas `viagem_transporte` da mesma placa cobrem o horário da passagem |
+| numero_viagem_bate | boolean null | `viagem_informada` (fatura) == `viagem_transporte.numero_transporte`, só quando `vinculado`; null se ambíguo/sem vínculo/sem número na fatura — informativo, não é divergência (numerações de sistemas diferentes) |
 
 Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo que popula esta
 tabela, incluindo como `categoria_veiculo_id`/`origem_categoria` são
-resolvidos (`pedagio.categoria_por_composicao`).
+resolvidos (`pedagio.categoria_por_composicao`) e como o vínculo com
+`viagem_transporte` é resolvido (FASE 21).
 
 ### Carretas (removido como tabela própria na FASE 16)
 Até a FASE 15, carretas viviam numa tabela `pedagio.carreta` separada

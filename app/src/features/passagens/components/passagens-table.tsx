@@ -7,6 +7,7 @@ import { formatBRL } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO, statusLabel } from "@/lib/status-validacao";
 import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
 import { excluirPassagens } from "../actions";
+import { VinculoViagemBadge } from "./vinculo-viagem-badge";
 
 type Passagem = {
   passagem_id: string | null;
@@ -20,6 +21,10 @@ type Passagem = {
   status_validacao: string | null;
   categoria_codigo: string | null;
   origem_categoria: string | null;
+  viagem_transporte_numero: string | null;
+  vinculo_viagem_status: string | null;
+  viagem_transporte_candidatas: number | null;
+  numero_viagem_bate: boolean | null;
 };
 
 const LABEL_TIPO_USO: Record<string, string> = {
@@ -27,6 +32,7 @@ const LABEL_TIPO_USO: Record<string, string> = {
   contrato: "Contrato",
   estacionamento: "Estacionamento",
 };
+
 
 export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeExcluir: boolean }) {
   const { selecionados, toggle, toggleTodos, excluirSelecionados, pending, erro } =
@@ -80,6 +86,17 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
               ) : (
                 "—"
               ),
+          },
+          {
+            header: "Viagem (transporte)",
+            render: (r) => (
+              <VinculoViagemBadge
+                numero={r.viagem_transporte_numero}
+                status={r.vinculo_viagem_status}
+                candidatas={r.viagem_transporte_candidatas}
+                numeroBate={r.numero_viagem_bate}
+              />
+            ),
           },
           { header: "Valor", align: "right", render: (r) => formatBRL(r.valor_cobrado) },
           {

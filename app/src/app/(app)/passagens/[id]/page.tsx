@@ -4,6 +4,7 @@ import { getPassagemDetalhe } from "@/features/passagens/queries";
 import { getPracaMapa } from "@/features/cadastros/queries";
 import { getPosicao } from "@/features/rastreamento/queries";
 import { MapaValidacaoLoader } from "@/features/passagens/components/mapa-validacao-loader";
+import { VinculoViagemBadge } from "@/features/passagens/components/vinculo-viagem-badge";
 import { formatBRL, formatNumber } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 
@@ -172,6 +173,17 @@ export default async function PassagemDetalhePage({
               {
                 label: "Divergência de valor",
                 valor: formatBRL(passagem.divergencia_valor),
+              },
+              {
+                label: "Vínculo com viagem de transporte",
+                valor: (
+                  <VinculoViagemBadge
+                    numero={passagem.viagem_transporte_numero}
+                    status={passagem.vinculo_viagem_status}
+                    candidatas={passagem.viagem_transporte_candidatas}
+                    numeroBate={passagem.numero_viagem_bate}
+                  />
+                ),
               },
             ]}
           />

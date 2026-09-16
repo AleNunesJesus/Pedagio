@@ -620,6 +620,10 @@ export type Database = {
           validado_em: string;
           categoria_veiculo_id: string | null;
           origem_categoria: string | null;
+          viagem_transporte_id: string | null;
+          vinculo_viagem_status: string;
+          viagem_transporte_candidatas: number;
+          numero_viagem_bate: boolean | null;
         };
         Insert: {
           id?: string;
@@ -634,6 +638,10 @@ export type Database = {
           validado_em?: string;
           categoria_veiculo_id?: string | null;
           origem_categoria?: string | null;
+          viagem_transporte_id?: string | null;
+          vinculo_viagem_status?: string;
+          viagem_transporte_candidatas?: number;
+          numero_viagem_bate?: boolean | null;
         };
         Update: {
           id?: string;
@@ -648,6 +656,10 @@ export type Database = {
           validado_em?: string;
           categoria_veiculo_id?: string | null;
           origem_categoria?: string | null;
+          viagem_transporte_id?: string | null;
+          vinculo_viagem_status?: string;
+          viagem_transporte_candidatas?: number;
+          numero_viagem_bate?: boolean | null;
         };
         Relationships: [
           {
@@ -830,6 +842,11 @@ export type Database = {
           entrada_detectada: string | null;
           saida_detectada: string | null;
           diarias_detectadas: number | null;
+          viagem_transporte_id: string | null;
+          viagem_transporte_numero: string | null;
+          vinculo_viagem_status: string | null;
+          viagem_transporte_candidatas: number | null;
+          numero_viagem_bate: boolean | null;
         };
         Relationships: [];
       };

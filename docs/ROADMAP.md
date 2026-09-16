@@ -2128,10 +2128,164 @@ e `posicao_veiculo_veiculo_data_idx` cobrem a mesma coisa; pré-existente,
 não introduzido por esse ajuste, não tocado por ora) — a janela menor só
 reduz o range escaneado por esse índice a cada validação/revalidação.
 
+## FASE 21 — Vínculo passagem × viagem_transporte (validação cruzada de viagem)
+
+**Status:** 🟢 Concluído (2026-09-16)
+
+**Origem:** debate com o usuário em 2026-09-16.
+
+**Contexto/lacuna atual:** existem hoje duas fontes de "viagem" que nunca
+se cruzam:
+- `passagem_pedagio.viagem_informada`/`viagem_id` — número de viagem cru
+  da planilha de **fatura** (o embarcador credita um valor de pedágio a
+  essa viagem); vira FK pra `pedagio.viagem`, que é só um registro
+  (`numero`) sem mais nenhum atributo (FASE 10).
+- `pedagio.viagem_transporte.numero_transporte` — a viagem real
+  (documento fiscal de transporte), com placa, janela `data_hora_saida`/
+  `data_hora_chegada`, embarcador, origem/destino (FASE 13).
+
+O único vínculo que existe entre as duas hoje é **implícito e agregado**:
+`vw_viagem_transporte_detalhado` (FASE 13/19) soma `valor_cobrado` das
+passagens da mesma placa cuja `data_hora` cai dentro da janela
+saída/chegada da viagem — sem nunca guardar, por passagem individual, a
+qual `viagem_transporte` ela foi vinculada, nem comparar se
+`viagem_informada` bate com `numero_transporte`. O mesmo padrão
+placa+janela já é reusado em 3 lugares (embarcador na importação de
+viagem_transporte, `vw_credito_debito_por_viagem`, categoria por
+composição real na FASE 16) — mas sempre resolvido "on the fly" dentro de
+uma view ou de um `select ... limit 1`, nunca exposto como um vínculo
+auditável nem com sinalização de ambiguidade.
+
+**Objetivo:** para cada passagem, resolver (usando a mesma heurística
+placa+janela já validada) a qual `viagem_transporte` ela provavelmente
+pertence, registrar esse vínculo de forma explícita — incluindo o caso de
+zero ou mais de uma viagem candidata — e usar esse vínculo pra comparar o
+número da viagem informado na fatura contra o número real do transporte,
+sinalizando concordância/divergência/impossibilidade de checar.
+
+**Decisões fechadas com o usuário (2026-09-16, todas confirmadas conforme
+a proposta original):**
+1. **Onde persistir o vínculo:** coluna nova em `validacao_passagem`
+   (`viagem_transporte_id` + `vinculo_viagem_status`), calculada dentro de
+   `pedagio.validar_passagem()` — a mesma função já chamada tanto na
+   importação quanto pelas revalidações existentes
+   (`revalidar_passagens_da_viagem`/`revalidar_passagens_por_carreta`,
+   FASE 16). Confirmado: persistir (não só view), porque a tela de
+   passagens filtra/ordena por esse vínculo e precisa de coluna
+   indexável.
+2. **Regra de desempate quando há mais de uma `viagem_transporte`
+   candidata** (mesma placa, `data_hora` dentro de mais de uma janela
+   saída/chegada): confirmado **não resolver automaticamente** —
+   `vinculo_viagem_status = 'ambiguo'`, guardando a contagem de
+   candidatas, em vez de escolher "a mais próxima" e arriscar atribuição
+   silenciosamente errada. Reavaliar se o volume real de casos ambíguos
+   se mostrar alto demais pra revisão manual.
+3. **Comparação `viagem_informada` × `numero_transporte`:** confirmado
+   como campo só informativo (`numero_viagem_bate: true/false/null`), não
+   uma divergência — os dois usam numeração de sistemas diferentes (nota
+   já registrada na FASE 13), raramente batem literalmente por natureza.
+   O sinal de confiança principal continua sendo o vínculo placa+janela,
+   igual FASE 19.
+4. **Onde exibir:** confirmado `passagens-table.tsx` (coluna "Viagem
+   (transporte)") + detalhe da passagem (`/passagens/[id]`, seção
+   "Resultado da validação"), mesmo espírito visual do sufixo
+   `(estimado)` já usado para composição de veículo inferida.
+
+**Desenho técnico (rascunho, a confirmar durante a implementação):**
+- `validacao_passagem` ganha `viagem_transporte_id` (FK nullable),
+  `vinculo_viagem_status` (`check in ('vinculado', 'ambiguo',
+  'sem_vinculo')`), `viagem_transporte_candidatas` (int, só relevante
+  quando `ambiguo`), `numero_viagem_bate` (boolean nullable — `null`
+  quando não há como comparar: sem `viagem_informada` na fatura ou sem
+  vínculo resolvido).
+- `pedagio.validar_passagem()`: depois de resolver o vínculo geo/tarifário
+  existente, roda a mesma busca placa+janela já usada em
+  `vw_viagem_transporte_detalhado`/`revalidar_passagens_da_viagem` contra
+  `viagem_transporte`, preenche as colunas novas.
+- Sem mecanismo novo de revalidação: `processar_staging_viagens_transporte`
+  (a função de importação, não um trigger de tabela) já chama
+  `revalidar_passagens_da_viagem(v_viagem_id)` logo após inserir cada
+  `viagem_transporte` nova (FASE 16) — cobre exatamente o caso "passagem
+  chegou primeiro, viagem_transporte depois" pelo fluxo real de
+  importação. O caso inverso (viagem_transporte já existe quando a
+  passagem é importada) é resolvido na hora, dentro do próprio
+  `validar_passagem()`.
+- `vw_passagens_detalhado` ganha as colunas novas (mesmo padrão de anexar
+  ao final, por causa da restrição do Postgres em `create or replace
+  view` já documentada na FASE 19).
+
+**Checklist:**
+- [x] Fechar as 4 decisões propostas acima com o usuário — confirmadas
+  todas via pergunta direta antes de iniciar a implementação
+- [x] Migration: colunas novas em `validacao_passagem`
+  (`viagem_transporte_id`, `vinculo_viagem_status`,
+  `viagem_transporte_candidatas`, `numero_viagem_bate`) + índice em
+  `viagem_transporte_id`
+- [x] `pedagio.validar_passagem()`: lógica de resolução do vínculo
+  (único/ambíguo/sem vínculo) + comparação de número
+- [x] Backfill: revalida todas as passagens `tipo_uso = 'passagem'`
+  já existentes (dentro da própria migration, via `do $$ ... $$`) —
+  necessário porque `processar_validacoes_pendentes()` só reprocessa
+  status `pendente`/`sem_dados_gps`, não as já resolvidas
+- [x] Confirmada a cobertura da revalidação existente (FASE 16) pro caso
+  passagem-antes-da-viagem-transporte — é a própria função de importação
+  (`processar_staging_viagens_transporte`) que chama
+  `revalidar_passagens_da_viagem`, não um trigger de tabela (ajuste da
+  nota do desenho técnico acima, confirmado só durante a implementação)
+- [x] `vw_passagens_detalhado` com as colunas novas (+ `viagem_transporte_numero`
+  via join com `viagem_transporte`), anexadas ao final da view
+- [x] `app/src/types/database.ts` atualizado manualmente (schema
+  `pedagio` não é coberto por `generate_typescript_types`, mesma nota da
+  FASE 19)
+- [x] Frontend: componente compartilhado `VinculoViagemBadge` (novo,
+  `features/passagens/components/vinculo-viagem-badge.tsx`) usado na
+  coluna "Viagem (transporte)" de `passagens-table.tsx` e na seção
+  "Resultado da validação" do detalhe de passagem (`/passagens/[id]`)
+- [x] `get_advisors` (segurança + performance) — sem alertas novos
+  (só o INFO esperado de índice novo ainda sem uso, mesmo padrão de
+  qualquer índice recém-criado)
+- [x] Verificação via SQL direto: vinculado único + número bate, vinculado
+  único + número não bate, vinculado único sem `viagem_informada` (bate =
+  null), ambíguo (2 candidatas mesma placa/janela), sem vínculo (nenhuma
+  viagem_transporte no período), revalidação via
+  `revalidar_passagens_da_viagem` (viagem_transporte importada depois da
+  passagem) — todos os 6 casos bateram exatamente, cleanup confirmado
+  (zero resíduo)
+- [x] `typecheck`/`eslint`/`next build` limpos
+- [x] `docs/modelo-dados.md` e `docs/fluxo-validacao.md` atualizados
+
+**Notas de implementação:**
+- Migration aplicada: `20260916173419_pedagio_fase21_vinculo_viagem_transporte`
+  (mirror local em `supabase/migrations/`; timestamp real do
+  `apply_migration` ficou ~3h à frente do nome usado ao criar o arquivo
+  local — renomeado pra bater, mesma rotina de sempre).
+- Testei diretamente inserindo uma `viagem_transporte` na tabela (sem
+  passar por `processar_staging_viagens_transporte`) e confirmei que a
+  passagem correspondente **não** revalida sozinha — comportamento
+  esperado, já que a revalidação é chamada pela função de importação, não
+  por um trigger na tabela `viagem_transporte`. Chamando
+  `revalidar_passagens_da_viagem` manualmente (o que a importação real
+  faz) resolveu corretamente. Registrado como correção da nota original
+  do desenho técnico, que descrevia isso como "trigger".
+- Escopo mantido em `tipo_uso = 'passagem'` (mesmo recorte já usado no
+  filtro de `valor_pedagios` da FASE 13/19) — `contrato`/`estacionamento`
+  não entram nesse vínculo.
+
+**Limitação conhecida:** não testado visualmente no navegador (mesma
+limitação recorrente desde a FASE 15 — sem `service_role key`/ferramenta
+de navegador nesta sessão). Cobertura ficou em SQL direto + build/typecheck/lint.
+
+---
+
 ## Próximo passo
 
-Nenhum item pendente do plano atual (FASE 01 a FASE 20 concluídas) —
-próximos passos dependem do uso real do sistema. Pendências conhecidas:
+Nenhum item pendente do plano atual (FASE 01 a FASE 21 concluídas) —
+próximos passos dependem do uso real do sistema, incluindo conferir a
+FASE 21 com dados reais (casos ambíguos podem aparecer com mais
+frequência do que nos testes sintéticos, o que reabriria a decisão nº2
+acima). Pendências
+conhecidas fora do plano de fases (mesmas de antes, ainda sem conferência
+visual):
 conferir `/faturas` (FASE 15, incluindo o ajuste de período inicial/final),
 `/cadastros/categorias`/`/cadastros/veiculos` (FASE 16), a seção
 "Divergência" (FASE 17), a seção/tela "Crédito x débito" com a nova

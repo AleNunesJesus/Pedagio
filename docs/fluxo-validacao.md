@@ -111,6 +111,45 @@ ping de GPS é excluído):
 `passagem_pedagio.status_validacao` é atualizado para o mesmo valor de
 `resultado`, permitindo filtrar rapidamente sem join.
 
+## Vínculo com viagem de transporte (FASE 21)
+
+Além do vínculo geoespacial/tarifário acima, `validar_passagem` também
+resolve — só para `tipo_uso = 'passagem'` — a qual `viagem_transporte`
+(documento fiscal do transporte, FASE 13) aquela passagem provavelmente
+pertence, usando a mesma heurística de placa + janela saída/chegada já
+usada na composição de categoria (seção anterior) e no cálculo de
+pedágio confirmado/estimado (`vw_viagem_transporte_detalhado`, FASE 19):
+
+1. Conta quantas `viagem_transporte` da mesma placa (`placa_informada`)
+   têm `data_hora` da passagem dentro de `[data_hora_saida,
+   data_hora_chegada]`.
+2. **0 candidatas** → `vinculo_viagem_status = sem_vinculo`.
+3. **1 candidata** → `vinculo_viagem_status = vinculado`,
+   `viagem_transporte_id` preenchido.
+4. **2+ candidatas** → `vinculo_viagem_status = ambiguo`. Ao contrário da
+   resolução de categoria (que usa `order by data_hora_saida limit 1`
+   como desempate), aqui **não escolhe uma sozinho** —
+   `viagem_transporte_id` fica `null` e `viagem_transporte_candidatas`
+   guarda a contagem. Decisão do usuário: atribuir errado silenciosamente
+   é pior do que deixar pendente pra revisão manual; reavaliar só se o
+   volume real de casos ambíguos tornar a revisão manual inviável.
+
+Quando `vinculado`, compara `passagem_pedagio.viagem_informada` (número
+de viagem cru da fatura, creditado pelo embarcador) com
+`viagem_transporte.numero_transporte` e grava em `numero_viagem_bate`.
+**Os dois números vêm de sistemas de numeração diferentes** (mesma nota
+já registrada na FASE 13 sobre `pedagio.viagem` vs. `viagem_transporte`)
+— na prática raramente coincidem literalmente, então `numero_viagem_bate
+= false` é informativo, não é tratado como divergência (diferente de
+`divergencia_valor`). Fica `null` quando não há como comparar: sem
+vínculo único, ou fatura sem `viagem_informada`.
+
+Reaproveita a mesma revalidação automática já descrita acima — como o
+vínculo depende de `viagem_transporte` existir, `processar_staging_viagens_transporte`
+já chama `revalidar_passagens_da_viagem` após cada import, que roda
+`validar_passagem` de novo e recalcula também estes campos; nenhum
+mecanismo novo foi necessário.
+
 ## Validação de permanência (estacionamento, FASE 20)
 
 Linhas `tipo_uso = 'estacionamento'` não representam uma passagem pontual
