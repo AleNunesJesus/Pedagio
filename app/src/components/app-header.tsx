@@ -61,6 +61,12 @@ export function AppHeader({ papel }: { papel: string }) {
                 Usuários
               </Link>
             )}
+            <Link
+              href="/manual"
+              className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              Manual
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-2">
