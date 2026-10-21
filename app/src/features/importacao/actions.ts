@@ -3,6 +3,13 @@
 import Papa from "papaparse";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import {
+  COLUNAS_PLANILHA_PASSAGENS,
+  cabecalhosFaltando,
+  chaveCabecalho,
+  decodificarArquivo,
+  linhaParaStaging,
+} from "./planilha-passagens";
 
 export type ImportacaoState = {
   error?: string;
@@ -11,22 +18,9 @@ export type ImportacaoState = {
     total_linhas: number | null;
     total_erros: number | null;
   };
+  // praças/estacionamentos criados automaticamente por este lote (FASE 22)
+  cadastrosCriados?: { tipo: "praca" | "estacionamento"; nome: string; sentido: string | null }[];
 };
-
-const COLUNAS_ESPERADAS = [
-  "numero_fatura",
-  "data_texto",
-  "horario_texto",
-  "placa",
-  "tipo_veiculo",
-  "praca_nome",
-  "tipo_uso_texto",
-  "valor_texto",
-  "condicao_texto",
-  "viagem",
-  "embarcador",
-  "sentido",
-] as const;
 
 const LIMITE_LINHAS = 5000;
 
@@ -46,14 +40,25 @@ export async function importarPlanilha(
     return { error: "Selecione um arquivo CSV." };
   }
 
-  const texto = await arquivo.text();
+  const texto = decodificarArquivo(new Uint8Array(await arquivo.arrayBuffer()));
+  // separador detectado automaticamente: o Excel em português exporta com ";"
   const resultado = Papa.parse<Record<string, string>>(texto, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: chaveCabecalho,
   });
 
   if (resultado.errors.length > 0) {
     return { error: `Erro ao ler o CSV: ${resultado.errors[0].message}` };
+  }
+
+  const faltando = cabecalhosFaltando(resultado.meta.fields ?? []);
+  if (faltando.length > 0) {
+    return {
+      error:
+        `Cabeçalho(s) não encontrado(s) no arquivo: ${faltando.join(", ")}. ` +
+        `Esperado, nesta ordem: ${COLUNAS_PLANILHA_PASSAGENS.map((c) => c.cabecalho).join(", ")}.`,
+    };
   }
 
   const linhas = resultado.data;
@@ -61,34 +66,11 @@ export async function importarPlanilha(
     return { error: "O arquivo não tem nenhuma linha de dados." };
   }
 
-  const colunasEncontradas = Object.keys(linhas[0]);
-  const temAlgumaColunaEsperada = COLUNAS_ESPERADAS.some((c) => colunasEncontradas.includes(c));
-  if (!temAlgumaColunaEsperada) {
-    return {
-      error:
-        "Nenhuma coluna esperada foi encontrada no CSV. Confira os cabeçalhos em docs/importacao.md " +
-        `(esperado: ${COLUNAS_ESPERADAS.join(", ")}).`,
-    };
-  }
-
   if (linhas.length > LIMITE_LINHAS) {
     return { error: `O arquivo tem ${linhas.length} linhas — o limite por importação é ${LIMITE_LINHAS}.` };
   }
 
-  const linhasParaStaging = linhas.map((linha) => ({
-    numero_fatura: vazio(linha.numero_fatura),
-    data_texto: vazio(linha.data_texto),
-    horario_texto: vazio(linha.horario_texto),
-    placa: vazio(linha.placa),
-    tipo_veiculo: vazio(linha.tipo_veiculo),
-    praca_nome: vazio(linha.praca_nome),
-    tipo_uso_texto: vazio(linha.tipo_uso_texto),
-    valor_texto: vazio(linha.valor_texto),
-    condicao_texto: vazio(linha.condicao_texto),
-    viagem: vazio(linha.viagem),
-    embarcador: vazio(linha.embarcador),
-    sentido: vazio(linha.sentido),
-  }));
+  const linhasParaStaging = linhas.map(linhaParaStaging);
 
   const supabase = await createClient();
 
@@ -106,9 +88,32 @@ export async function importarPlanilha(
   });
   if (rpcError) return { error: `Erro ao processar a importação: ${rpcError.message}` };
 
+  const [{ data: pracasCriadas }, { data: estacionamentosCriados }] = await Promise.all([
+    supabase
+      .from("praca_pedagio")
+      .select("nome, sentido")
+      .eq("criada_no_lote_id", lote.id)
+      .order("nome"),
+    supabase
+      .from("estacionamento")
+      .select("nome")
+      .eq("criada_no_lote_id", lote.id)
+      .order("nome"),
+  ]);
+
   revalidatePath("/importacao");
+  revalidatePath("/cadastros/pracas");
+  revalidatePath("/cadastros/estacionamentos");
   return {
     lote: { id: lote.id, total_linhas: lote.total_linhas, total_erros: lote.total_erros },
+    cadastrosCriados: [
+      ...(pracasCriadas ?? []).map((p) => ({ tipo: "praca" as const, nome: p.nome, sentido: p.sentido })),
+      ...(estacionamentosCriados ?? []).map((e) => ({
+        tipo: "estacionamento" as const,
+        nome: e.nome,
+        sentido: null,
+      })),
+    ],
   };
 }
 

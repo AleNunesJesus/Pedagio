@@ -5,13 +5,17 @@ import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
 import { excluirPracas } from "../actions";
+import { CadastroPendenteBadge } from "./cadastro-pendente-badge";
 
 type Praca = {
   id: string;
   nome: string;
   rodovia: string | null;
   km: number | null;
+  sentido: string | null;
   ativo: boolean;
+  cadastro_pendente: boolean;
+  lote_importacao: { arquivo_nome: string | null; created_at: string } | null;
 };
 
 export function PracaList({ rows, isAdmin }: { rows: Praca[]; isAdmin: boolean }) {
@@ -59,9 +63,16 @@ export function PracaList({ rows, isAdmin }: { rows: Praca[]; isAdmin: boolean }
                 r.nome
               ),
           },
+          { header: "Sentido", render: (r) => r.sentido ?? "—" },
           { header: "Rodovia", render: (r) => r.rodovia ?? "—" },
           { header: "Km", align: "right", render: (r) => r.km ?? "—" },
           { header: "Ativa", render: (r) => (r.ativo ? "Sim" : "Não") },
+          {
+            header: "Cadastro",
+            render: (r) => (
+              <CadastroPendenteBadge pendente={r.cadastro_pendente} origem={r.lote_importacao} />
+            ),
+          },
         ]}
       />
     </div>

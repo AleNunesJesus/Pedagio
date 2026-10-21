@@ -54,10 +54,12 @@ export type Database = {
           rodovia: string | null;
           concessionaria: string | null;
           km: number | null;
-          poligono: string;
+          poligono: string | null;
           sentido: string | null;
           ativo: boolean;
           created_at: string;
+          cadastro_pendente: boolean;
+          criada_no_lote_id: string | null;
         };
         Insert: {
           id?: string;
@@ -65,10 +67,12 @@ export type Database = {
           rodovia?: string | null;
           concessionaria?: string | null;
           km?: number | null;
-          poligono: string;
+          poligono?: string | null;
           sentido?: string | null;
           ativo?: boolean;
           created_at?: string;
+          cadastro_pendente?: boolean;
+          criada_no_lote_id?: string | null;
         };
         Update: {
           id?: string;
@@ -76,12 +80,22 @@ export type Database = {
           rodovia?: string | null;
           concessionaria?: string | null;
           km?: number | null;
-          poligono?: string;
+          poligono?: string | null;
           sentido?: string | null;
           ativo?: boolean;
           created_at?: string;
+          cadastro_pendente?: boolean;
+          criada_no_lote_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "praca_pedagio_criada_no_lote_id_fkey";
+            columns: ["criada_no_lote_id"];
+            isOneToOne: false;
+            referencedRelation: "lote_importacao";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       tarifa_praca: {
         Row: {
@@ -360,25 +374,39 @@ export type Database = {
         Row: {
           id: string;
           nome: string;
-          poligono: string;
+          poligono: string | null;
           ativo: boolean;
           created_at: string;
+          cadastro_pendente: boolean;
+          criada_no_lote_id: string | null;
         };
         Insert: {
           id?: string;
           nome: string;
-          poligono: string;
+          poligono?: string | null;
           ativo?: boolean;
           created_at?: string;
+          cadastro_pendente?: boolean;
+          criada_no_lote_id?: string | null;
         };
         Update: {
           id?: string;
           nome?: string;
-          poligono?: string;
+          poligono?: string | null;
           ativo?: boolean;
           created_at?: string;
+          cadastro_pendente?: boolean;
+          criada_no_lote_id?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "estacionamento_criada_no_lote_id_fkey";
+            columns: ["criada_no_lote_id"];
+            isOneToOne: false;
+            referencedRelation: "lote_importacao";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       tarifa_estacionamento: {
         Row: {
@@ -793,6 +821,8 @@ export type Database = {
           sentido: string | null;
           ativo: boolean | null;
           created_at: string | null;
+          cadastro_pendente: boolean | null;
+          criada_no_lote_id: string | null;
         };
         Relationships: [];
       };
@@ -803,6 +833,8 @@ export type Database = {
           poligono_geojson: Json | null;
           ativo: boolean | null;
           created_at: string | null;
+          cadastro_pendente: boolean | null;
+          criada_no_lote_id: string | null;
         };
         Relationships: [];
       };

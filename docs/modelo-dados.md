@@ -57,12 +57,20 @@ cobrança/detecção.
 | rodovia | text | |
 | concessionaria | text | |
 | km | numeric | opcional, referência |
-| poligono | geometry(Polygon, 4326) | área usada na validação |
+| poligono | geometry(Polygon, 4326) null | área usada na validação; nulo só com `cadastro_pendente` (CHECK) |
 | sentido | text | opcional (norte/sul, ida/volta) |
 | ativo | boolean | default true |
 | created_at | timestamptz | default now() |
+| cadastro_pendente | boolean | default false — `true` quando criada automaticamente pela importação (FASE 22); vira `false` ao salvar pelo formulário (`atualizar_praca`) |
+| criada_no_lote_id | fk lote_importacao null | lote que criou a praça automaticamente (`on delete set null`) |
 
-Índice: `GIST(poligono)`.
+Índice: `GIST(poligono)`, `criada_no_lote_id`.
+
+FASE 22: a importação cria a praça que não encontra (nome + sentido da
+planilha) via `obter_ou_criar_praca_importacao` (SECURITY DEFINER — insert
+em `praca_pedagio` é admin-only no RLS, mas qualquer usuário autorizado
+importa). Enquanto `poligono` é nulo, `validar_passagem` devolve
+`sem_cadastro`.
 
 ### `categoria_veiculo`
 Categorias de eixos — usadas tanto para tarifação por composição total
@@ -159,7 +167,7 @@ FASE 07).
 | veiculo_id | fk veiculo null | null se placa não reconhecida |
 | placa_informada | text | valor bruto da planilha (auditoria) |
 | tipo_veiculo_informado | text | texto livre da planilha, só informativo (tarifa usa a categoria já cadastrada do veículo) |
-| praca_id | fk praca_pedagio null | null se (praça, sentido) não reconhecidos juntos |
+| praca_id | fk praca_pedagio null | desde a FASE 22 a importação cria a praça que não encontra, então só fica null em linhas antigas ou sem `praca_nome` |
 | praca_informada | text | valor bruto da planilha |
 | sentido_informado | text | usado junto com praca_informada para casar com o cadastro |
 | tipo_uso | text | `passagem` \| `contrato` — contrato nunca passa pela validação geo/tarifária |
@@ -248,11 +256,13 @@ geográfico — mesmo modelo de `praca_pedagio`, sem o conceito de "sentido".
 |---|---|---|
 | id | uuid pk | |
 | nome | text | |
-| poligono | geometry(Polygon, 4326) | área usada na detecção de permanência |
+| poligono | geometry(Polygon, 4326) null | área usada na detecção de permanência; nulo só com `cadastro_pendente` (CHECK) |
 | ativo | boolean | default true |
 | created_at | timestamptz | default now() |
+| cadastro_pendente | boolean | default false — mesmo significado de `praca_pedagio` (FASE 22) |
+| criada_no_lote_id | fk lote_importacao null | idem |
 
-Índice: `GIST(poligono)`.
+Índice: `GIST(poligono)`, `criada_no_lote_id`.
 
 ### `tarifa_estacionamento` (FASE 20)
 Histórico de valores de diária por estacionamento, com vigência — mesmo

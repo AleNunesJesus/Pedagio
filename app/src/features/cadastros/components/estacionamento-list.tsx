@@ -5,11 +5,14 @@ import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
 import { excluirEstacionamentos } from "../actions";
+import { CadastroPendenteBadge } from "./cadastro-pendente-badge";
 
 type Estacionamento = {
   id: string;
   nome: string;
   ativo: boolean;
+  cadastro_pendente: boolean;
+  lote_importacao: { arquivo_nome: string | null; created_at: string } | null;
 };
 
 export function EstacionamentoList({ rows, isAdmin }: { rows: Estacionamento[]; isAdmin: boolean }) {
@@ -58,6 +61,12 @@ export function EstacionamentoList({ rows, isAdmin }: { rows: Estacionamento[]; 
               ),
           },
           { header: "Ativo", render: (r) => (r.ativo ? "Sim" : "Não") },
+          {
+            header: "Cadastro",
+            render: (r) => (
+              <CadastroPendenteBadge pendente={r.cadastro_pendente} origem={r.lote_importacao} />
+            ),
+          },
         ]}
       />
     </div>

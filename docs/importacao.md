@@ -10,23 +10,33 @@ O caminho manual via Supabase Studio (abaixo) continua funcionando e é
 
 ## Formato da planilha (FASE 07 — layout real do fornecedor)
 
-O CSV precisa ter exatamente estas colunas (nomes e formatos), na ordem
-em que a planilha do fornecedor as traz:
+O CSV precisa ter estes cabeçalhos, na ordem em que a planilha do
+fornecedor os traz (ajuste de 2026-10-21 — antes eram os nomes técnicos da
+staging, ex. `numero_fatura`). A comparação ignora acento, maiúsculas,
+espaços e pontuação (`NUMERO DA FATURA` também vale); colunas extras são
+ignoradas; faltando algum, a tela recusa o arquivo listando quais. O
+separador (vírgula, ponto e vírgula ou tab) é detectado sozinho, e o
+arquivo pode vir em UTF-8 ou Windows-1252 (padrão do Excel em português) —
+sem isso os acentos chegariam corrompidos.
 
-| coluna | formato esperado | exemplo |
+Entre parênteses está a coluna de `pedagio.staging_passagem_pedagio` onde
+cada cabeçalho é gravado (nomes usados no resto deste documento e no
+caminho manual via SQL).
+
+| cabeçalho no arquivo (staging) | formato esperado | exemplo |
 |---|---|---|
-| `numero_fatura` | texto livre (número da fatura) | `NF-000456` |
-| `data_texto` | **`DD/MM/YYYY`** | `05/08/2026` |
-| `horario_texto` | `HH24:MI:SS` ou `HH24:MI` | `14:32:00` ou `14:32` |
-| `placa` | texto | `ABC1D23` |
-| `tipo_veiculo` | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
-| `praca_nome` | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
-| `tipo_uso_texto` | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento`/`estacinoamento` (case-insensitive) | `passagem` |
-| `valor_texto` | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00` ou `23` |
-| `condicao_texto` | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
-| `viagem` | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
-| `embarcador` | texto livre, opcional — quem lançou o crédito da viagem. Auto-cadastrado em `pedagio.embarcador` na importação (FASE 10) se ainda não existir; CNPJ (opcional) só é preenchido manualmente depois, em `/cadastros/embarcadores` | `Embarcador X` |
-| `sentido` | texto — usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
+| **Número da Fatura** (`numero_fatura`) | texto livre (número da fatura) | `NF-000456` |
+| **Data** (`data_texto`) | **`DD/MM/YYYY`** | `05/08/2026` |
+| **Horário** (`horario_texto`) | `HH24:MI:SS` ou `HH24:MI` | `14:32:00` ou `14:32` |
+| **Placa Veículo** (`placa`) | texto | `ABC1D23` |
+| **Tipo do veículo** (`tipo_veiculo`) | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
+| **Descrição** (`praca_nome`) | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
+| **Tipo de uso** (`tipo_uso_texto`) | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento`/`estacinoamento` (case-insensitive) | `passagem` |
+| **Valor(R$)** (`valor_texto`) | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. Aceita também o símbolo `R$` (com ou sem espaço, inclusive o espaço não separável do Excel), sinal antes ou depois do `R$` e negativo entre parênteses. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00`, `23`, `R$ 10,00`, `R$ -10,00`, `-R$ 1.234,56`, `(R$ 10,00)` |
+| **Débito/Crédito** (`condicao_texto`) | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
+| **Viagem de Vale Pedágio** (`viagem`) | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
+| **Embarcador** (`embarcador`) | texto livre, opcional — quem lançou o crédito da viagem. Auto-cadastrado em `pedagio.embarcador` na importação (FASE 10) se ainda não existir; CNPJ (opcional) só é preenchido manualmente depois, em `/cadastros/embarcadores` | `Embarcador X` |
+| **Sentido da Praça** (`sentido`) | texto — usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
 formato, `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
@@ -52,9 +62,10 @@ não há coluna de quantidade de diárias na planilha.
 
 O nome do local vem em `praca_nome` (coluna reaproveitada — o nome não
 muda por tipo de linha) e é casado contra `pedagio.estacionamento.nome`
-(sem usar `sentido`, que não se aplica aqui); quando não encontra, a linha
-é importada mesmo assim com `status_validacao = sem_cadastro`, mesmo
-padrão de praça/veículo.
+(sem usar `sentido`, que não se aplica aqui); quando não encontra, o
+estacionamento é **criado automaticamente** só com o nome (cadastro
+pendente, sem polígono — FASE 22) e a linha fica com `status_validacao =
+sem_cadastro` até o polígono ser desenhado, mesmo padrão de praça.
 
 **Ajuste confirmado com arquivo real (2026-09-15):** o primeiro arquivo
 real trouxe `tipo_uso_texto = ESTACINOAMENTO` (letras trocadas — "INO" em
@@ -109,10 +120,17 @@ Só `tipo_uso_texto = passagem`/`passagens` é validado geograficamente.
    Isso, em uma única transação:
    - cria um `lote_importacao` para rastrear a carga;
    - tenta casar `placa` → `veiculo` e (`praca_nome`, `sentido`) →
-     `praca_pedagio` (case-insensitive); quando não encontra, a linha é
-     importada mesmo assim com `status_validacao = 'sem_cadastro'`
-     (decisão do usuário — nada da planilha se perde, só fica marcado
-     para revisão);
+     `praca_pedagio` (case-insensitive, ignorando espaços nas pontas);
+     placa não encontrada → a linha é importada mesmo assim com
+     `status_validacao = 'sem_cadastro'` (decisão do usuário — nada da
+     planilha se perde, só fica marcado para revisão);
+   - **praça não encontrada (FASE 22):** a praça é criada
+     automaticamente com o nome e o sentido da planilha
+     (`cadastro_pendente = true`, sem polígono, `criada_no_lote_id` =
+     este lote) e a passagem já fica vinculada a ela, com
+     `status_validacao = 'sem_cadastro'` até o cadastro ser completado.
+     Mesma coisa para estacionamento (só o nome). Uma praça com o mesmo
+     nome mas outro sentido é outra praça (cada sentido é um cadastro);
    - roda a validação geoespacial/tarifária (FASE 03) em todas as
      passagens recém-importadas com `tipo_uso = 'passagem'`;
    - limpa a `staging_passagem_pedagio` ao final.
@@ -129,8 +147,28 @@ Só `tipo_uso_texto = passagem`/`passagens` é validado geograficamente.
 
 ## Corrigindo um `sem_cadastro`
 
-Depois de cadastrar o veículo/praça que faltava, revalide manualmente as
-passagens que ficaram órfãs:
+**Praça/estacionamento (FASE 22):** a tela de importação lista o que foi
+criado automaticamente, e as telas Painel, Cadastros › Praças e Cadastros ›
+Estacionamentos mostram um aviso enquanto houver cadastro pendente. Abra o
+cadastro, desenhe o polígono, complete rodovia/km/concessionária e salve.
+Salvar encerra o pendente e revalida todas as passagens daquela praça
+automaticamente (`atualizar_praca` → `revalidar_passagens_da_praca`),
+inclusive vinculando passagens antigas que tenham ficado com `praca_id`
+nulo e o mesmo nome + sentido. Depois, cadastre a tarifa: gravar, alterar
+ou excluir uma tarifa também revalida as passagens da praça dentro da
+vigência (trigger em `tarifa_praca`/`tarifa_estacionamento`).
+
+Atenção: nome e sentido são a chave de reconhecimento da planilha. Se
+renomear a praça criada automaticamente, a próxima fatura com o nome
+antigo cria uma praça nova.
+
+Excluir o lote de importação também remove as praças/estacionamentos que
+ele criou e que continuam pendentes e sem uso. Um cadastro já completado
+não é removido.
+
+**Veículo:** não é criado automaticamente (precisa de categoria). Depois
+de cadastrar o veículo que faltava, revalide manualmente as passagens que
+ficaram órfãs:
 
 ```sql
 update pedagio.passagem_pedagio

@@ -24,6 +24,12 @@ const LABEL_ORIGEM_CATEGORIA: Record<string, string> = {
   cadastro_veiculo: "Cadastro do veículo (composição não identificada)",
 };
 
+// nulo = sem tarifa de referência (ex.: praça recém-criada pela importação),
+// não é "esperado R$ 0,00" — mesma distinção do Painel
+function valorOuSemTarifa(valor: number | null): string {
+  return valor === null ? "sem tarifa de referência" : formatBRL(valor);
+}
+
 type Campo = { label: string; valor: React.ReactNode };
 
 function Campos({ campos }: { campos: Campo[] }) {
@@ -128,8 +134,8 @@ export default async function PassagemDetalhePage({
                   : "—",
               },
               { label: "Diárias detectadas", valor: passagem.diarias_detectadas ?? "—" },
-              { label: "Valor esperado (diárias x tarifa vigente)", valor: formatBRL(passagem.valor_esperado) },
-              { label: "Divergência de valor", valor: formatBRL(passagem.divergencia_valor) },
+              { label: "Valor esperado (diárias x tarifa vigente)", valor: valorOuSemTarifa(passagem.valor_esperado) },
+              { label: "Divergência de valor", valor: valorOuSemTarifa(passagem.divergencia_valor) },
             ]}
           />
         ) : (
@@ -170,10 +176,10 @@ export default async function PassagemDetalhePage({
                   ? LABEL_ORIGEM_CATEGORIA[passagem.origem_categoria] ?? passagem.origem_categoria
                   : "—",
               },
-              { label: "Valor esperado (tarifa vigente)", valor: formatBRL(passagem.valor_esperado) },
+              { label: "Valor esperado (tarifa vigente)", valor: valorOuSemTarifa(passagem.valor_esperado) },
               {
                 label: "Divergência de valor",
-                valor: formatBRL(passagem.divergencia_valor),
+                valor: valorOuSemTarifa(passagem.divergencia_valor),
               },
               {
                 label: "Vínculo com viagem de transporte",
@@ -206,6 +212,17 @@ export default async function PassagemDetalhePage({
               }
               dentroPoligono={passagem.dentro_poligono}
             />
+          ) : praca?.cadastro_pendente ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Praça criada automaticamente pela importação da fatura e ainda sem polígono —{" "}
+              <Link
+                href={`/cadastros/pracas/${praca.id}`}
+                className="text-blue-600 hover:underline dark:text-blue-400"
+              >
+                completar o cadastro
+              </Link>
+              . Ao salvar, esta passagem é revalidada.
+            </p>
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Praça não identificada para esta passagem — sem polígono para exibir.

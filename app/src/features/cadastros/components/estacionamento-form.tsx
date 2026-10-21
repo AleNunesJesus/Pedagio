@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { salvarEstacionamento, type FormState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form-message";
+import { Alert } from "@/components/ui/alert";
 import { TextField, CheckboxField } from "@/components/ui/field";
 
 const PolygonMapEditor = dynamic(
@@ -21,7 +22,9 @@ type EstacionamentoExistente = {
   id: string;
   nome: string;
   ativo: boolean;
-  poligono_geojson: Polygon;
+  poligono_geojson: Polygon | null;
+  cadastro_pendente: boolean;
+  origem: { arquivo_nome: string | null; created_at: string } | null;
 };
 
 function SubmitButton() {
@@ -40,6 +43,18 @@ export function EstacionamentoForm({ estacionamento }: { estacionamento?: Estaci
   return (
     <form action={formAction} className="space-y-4">
       {estacionamento && <input type="hidden" name="estacionamento_id" value={estacionamento.id} />}
+      {estacionamento?.cadastro_pendente && (
+        <Alert variant="warning">
+          Estacionamento criado automaticamente pela importação
+          {estacionamento.origem
+            ? ` do arquivo ${estacionamento.origem.arquivo_nome ?? "(sem nome)"} em ${new Date(estacionamento.origem.created_at).toLocaleString("pt-BR")}`
+            : " da fatura"}
+          , com o nome que veio na planilha. Desenhe o polígono; ao salvar, o cadastro deixa de ser
+          pendente e as passagens deste estacionamento são revalidadas. O nome é usado para
+          reconhecer o estacionamento nas próximas importações — se mudar, a planilha com o nome
+          antigo vai criar outro cadastro.
+        </Alert>
+      )}
       <input
         type="hidden"
         name="poligono_geojson"

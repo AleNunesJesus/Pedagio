@@ -44,6 +44,18 @@ export function SecaoCadastros() {
           conferir se o veículo realmente esteve na praça. Não é possível
           excluir uma praça com tarifas ou passagens vinculadas.
         </p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Quando a fatura importada traz uma praça que ainda não existe
+          (nome + sentido), o sistema cria a praça sozinho, só com esses
+          dois campos, e marca como{" "}
+          <strong className="text-gray-900 dark:text-gray-100">Cadastro pendente</strong>{" "}
+          na lista (aviso também no Painel). As passagens dela ficam como
+          &quot;Sem cadastro&quot; até alguém abrir a praça, desenhar o
+          polígono e salvar — aí elas são revalidadas na hora. Cadastrar a
+          tarifa depois também revalida as passagens. Evite renomear a praça
+          criada assim: o nome e o sentido são o que reconhece a praça na
+          próxima fatura. O mesmo vale para estacionamentos (só o nome).
+        </p>
       </ManualSection>
 
       <ManualSection id="cadastros-tarifas" titulo="Tarifas" tags={TAGS_CADASTRO}>

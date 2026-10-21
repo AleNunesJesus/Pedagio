@@ -42,9 +42,39 @@ export async function listPracas() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("praca_pedagio")
-    .select("id, nome, rodovia, concessionaria, km, sentido, ativo")
+    .select(
+      "id, nome, rodovia, concessionaria, km, sentido, ativo, cadastro_pendente, lote_importacao(arquivo_nome, created_at)",
+    )
+    .order("cadastro_pendente", { ascending: false })
     .order("nome");
   return data ?? [];
+}
+
+// cadastros criados automaticamente pela importação da fatura (FASE 22)
+export async function contarCadastrosPendentes() {
+  const supabase = await createClient();
+  const [{ count: pracas }, { count: estacionamentos }] = await Promise.all([
+    supabase
+      .from("praca_pedagio")
+      .select("id", { count: "exact", head: true })
+      .eq("cadastro_pendente", true),
+    supabase
+      .from("estacionamento")
+      .select("id", { count: "exact", head: true })
+      .eq("cadastro_pendente", true),
+  ]);
+  return { pracas: pracas ?? 0, estacionamentos: estacionamentos ?? 0 };
+}
+
+export async function getOrigemCadastro(loteId: string | null) {
+  if (!loteId) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("lote_importacao")
+    .select("arquivo_nome, created_at")
+    .eq("id", loteId)
+    .single();
+  return data;
 }
 
 export async function getPracaMapa(id: string) {
@@ -76,7 +106,8 @@ export async function listEstacionamentos() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("estacionamento")
-    .select("id, nome, ativo")
+    .select("id, nome, ativo, cadastro_pendente, lote_importacao(arquivo_nome, created_at)")
+    .order("cadastro_pendente", { ascending: false })
     .order("nome");
   return data ?? [];
 }

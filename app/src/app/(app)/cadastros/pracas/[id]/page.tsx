@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getMeuPapel } from "@/lib/auth/guards";
-import { getPracaMapa } from "@/features/cadastros/queries";
+import { getOrigemCadastro, getPracaMapa } from "@/features/cadastros/queries";
 import { PracaForm } from "@/features/cadastros/components/praca-form";
 
 export default async function EditarPracaPage({
@@ -15,10 +15,12 @@ export default async function EditarPracaPage({
   const { id } = await params;
   const praca = await getPracaMapa(id);
 
-  // id e poligono_geojson são NOT NULL na tabela real — a view só os tipa
-  // como nullable porque é uma view genérica; a praça já foi confirmada
-  // existente logo abaixo.
-  if (!praca || !praca.id || !praca.nome || !praca.poligono_geojson) notFound();
+  // id é NOT NULL na tabela real — a view só o tipa como nullable porque é
+  // uma view genérica. poligono_geojson pode ser nulo de verdade quando a
+  // praça foi criada pela importação (cadastro pendente, FASE 22).
+  if (!praca || !praca.id || !praca.nome) notFound();
+
+  const origem = praca.cadastro_pendente ? await getOrigemCadastro(praca.criada_no_lote_id) : null;
 
   return (
     <div className="space-y-4">
@@ -41,7 +43,9 @@ export default async function EditarPracaPage({
             km: praca.km,
             sentido: praca.sentido,
             ativo: praca.ativo ?? true,
-            poligono_geojson: praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] },
+            poligono_geojson: praca.poligono_geojson as { type: "Polygon"; coordinates: number[][][] } | null,
+            cadastro_pendente: praca.cadastro_pendente ?? false,
+            origem,
           }}
         />
       </section>

@@ -2290,9 +2290,154 @@ cada view (mesma restrição do Postgres já documentada). Migration:
 passagem. Verificado com dados reais (3 veículos com frota cadastrada,
 valores batendo). `typecheck`/`eslint`/`next build` limpos.
 
+## FASE 22 — Praça/estacionamento não cadastrado criado na importação (2026-10-21)
+
+**Pedido do usuário:** ao importar a fatura, praça não cadastrada não deve
+travar o processamento; o sistema cadastra com os dados que tem e sinaliza
+para o usuário ajustar depois.
+
+**Diagnóstico antes de mexer:** a importação já não bloqueava (FASE 04:
+linha entra com `praca_id` nulo e `sem_cadastro`, confirmado com teste em
+transação desfeita). O buraco real era o "depois": nada religava a
+passagem quando a praça era cadastrada — ela ficava `sem_cadastro` pra
+sempre — e nada dizia ao usuário o que faltava.
+
+**Decisões:**
+- Criar a praça automaticamente com nome + sentido da planilha (decisão
+  do usuário, em vez de só listar pendências). Polígono passa a ser
+  nullable, mas só enquanto `cadastro_pendente` (CHECK).
+- Busca-ou-cria via função `SECURITY DEFINER`
+  (`obter_ou_criar_praca_importacao`/`..._estacionamento_...`): insert em
+  `praca_pedagio` é admin-only no RLS, mas operador importa — sem isso a
+  linha do operador viraria erro silencioso (o `exception when others` da
+  importação engole). `pg_advisory_xact_lock` evita praça duplicada em
+  duas importações simultâneas. `revoke ... from public, anon` em chamada
+  separada.
+- Praça sem polígono = `sem_cadastro` em `validar_passagem`/
+  `validar_estacionamento` (sem isso viraria `fora_poligono`).
+- Salvar pelo formulário (que exige polígono) encerra o pendente e
+  revalida todas as passagens da praça; também vincula passagens antigas
+  com `praca_id` nulo e mesmo nome + sentido. `criar_praca` faz o mesmo.
+- Gravar/alterar/excluir tarifa passou a revalidar (trigger) — antes uma
+  tarifa cadastrada depois da importação nunca chegava nas passagens. Isso
+  era necessário pra "ajustar o cadastro depois" ter efeito completo.
+- Excluir lote remove as praças/estacionamentos que ele criou e que
+  continuam pendentes e sem uso.
+- Estacionamento recebeu o mesmo tratamento (mesma coluna `praca_nome`).
+  Veículo **não** (precisa de categoria) — continua o fluxo manual.
+
+**Feito:**
+- [x] Migration `20261024100000_pedagio_fase22_praca_cadastro_automatico`
+  (aplicada via conexão direta + registro em
+  `supabase_migrations.schema_migrations`; versão escolhida acima da maior
+  já registrada no projeto compartilhado). `processar_staging_passagens`,
+  `validar_passagem` e `validar_estacionamento` gerados a partir da
+  definição **ativa** no banco (patch por script), não de arquivo antigo.
+- [x] Views `vw_praca_pedagio_mapa`/`vw_estacionamento_mapa` com
+  `cadastro_pendente`/`criada_no_lote_id` anexadas ao final.
+- [x] Frontend: aviso no resultado da importação (lista o que foi criado,
+  com link), coluna "Cadastro" (pendente/completo) + "Sentido" na lista de
+  praças, coluna "Cadastro" em estacionamentos, aviso no topo das listas e
+  do Painel, aviso no formulário de edição (arquivo/data de origem + alerta
+  de que nome/sentido são a chave de reconhecimento), detalhe da passagem
+  aponta pra completar o cadastro. Edição aceita praça sem polígono.
+- [x] Correção de exibição encontrada no teste: detalhe da passagem
+  mostrava "R$ 0,00" para valor esperado/divergência nulos (sem tarifa) —
+  agora "sem tarifa de referência", mesma distinção do Painel.
+- [x] Manual do sistema (Importação e Cadastros › Praças) e
+  `docs/importacao.md`, `docs/modelo-dados.md`, `docs/fluxo-validacao.md`
+  atualizados.
+- [x] Verificação SQL (20 cenários, em transação com rollback, antes e
+  depois de aplicar): operador importa praça/estacionamento novos sem
+  erro; não duplica (maiúsculas/espaços, segunda importação); outro
+  sentido = outra praça; RLS continua barrando insert direto do operador;
+  CHECK do polígono; ping de GPS não valida praça pendente; completar
+  cadastro → `ok`; tarifa nova/alterada/excluída revalida; órfã antiga
+  vinculada ao criar praça; excluir lote remove só o pendente sem uso.
+- [x] **Teste no navegador** (Playwright, admin temporário criado via SQL,
+  dev server em porta separada): importação de CSV real → aviso; listas,
+  Painel, detalhe da passagem; desenhar o polígono no mapa e salvar →
+  pendente encerrado e passagens revalidadas; detalhe mostra o mapa.
+  Sem erros no console. Dados e usuário de teste removidos (zero
+  resíduo: 1 praça, 6 passagens, 1 usuário, igual a antes).
+- [x] Advisors replicados via SQL (sem MCP): `search_path` fixo nas
+  funções novas, helpers SECURITY DEFINER sem execute para `anon`,
+  índices nas FKs novas, RLS inalterado.
+- [x] `typecheck`/`eslint`/`next build` limpos.
+
+**Limitações / próximos passos possíveis:**
+- Renomear uma praça criada automaticamente quebra o reconhecimento na
+  próxima fatura (vai criar outra). Se isso aparecer na prática, o
+  caminho é uma tabela de apelidos (nome da planilha → praça).
+- Praça criada por erro de digitação da planilha (duplicata de uma
+  existente) ainda não tem "mesclar"; hoje só dá pra excluir se não tiver
+  passagens.
+- Veículo não cadastrado continua no fluxo manual de
+  [importacao.md](importacao.md#corrigindo-um-sem_cadastro).
+
+## Ajuste pós-FASE 22 — valor com "R$" + correção da importação sem JWT (2026-10-21)
+
+**Pedido do usuário:** a planilha de passagens passa a trazer o valor como
+`R$ 10,00` / `R$ -10,00`. Antes, `parse_valor_brl` devolvia nulo para
+qualquer texto com `R$` — a linha virava erro de formato e não entrava.
+
+- [x] `parse_valor_brl` aceita `R$` com/sem espaço (incluindo U+00A0 do
+  Excel e U+202F), sinal antes ou depois do `R$`, negativo entre
+  parênteses; texto que sobra fora de dígitos/separadores continua
+  inválido (`R$ abc`, `1-0` → nulo). Formatos antigos inalterados. O sinal
+  continua normalizado pela condição na importação (débito +, crédito −).
+  Migration `20261024110000_pedagio_valor_com_simbolo_real`.
+- [x] **Bug da FASE 22 achado neste teste:** `obter_ou_criar_*_importacao`
+  exigia `usuario_autorizado()` (JWT), então rodar a importação direto no
+  banco (SQL Editor/script, fluxo do `docs/importacao.md`) transformava
+  toda linha de passagem/estacionamento em erro (engolido pelo `exception
+  when others`). Pelo app funcionava. Correção: só exige usuário autorizado
+  quando a chamada vem pela API (`session_user = 'authenticator'`) e não é
+  `service_role`. Migration `20261024110100_pedagio_fase22_fix_importacao_sem_jwt`.
+- [x] Verificação: 20 formatos de valor; importação direto no banco com
+  `R$` (5 linhas, só `R$ abc` vira erro, débito/crédito com sinal certo,
+  praça/estacionamento novo criado); 20 cenários da FASE 22 de novo; pela
+  API com usuários temporários reais — anônimo bloqueado, logado sem perfil
+  bloqueado (`usuario nao autorizado`), operador cria. Zero resíduo.
+- [x] Texto de ajuda da importação, manual e `docs/importacao.md`
+  atualizados. `typecheck`/`eslint` limpos.
+
+## Ajuste pós-FASE 22 — cabeçalhos reais da planilha de passagens (2026-10-21)
+
+**Pedido do usuário:** os cabeçalhos do CSV passam a ser os da planilha do
+fornecedor, na ordem: Número da Fatura, Data, Horário, Placa Veículo, Tipo
+do veículo, Descrição, Tipo de uso, Valor(R$), Débito/Crédito, Viagem de
+Vale Pedágio, Embarcador, Sentido da Praça (substituem `numero_fatura` …
+`sentido`, que eram os nomes técnicos da staging).
+
+- [x] Mapeamento cabeçalho → coluna da staging em
+  `features/importacao/planilha-passagens.ts`. Comparação por chave
+  normalizada (sem acento, minúsculas, sem espaços/pontuação). A staging e
+  o banco não mudaram — só a leitura do arquivo no app.
+- [x] Validação trocou "alguma coluna esperada existe" por "todas
+  existem": faltando alguma, a tela recusa listando quais (antes, um
+  arquivo com só uma coluna certa passava e virava erro em toda linha).
+  O layout antigo é recusado.
+- [x] Leitura do arquivo detecta a codificação: UTF-8 válido (com/sem BOM)
+  ou Windows-1252 (padrão do Excel em português). Antes era sempre UTF-8,
+  então os acentos dos cabeçalhos novos — e de nomes de praça,
+  embarcador, tipo de veículo — chegariam corrompidos. Separador (`,`
+  `;` tab) detectado pelo papaparse.
+- [x] Texto de ajuda da tela, manual (tabela de colunas) e
+  `docs/importacao.md` atualizados.
+- [x] Verificação: módulo isolado (UTF-8, UTF-8+BOM, Windows-1252 + `;`,
+  tab, maiúsculas sem acento, coluna extra, cabeçalho faltando, layout
+  antigo) 9/9; no navegador, no dev server do usuário (porta 3001) com
+  admin temporário: layout antigo recusado com a lista, arquivo
+  Windows-1252 + `;` → 3 linhas, 0 erros, valores `R$` com sinal certo,
+  acentos gravados certos, praça nova citada no aviso. Limpeza completa
+  (viagem/embarcador auto-cadastrados pelo teste também removidos —
+  excluir lote não remove esses, comportamento anterior).
+  `typecheck`/`eslint`/`next build` limpos.
+
 ## Próximo passo
 
-Nenhum item pendente do plano atual (FASE 01 a FASE 21 concluídas) —
+Nenhum item pendente do plano atual (FASE 01 a FASE 22 concluídas) —
 próximos passos dependem do uso real do sistema, incluindo conferir a
 FASE 21 com dados reais (casos ambíguos podem aparecer com mais
 frequência do que nos testes sintéticos, o que reabriria a decisão nº2

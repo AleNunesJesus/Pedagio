@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getDashboardData } from "@/features/dashboard/queries";
+import { contarCadastrosPendentes } from "@/features/cadastros/queries";
+import { Alert } from "@/components/ui/alert";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Card } from "@/components/ui/card";
 import { StatusResumo } from "@/features/dashboard/components/status-resumo";
@@ -20,7 +22,7 @@ function valorEsperadoLabel(valor: number | null): string {
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const [data, pendentes] = await Promise.all([getDashboardData(), contarCadastrosPendentes()]);
 
   const totalCobradoGeral = data.financeiroMensal.reduce(
     (acc, row) => acc + (row.total_cobrado ?? 0),
@@ -41,6 +43,24 @@ export default async function DashboardPage() {
           Visão geral de todo o período importado.
         </p>
       </div>
+
+      {(pendentes.pracas > 0 || pendentes.estacionamentos > 0) && (
+        <Alert variant="warning">
+          Cadastros criados automaticamente pela importação aguardando ajuste:{" "}
+          {pendentes.pracas > 0 && (
+            <Link href="/cadastros/pracas" className="underline">
+              {formatNumber(pendentes.pracas)} praça(s)
+            </Link>
+          )}
+          {pendentes.pracas > 0 && pendentes.estacionamentos > 0 && " e "}
+          {pendentes.estacionamentos > 0 && (
+            <Link href="/cadastros/estacionamentos" className="underline">
+              {formatNumber(pendentes.estacionamentos)} estacionamento(s)
+            </Link>
+          )}
+          . As passagens deles ficam como &quot;Sem cadastro&quot; até o polígono ser desenhado.
+        </Alert>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Praças cadastradas" value={formatNumber(data.totalPracas)} />

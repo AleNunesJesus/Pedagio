@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { salvarPraca, type FormState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form-message";
+import { Alert } from "@/components/ui/alert";
 import { TextField, CheckboxField } from "@/components/ui/field";
 
 const PolygonMapEditor = dynamic(
@@ -25,7 +26,9 @@ type PracaExistente = {
   km: number | null;
   sentido: string | null;
   ativo: boolean;
-  poligono_geojson: Polygon;
+  poligono_geojson: Polygon | null;
+  cadastro_pendente: boolean;
+  origem: { arquivo_nome: string | null; created_at: string } | null;
 };
 
 function SubmitButton() {
@@ -44,6 +47,18 @@ export function PracaForm({ praca }: { praca?: PracaExistente }) {
   return (
     <form action={formAction} className="space-y-4">
       {praca && <input type="hidden" name="praca_id" value={praca.id} />}
+      {praca?.cadastro_pendente && (
+        <Alert variant="warning">
+          Praça criada automaticamente pela importação
+          {praca.origem
+            ? ` do arquivo ${praca.origem.arquivo_nome ?? "(sem nome)"} em ${new Date(praca.origem.created_at).toLocaleString("pt-BR")}`
+            : " da fatura"}
+          , com o nome e o sentido que vieram na planilha. Desenhe o polígono e complete os dados;
+          ao salvar, o cadastro deixa de ser pendente e as passagens desta praça são revalidadas.
+          Nome e sentido são usados para reconhecer a praça nas próximas importações — se mudar,
+          a planilha com o nome antigo vai criar outra praça.
+        </Alert>
+      )}
       <input
         type="hidden"
         name="poligono_geojson"

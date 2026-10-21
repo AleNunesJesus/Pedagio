@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getMeuPapel } from "@/lib/auth/guards";
-import { getEstacionamentoMapa } from "@/features/cadastros/queries";
+import { getEstacionamentoMapa, getOrigemCadastro } from "@/features/cadastros/queries";
 import { EstacionamentoForm } from "@/features/cadastros/components/estacionamento-form";
 
 export default async function EditarEstacionamentoPage({
@@ -15,10 +15,14 @@ export default async function EditarEstacionamentoPage({
   const { id } = await params;
   const estacionamento = await getEstacionamentoMapa(id);
 
-  // id e poligono_geojson são NOT NULL na tabela real — a view só os tipa
-  // como nullable porque é uma view genérica; o estacionamento já foi
-  // confirmado existente logo abaixo.
-  if (!estacionamento || !estacionamento.id || !estacionamento.nome || !estacionamento.poligono_geojson) notFound();
+  // id é NOT NULL na tabela real — a view só o tipa como nullable porque é
+  // uma view genérica. poligono_geojson pode ser nulo de verdade quando o
+  // estacionamento foi criado pela importação (cadastro pendente, FASE 22).
+  if (!estacionamento || !estacionamento.id || !estacionamento.nome) notFound();
+
+  const origem = estacionamento.cadastro_pendente
+    ? await getOrigemCadastro(estacionamento.criada_no_lote_id)
+    : null;
 
   return (
     <div className="space-y-4">
@@ -37,7 +41,9 @@ export default async function EditarEstacionamentoPage({
             id: estacionamento.id,
             nome: estacionamento.nome,
             ativo: estacionamento.ativo ?? true,
-            poligono_geojson: estacionamento.poligono_geojson as { type: "Polygon"; coordinates: number[][][] },
+            poligono_geojson: estacionamento.poligono_geojson as { type: "Polygon"; coordinates: number[][][] } | null,
+            cadastro_pendente: estacionamento.cadastro_pendente ?? false,
+            origem,
           }}
         />
       </section>

@@ -56,7 +56,7 @@ const PASSOS_IMPORTAR = [
   {
     titulo: "Confira o resultado",
     descricao:
-      "Mensagem final do tipo \"Lote importado: N linha(s), N erro(s)\". O lote também aparece no histórico, no fim da página.",
+      "Mensagem final do tipo \"Lote importado: N linha(s), N erro(s)\". O lote também aparece no histórico, no fim da página. Se a planilha trouxer uma praça ou estacionamento que não existe no sistema, ele é criado automaticamente com os dados da planilha e listado logo abaixo, num aviso amarelo, para ser completado depois (ver Cadastros › Praças).",
   },
 ];
 
@@ -74,32 +74,32 @@ export function SecaoImportacao() {
         </p>
         <TabelaFormato
           colunas={[
-            { nome: "numero_fatura", formato: "texto livre", exemplo: "NF-000456" },
-            { nome: "data_texto", formato: "DD/MM/AAAA", exemplo: "05/08/2026" },
-            { nome: "horario_texto", formato: "HH24:MI:SS ou HH24:MI", exemplo: "14:32:00" },
-            { nome: "placa", formato: "texto", exemplo: "ABC1D23" },
-            { nome: "tipo_veiculo", formato: "texto livre, só informativo", exemplo: "Caminhão" },
+            { nome: "Número da Fatura", formato: "texto livre", exemplo: "NF-000456" },
+            { nome: "Data", formato: "DD/MM/AAAA", exemplo: "05/08/2026" },
+            { nome: "Horário", formato: "HH24:MI:SS ou HH24:MI", exemplo: "14:32:00" },
+            { nome: "Placa Veículo", formato: "texto", exemplo: "ABC1D23" },
+            { nome: "Tipo do veículo", formato: "texto livre, só informativo", exemplo: "Caminhão" },
             {
-              nome: "praca_nome",
-              formato: "precisa bater com o cadastro da praça + sentido",
+              nome: "Descrição",
+              formato: "nome da praça ou estacionamento; praça não cadastrada é criada como pendente",
               exemplo: "Praça KM 45 - BR-101",
             },
             {
-              nome: "tipo_uso_texto",
+              nome: "Tipo de uso",
               formato: "passagem, contrato/plano contratado ou estacionamento",
               exemplo: "passagem",
             },
             {
-              nome: "valor_texto",
-              formato: "formato BR (vírgula decimal); sinal é normalizado pela condição",
-              exemplo: "12,50",
+              nome: "Valor(R$)",
+              formato: "formato BR (vírgula decimal), com ou sem R$ — ex.: R$ 10,00 / R$ -10,00; sinal é normalizado pela condição",
+              exemplo: "R$ 12,50",
             },
-            { nome: "condicao_texto", formato: "debito/db ou credito/cr", exemplo: "debito" },
-            { nome: "viagem", formato: "texto livre, opcional", exemplo: "VIAGEM-9" },
-            { nome: "embarcador", formato: "texto livre, opcional", exemplo: "Embarcador X" },
+            { nome: "Débito/Crédito", formato: "debito/db ou credito/cr", exemplo: "debito" },
+            { nome: "Viagem de Vale Pedágio", formato: "texto livre, opcional", exemplo: "VIAGEM-9" },
+            { nome: "Embarcador", formato: "texto livre, opcional", exemplo: "Embarcador X" },
             {
-              nome: "sentido",
-              formato: "usado com praca_nome; não se aplica a estacionamento",
+              nome: "Sentido da Praça",
+              formato: "usado com a Descrição; não se aplica a estacionamento",
               exemplo: "Norte",
             },
           ]}

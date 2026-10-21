@@ -12,6 +12,26 @@ responder duas perguntas independentes:
 1. **O veículo realmente esteve na praça?** (validação geoespacial)
 2. **O valor cobrado está correto?** (validação tarifária)
 
+## 0. Cadastro incompleto (FASE 22)
+
+Antes das duas validações: se a passagem não tem `veiculo_id`/`praca_id`,
+ou a praça foi criada automaticamente pela importação e ainda não tem
+polígono (`cadastro_pendente`), o resultado é `sem_cadastro` e nada mais é
+calculado. Sem este teste, um ping fora de um polígono nulo cairia em
+`fora_poligono` (`ST_Contains(null, …)` é nulo).
+
+Gatilhos de revalidação ligados ao cadastro:
+- criar/atualizar praça (`criar_praca`/`atualizar_praca` →
+  `revalidar_passagens_da_praca`): vincula passagens com `praca_id` nulo e
+  mesmo nome + sentido, e revalida todas as passagens da praça;
+- criar/atualizar estacionamento → `revalidar_passagens_do_estacionamento`
+  (mesma ideia, por nome);
+- gravar/alterar/excluir `tarifa_praca` → trigger revalida as passagens da
+  praça cuja data (America/Sao_Paulo) cai na vigência antiga ou nova;
+- gravar/alterar/excluir `tarifa_estacionamento` → revalida todas as
+  passagens do estacionamento (a tarifa é escolhida pela entrada
+  detectada, não pela data da linha).
+
 ## 1. Validação geoespacial (polígono)
 
 Parâmetros configuráveis:
@@ -183,8 +203,9 @@ sentidos a partir de `data_hora`, e a escolha da corrida mais relevante
 Algoritmo, por passagem (`pedagio.validar_estacionamento`):
 
 1. Se `veiculo_id` ou `estacionamento_id` não foram resolvidos na
-   importação → `status_validacao = sem_cadastro` (mesmo padrão de
-   `validar_passagem`).
+   importação, ou o estacionamento ainda não tem polígono (criado
+   automaticamente pela importação, cadastro pendente — FASE 22) →
+   `status_validacao = sem_cadastro` (mesmo padrão de `validar_passagem`).
 2. Buscar todos os `posicao_veiculo` do veículo com `data_hora` entre
    `data_hora da linha - janela_busca_estacionamento()` e
    `data_hora da linha + janela_busca_estacionamento()`, filtrando só os
