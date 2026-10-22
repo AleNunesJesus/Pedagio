@@ -266,7 +266,7 @@ export type Database = {
           placa_informada: string;
           tipo_veiculo_informado: string | null;
           praca_id: string | null;
-          praca_informada: string;
+          praca_informada: string | null;
           sentido_informado: string | null;
           tipo_uso: string;
           condicao: string;
@@ -288,7 +288,7 @@ export type Database = {
           placa_informada: string;
           tipo_veiculo_informado?: string | null;
           praca_id?: string | null;
-          praca_informada: string;
+          praca_informada?: string | null;
           sentido_informado?: string | null;
           tipo_uso: string;
           condicao: string;
@@ -310,7 +310,7 @@ export type Database = {
           placa_informada?: string;
           tipo_veiculo_informado?: string | null;
           praca_id?: string | null;
-          praca_informada?: string;
+          praca_informada?: string | null;
           sentido_informado?: string | null;
           tipo_uso?: string;
           condicao?: string;

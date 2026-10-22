@@ -31,17 +31,18 @@ caminho manual via SQL).
 | **Placa Veículo** (`placa`) | texto | `ABC1D23` |
 | **Tipo do veículo** (`tipo_veiculo`) | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
 | **Descrição** (`praca_nome`) | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
-| **Tipo de uso** (`tipo_uso_texto`) | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento`/`estacinoamento` (case-insensitive) | `passagem` |
+| **Tipo de uso** (`tipo_uso_texto`) | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento`/`estacinoamento` (case-insensitive). **Contrato/plano contratado** (ex.: mensalidade do plano, fatura real de 2026-10-21) pode vir sem Descrição e sem Sentido da Praça; não cria praça pendente — só liga a uma praça já cadastrada se vier Descrição | `passagem` |
 | **Valor(R$)** (`valor_texto`) | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. Aceita também o símbolo `R$` (com ou sem espaço, inclusive o espaço não separável do Excel), sinal antes ou depois do `R$` e negativo entre parênteses. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00`, `23`, `R$ 10,00`, `R$ -10,00`, `-R$ 1.234,56`, `(R$ 10,00)` |
 | **Débito/Crédito** (`condicao_texto`) | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
 | **Viagem de Vale Pedágio** (`viagem`) | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
 | **Embarcador** (`embarcador`) | texto livre, opcional — quem lançou o crédito da viagem. Auto-cadastrado em `pedagio.embarcador` na importação (FASE 10) se ainda não existir; CNPJ (opcional) só é preenchido manualmente depois, em `/cadastros/embarcadores` | `Embarcador X` |
-| **Sentido da Praça** (`sentido`) | texto — usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
+| **Sentido da Praça** (`sentido`) | texto — obrigatório só em passagem; usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
 formato, `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
-valores listados na tabela acima), `praca_nome` vazio, ou `sentido` vazio
-quando `tipo_uso_texto` não é `estacionamento`, é contada como erro
+valores listados na tabela acima), `praca_nome` vazio (exceto em
+contrato/plano contratado), ou `sentido` vazio em linha de passagem, é
+contada como erro
 (`total_erros` do lote) e **não** é importada — não há tentativa de
 adivinhar formatos alternativos além dos já mapeados, para não arriscar
 interpretar um dado errado silenciosamente. O sinal do valor **não** é

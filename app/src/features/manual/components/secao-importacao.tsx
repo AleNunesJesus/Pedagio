@@ -81,7 +81,7 @@ export function SecaoImportacao() {
             { nome: "Tipo do veículo", formato: "texto livre, só informativo", exemplo: "Caminhão" },
             {
               nome: "Descrição",
-              formato: "nome da praça ou estacionamento; praça não cadastrada é criada como pendente",
+              formato: "nome da praça ou estacionamento; praça não cadastrada é criada como pendente; pode vir vazia em plano contratado",
               exemplo: "Praça KM 45 - BR-101",
             },
             {
@@ -99,7 +99,7 @@ export function SecaoImportacao() {
             { nome: "Embarcador", formato: "texto livre, opcional", exemplo: "Embarcador X" },
             {
               nome: "Sentido da Praça",
-              formato: "usado com a Descrição; não se aplica a estacionamento",
+              formato: "obrigatório só em passagem; usado com a Descrição",
               exemplo: "Norte",
             },
           ]}

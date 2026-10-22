@@ -2435,6 +2435,49 @@ Vale Pedágio, Embarcador, Sentido da Praça (substituem `numero_fatura` …
   excluir lote não remove esses, comportamento anterior).
   `typecheck`/`eslint`/`next build` limpos.
 
+## Ajuste pós-FASE 22 — PLANO CONTRATADO sem praça (2026-10-21)
+
+**Pedido do usuário:** "adicionar o tipo PLANO CONTRATADO". O texto já era
+reconhecido desde a FASE 07 (vira `tipo_uso = contrato`), mas a fatura
+real (`Pasta3.csv`) traz essas linhas **sem Descrição e sem Sentido da
+Praça** — e a importação exigia os dois para tudo que não fosse
+estacionamento, então as 2 linhas viravam erro (6 linhas, 2 erros).
+
+- [x] Contrato/plano contratado: Descrição e Sentido opcionais. Passagem
+  continua exigindo os dois; estacionamento continua exigindo Descrição.
+- [x] Contrato não cria praça pendente (FASE 22): se vier Descrição, só
+  liga a uma praça já cadastrada (nome + sentido); senão fica sem praça.
+- [x] `passagem_pedagio.praca_informada` deixou de ser NOT NULL (nenhuma
+  view/tela lê a coluna; listas mostram "—"). Tipos do app atualizados.
+  Migration `20261024120000_pedagio_plano_contratado_sem_praca`
+  (`processar_staging_passagens` gerada da definição ativa).
+- [x] Verificação: o próprio `Pasta3.csv` pelo mesmo leitor do app, em
+  transação com rollback — as 2 linhas de PLANO CONTRATADO entram como
+  contrato/`nao_aplicavel`, R$ 0,69, sem criar praça (as 4 passagens
+  contam como erro só por já estarem importadas); bordas: passagem sem
+  sentido/sem descrição e estacionamento sem descrição continuam erro;
+  contrato com Descrição de praça existente liga, desconhecida não cria.
+  Suítes da FASE 22 e do valor "R$" de novo verdes. Docs/manual
+  atualizados. `typecheck`/`eslint`/`next build` limpos.
+
+## Carga do cadastro de veículos (2026-10-22)
+
+Carga única (script direto no banco, sem tela nova) de `veiculo.csv`
+fornecido pelo usuário: colunas `placa;tipo;categoria;fallback;frota;ativo`,
+731 linhas (262 cavalos, 469 carretas, todas ativas, sem placa duplicada).
+
+- Decisões do usuário: 5 carretas sem categoria no arquivo (IMF6734,
+  IMF6683, INT3225, INT3226, UMJ3B06) entraram como `EIXO_3`; 5 cavalos que
+  já existiam (JDK8C84, URS4D35, JCY6G24, UGF9B40, JDG8H05) foram
+  atualizados com o arquivo (fallback e frota de teste substituídos).
+- Resultado: 7 → 733 veículos (726 novos, 5 atualizados); frota com
+  espaço nas pontas aparada. As 6 passagens já importadas que estavam sem
+  veículo foram ligadas ao cavalo (mesma regra da importação) e as
+  passagens dos cavalos do arquivo revalidadas. Ensaio com rollback antes
+  do commit.
+- `ABC1234`/`ABC5678` (carretas de teste antigas, fora do arquivo) não
+  foram mexidas.
+
 ## Próximo passo
 
 Nenhum item pendente do plano atual (FASE 01 a FASE 22 concluídas) —
