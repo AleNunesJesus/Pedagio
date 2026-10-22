@@ -49,8 +49,7 @@ export const pracaSchema = z.object({
 export const tarifaSchema = z
   .object({
     praca_id: z.string().trim().min(1, "Selecione a praça."),
-    categoria_veiculo_id: z.string().trim().min(1, "Selecione a categoria."),
-    valor: z.coerce.number().min(0, "Valor não pode ser negativo."),
+    valor_eixo: z.coerce.number().gt(0, "Informe o valor por eixo (maior que zero)."),
     vigencia_inicio: z.string().trim().min(1, "Informe a data de início."),
     vigencia_fim: z.string().trim().optional(),
   })

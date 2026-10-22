@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { OPCOES_TIPO_USO } from "@/lib/tipo-uso";
+import { OPCOES_MOTIVO_VALOR } from "@/lib/motivo-valor";
 import { SelectField, TextField } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +16,7 @@ type FiltrosFormProps = {
     pracaId?: string;
     veiculoId?: string;
     tipoUso?: string;
+    motivo?: string;
     embarcadorId?: string;
     viagem?: string;
     dataInicio?: string;
@@ -59,6 +61,14 @@ export function FiltrosForm({ pracas, veiculos, embarcadores, valores }: Filtros
         placeholder="Todos"
         defaultValue={valores.tipoUso ?? ""}
         options={OPCOES_TIPO_USO}
+      />
+      <SelectField
+        id="motivo"
+        name="motivo"
+        label="Conferência por eixo"
+        placeholder="Todas"
+        defaultValue={valores.motivo ?? ""}
+        options={OPCOES_MOTIVO_VALOR}
       />
       <SelectField
         id="embarcadorId"

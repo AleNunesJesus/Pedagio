@@ -7,6 +7,7 @@ import { formatBRL } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO, statusLabel } from "@/lib/status-validacao";
 import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
 import { tipoUsoLabel } from "@/lib/tipo-uso";
+import { descreverEixos, motivoValorLabel } from "@/lib/motivo-valor";
 import { excluirPassagens } from "../actions";
 import { VinculoViagemBadge } from "./vinculo-viagem-badge";
 
@@ -27,6 +28,10 @@ type Passagem = {
   vinculo_viagem_status: string | null;
   viagem_transporte_candidatas: number | null;
   numero_viagem_bate: boolean | null;
+  eixos_composicao: number | null;
+  eixos_cobrados: number | null;
+  desconto_tag: boolean | null;
+  motivo_valor: string | null;
 };
 
 
@@ -97,6 +102,25 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
             ),
           },
           { header: "Valor", align: "right", render: (r) => formatBRL(r.valor_cobrado) },
+          {
+            header: "Eixos",
+            render: (r) =>
+              !r.motivo_valor ? (
+                <span className="text-gray-400" title="Sem conferência por eixo (sem tarifa, crédito ou sem cadastro)">—</span>
+              ) : (
+                <span
+                  title={`${motivoValorLabel(r.motivo_valor)} — ${descreverEixos(r)}`}
+                  className={
+                    r.motivo_valor === "eixos_a_maior" || r.motivo_valor === "nao_multiplo"
+                      ? "text-red-700 dark:text-red-400"
+                      : undefined
+                  }
+                >
+                  {r.eixos_cobrados !== null ? `${r.eixos_cobrados}/${r.eixos_composicao}` : "≠"}
+                  {r.desconto_tag && <span className="text-gray-400"> TAG</span>}
+                </span>
+              ),
+          },
           {
             header: "Status",
             render: (r) => {

@@ -60,12 +60,46 @@ export function SecaoCadastros() {
 
       <ManualSection id="cadastros-tarifas" titulo="Tarifas" tags={TAGS_CADASTRO}>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Valor cobrado por praça + categoria de veículo, com período de
-          vigência. Campos: Praça, Categoria, Valor (R$), Início da
-          vigência e Fim da vigência (opcional — em aberto significa
-          tarifa &quot;vigente&quot;, sem data de fim). Não é permitido
-          cadastrar duas tarifas com vigência sobreposta para a mesma praça
-          e categoria.
+          Valor por eixo da praça, com período de vigência. Campos: Praça,
+          Valor por eixo (R$), Início da vigência e Fim da vigência
+          (opcional — em aberto significa tarifa &quot;vigente&quot;, sem
+          data de fim). Não é permitido cadastrar duas tarifas com vigência
+          sobreposta para a mesma praça.
+        </p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Na validação, o valor cobrado é dividido pela tarifa por eixo para
+          saber quantos eixos foram cobrados, aceitando também o valor com
+          5% de desconto de TAG. Todos os eixos da composição (cavalo +
+          carreta(s)) é <strong className="text-gray-900 dark:text-gray-100">Eixos completos</strong>;
+          menos eixos (caminhão vazio com eixos suspensos) é{" "}
+          <strong className="text-gray-900 dark:text-gray-100">Eixos suspensos</strong> — os
+          dois sem divergência. Mais eixos do que a composição tem (
+          <strong className="text-gray-900 dark:text-gray-100">Eixos a maior</strong>) ou um
+          valor que não é múltiplo da tarifa (
+          <strong className="text-gray-900 dark:text-gray-100">Valor fora da tarifa</strong>)
+          viram divergência contra a tarifa cheia da composição. Créditos
+          (vale-pedágio do embarcador) não são conferidos contra a tarifa.
+        </p>
+      </ManualSection>
+
+      <ManualSection
+        id="cadastros-sugestoes-tarifa"
+        titulo="Sugestões de tarifa"
+        tags={TAGS_CADASTRO}
+      >
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Rota <code>/cadastros/tarifas/sugestoes</code>. O admin informa um
+          período e o sistema sugere, para cada praça sem tarifa nesse
+          período, o valor por eixo que explica o maior número de débitos
+          das faturas, ao lado da tarifa publicada no OpenStreetMap
+          (mantida por voluntários, pode estar desatualizada). Filtros:
+          Fatura e OSM concordam, Divergem, Sem OSM, Todas. Ao aprovar
+          (com o valor da fatura ou do OSM), a tarifa é gravada a partir do
+          início do período — fechando a tarifa anterior da praça, se
+          houver — e as passagens da praça são revalidadas; acompanhe a
+          barra de progresso e não feche a aba. Descartar só tira a
+          sugestão da lista. Gerar de novo refaz todas as sugestões
+          pendentes.
         </p>
       </ManualSection>
 

@@ -2598,10 +2598,152 @@ card (4/2/1 colunas); `StatTile` com `min-w-0`/`break-words`; contagens com
 separador de milhar. Conferido no navegador com a fatura real de
 R$ 945.133,14 em 1280/820/390 px.
 
+## Ajuste — praças pendentes completadas com ANTT e OpenStreetMap (2026-10-22)
+
+**Gatilho:** depois da importação da fatura real, 587 das 590 praças
+estavam `cadastro_pendente` (só nome + sentido) e 33 mil passagens ficavam
+`sem_cadastro`. Ajuste só de dados (sem migration), via script com
+`atualizar_praca` — nome e sentido mantidos (são a chave de casamento da
+importação), polígono = círculo de 400 m em volta do ponto da fonte,
+ensaio completo em transação com rollback antes de gravar, backup das
+praças e passagens afetadas guardado fora do repositório.
+
+- **ANTT** (dados abertos, `praca-de-pedagio`: 277 praças federais, inclui
+  os lotes delegados do PR): 263 praças casadas por rodovia + km + cidade
+  do nome (faixas alta e média). A ANTT **não publica tarifas** em dados
+  abertos (106 datasets conferidos) — só o cadastro.
+- **OpenStreetMap** (Overpass, `barrier=toll_booth`/`highway=toll_gantry`):
+  214 praças estaduais (SP/RS/MG) gravadas só quando o nome da cidade
+  aparece na cabine do OSM e a rodovia bate; ponto na cabine do sentido
+  certo quando disponível (212 de 214). Casamento só por distância à
+  cidade se mostrou não confiável (ex.: Curvelo → Corinto) e ficou de fora.
+- Resultado: 480 praças completas, 110 pendentes (28 casadas só por
+  distância + ambíguas/conflitos como Rodoanel em Osasco, free flows da
+  Dutra e de Itariri, nomes sem cidade reconhecível) — revisão manual.
+  ~30 mil passagens saíram de `sem_cadastro` para `sem_dados_gps` (não há
+  GPS do período).
+
+## FASE 24 — Tarifa por eixo (2026-10-22)
+
+**Gatilho:** 589 praças sem tarifa. O OSM traz a tarifa da maioria das
+cabines (`charge`, em BRL por eixo para veículo pesado). Cruzando com as
+22.017 passagens de débito de setembro/2026 que têm categoria e tarifa OSM:
+
+| Cobrança na fatura | Passagens |
+|---|---|
+| tarifa/eixo × todos os eixos da composição | 53,2% |
+| tarifa/eixo × menos eixos (eixos suspensos) | 13,5% |
+| tarifa/eixo × todos os eixos − 5% (desconto TAG) | 12,5% |
+| −5% e eixos suspensos | 3,2% |
+| **mais eixos do que a composição** | 1,9% (413) |
+| não explicado (maioria: tarifa OSM defasada/reajustada, ex.: Litoral Sul 5,70 na fatura × 5,90 no OSM) | 15,7% |
+
+Com tarifa fixa por categoria (`tarifa_praca` atual) ~30% das passagens
+virariam `valor_divergente` falso.
+
+**Decisões do usuário (2026-10-22):** tarifa passa a ser **valor por eixo
+por praça com vigência**; cobrança com eixos suspensos é **ok +
+informativo** (não é status próprio).
+
+**Decisões complementares (2026-10-22):**
+1. Desconto TAG **sem cadastro por praça** — a validação aceita sempre o
+   valor cheio e o valor −5% (marcando qual foi).
+2. Cobrança com mais eixos que a composição fica `valor_divergente`, com
+   motivo `eixos_a_maior`.
+3. As 3 tarifas de Franco da Rocha (65/80/120 para 6/7/9 eixos, não
+   proporcionais: 10,83/11,43/13,33 por eixo) são **convertidas** para
+   tarifa por eixo, mesma vigência. Proposta: usar a de 6 eixos
+   (10,83/eixo). Obs.: o polígono dessa praça fica na BR-116 em São
+   Lourenço da Serra (Régis Bittencourt), não em Franco da Rocha/SP-348 —
+   cadastro de teste antigo, rever.
+
+**Status:** 🟢 Concluído (2026-10-22, não commitado)
+
+- [x] Migration `20261024160000_pedagio_fase24_tarifa_por_eixo`.
+  **Desvio do plano:** em vez de uma tabela nova `tarifa_praca_eixo`,
+  `tarifa_praca` foi alterada no lugar (`valor` → `valor_eixo`, sai
+  `categoria_veiculo_id`, sobreposição por praça, coluna `origem`) — RLS,
+  grants, trigger de revalidação, `excluir_tarifas` e
+  `excluir_lote_importacao` seguem valendo sem duplicação. Franco da Rocha
+  convertida pela tarifa de 6 eixos (10,83/eixo), as outras 2 removidas.
+  `eixos_cobrados(valor, tarifa_eixo)` (SQL imutável, conta direta, sem
+  laço); `validacao_passagem` + `eixos_composicao`/`eixos_cobrados`/
+  `desconto_tag`/`motivo_valor`; `validar_passagem` gerada da definição
+  ativa, só o bloco de tarifa muda, **só débito é conferido** (crédito com
+  praça é vale-pedágio do embarcador, FASE 18 — antes a conta dava
+  negativo − tarifa); `vw_passagens_detalhado` com as 4 colunas no fim;
+  `vw_divergencia_por_motivo`; `tarifa_eixo_osm` (instantâneo, 450 praças
+  carregadas por script) e `tarifa_eixo_sugestao` + RLS no padrão;
+  `gerar_sugestoes_tarifa`/`aprovar_sugestoes_tarifa` (SECURITY DEFINER,
+  checagem de admin na entrada — como INVOKER a revalidação passava pela
+  RLS a 12 ms/passagem, agora 3 ms; execute revogado de public/anon)/
+  `descartar_sugestoes_tarifa`.
+- [x] Migration `20261024170000_pedagio_fase24_sugestao_com_reajuste`
+  (achado na conferência visual: Litoral Sul cobrou 5,70 até 13/09 e 5,90
+  depois — uma sugestão só explicava 58%). Geração testa um dia de corte
+  por praça (2 sugestões se explicar ≥ 5% a mais, mín. 5 débitos); 20
+  praças divididas na fatura de set/2026 (Litoral Sul em 14/09, lotes do
+  PR em 20–22/09). Valor cheio × valor com TAG explicam os mesmos débitos
+  (5,70 = 6,00 − 5%): desempate pelo OSM e, entre trechos, pela leitura da
+  praça (PR cobra com TAG: 12,80 → 13,60; Litoral Sul cheio: 5,70 → 5,90).
+  Aprovar termina na véspera de tarifa posterior (ordem dos trechos não
+  importa). Em etapas com tabelas temporárias + ANALYZE: numa CTE só o
+  planner estimava 78 linhas para ~12 mil e passava de minutos; agora
+  1,5 s. Cobertura das sugestões: 87,6% → 95,5% dos débitos.
+- [x] App: cadastro de tarifas por eixo (sem categoria, coluna Origem,
+  link para sugestões com contagem); `/cadastros/tarifas/sugestoes`
+  (gerar por período com padrão = passagens importadas, filtros
+  concordam/divergem/sem OSM/todas, aprovar com valor da fatura ou do OSM
+  em blocos de até 400 passagens com barra de progresso e aviso ao sair,
+  descartar, crédito ao OSM/ODbL); menu Cadastros; passagens com coluna
+  Eixos (k/N, TAG, vermelho em a maior/fora da tarifa) e filtro
+  "Conferência por eixo" (incl. sem tarifa); detalhe com "Conferência por
+  eixo"; Painel com card "Por motivo" e aviso de eixos a maior (link para
+  o filtro — o status fica `sem_dados_gps` sem GPS, então o filtro por
+  status não acharia); `lib/motivo-valor.ts`; `BarraProgresso` com unidade
+  configurável; manual (tarifas, sugestões, passagens, primeiros passos).
+- [x] Docs: `modelo-dados.md` (tarifa_praca, tarifa_eixo_osm,
+  tarifa_eixo_sugestao, colunas novas de validacao_passagem) e
+  `fluxo-validacao.md` (validação tarifária por eixo).
+- [x] Verificação: ensaio da migration em rollback (20/20 — eixos_cobrados
+  em 9 casos reais da fatura, conversão de Franco da Rocha, sobreposição
+  23P01, operador barrado em gerar/aprovar e lendo sugestões, aprovação
+  em blocos dentro de 8 s, descartar, vigência fechando a anterior, crédito
+  sem valor esperado; mês inteiro aprovado em rollback: completo 14.513,
+  eixos suspensos 3.580, eixos a maior 394 = R$ 4.072,14 a mais, fora da
+  tarifa 1.781); ensaio do corte em rollback (6/6); advisors por SQL (RLS,
+  search_path, FKs indexadas, grants nas 2 tabelas novas, views
+  security_invoker; as SECURITY DEFINER executáveis por anon são as
+  antigas de perfil, anon sem acesso ao schema); `typecheck`/`eslint`/
+  `next build` limpos; navegador (dev server do usuário, admin temporário,
+  Playwright): 21/21 — tarifas, gerar (499 sugestões), aprovar/descartar,
+  passagens/filtro/detalhe, Painel, manual, 390 px, sem erros; limpeza
+  conferida (tarifas iguais às de antes, usuário removido).
+
+**Estado deixado no banco:** 499 sugestões pendentes geradas para
+30/08–30/09/2026 (o teste aprovou/descartou e desfez); nenhuma tarifa
+aprovada ainda além de Franco da Rocha — **aprovar pela tela**. Ao aprovar
+as 334 "concordam", o Painel passa a mostrar a conferência por eixo.
+
+**Pendentes conhecidos:**
+- Valores "quebrados" de algumas praças ARTESP (SP-330: 70,11/90,15 ≈
+  10,02 por eixo, OSM 10,50) não seguem nenhuma regra de arredondamento
+  conhecida — ficam em "Divergem" para decisão humana.
+- Praças só com 2–12 débitos podem ter cobertura baixa por ruído
+  (1 eixo suspenso/placa atípica pesa muito); Garça (SP-294) foi dividida
+  7,82 → 13,70 com 21 débitos, provavelmente ruído — revisar.
+- O menu do cabeçalho transborda em 390 px em todas as telas (anterior a
+  esta fase).
+- 110 praças continuam `cadastro_pendente` (sem sugestão: as passagens
+  delas não têm validação/categoria).
+
 ## Próximo passo
 
-Nenhum item pendente do plano atual (FASE 01 a FASE 23 concluídas) —
-próximos passos dependem do uso real do sistema, incluindo conferir a
+**FASE 24 concluída — aguardando teste do usuário no navegador e o
+pedido de commit.** Aprovar as sugestões pela tela; revisão manual das 110
+praças pendentes em paralelo.
+
+FASE 01 a FASE 23 concluídas — conferir também a
 FASE 21 com dados reais (casos ambíguos podem aparecer com mais
 frequência do que nos testes sintéticos, o que reabriria a decisão nº2
 acima). Pendências

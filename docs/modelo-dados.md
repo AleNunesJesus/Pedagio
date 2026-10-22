@@ -88,20 +88,58 @@ composição em vez de constantes fixas no código.
 | quantidade_eixos | integer not null | eixos representados por esta categoria (FASE 16) |
 
 ### `tarifa_praca`
-Histórico de valores por praça + categoria, com vigência — nunca faz
-`UPDATE` do valor, sempre insere uma nova vigência.
+Histórico do **valor por eixo** da praça, com vigência (FASE 24 — antes era
+um valor por praça + categoria). A tarifa de cada passagem é valor por eixo ×
+eixos cobrados (ver [fluxo-validacao.md](fluxo-validacao.md)).
 
 | coluna | tipo | notas |
 |---|---|---|
 | id | uuid pk | |
 | praca_id | fk praca_pedagio | |
-| categoria_veiculo_id | fk categoria_veiculo | |
-| valor | numeric(10,2) | |
+| valor_eixo | numeric(10,2) | > 0 |
 | vigencia_inicio | date | |
 | vigencia_fim | date null | null = vigente atualmente |
+| origem | text | `manual` \| `sugestao` (aprovada em `tarifa_eixo_sugestao`) |
 
-Constraint: sem sobreposição de vigência para o mesmo par
-praça+categoria (via `EXCLUDE USING gist` com `daterange`).
+Constraint: sem sobreposição de vigência para a mesma praça (via
+`EXCLUDE USING gist` com `daterange`). Gravar/alterar/excluir revalida as
+passagens da praça no período (trigger).
+
+### `tarifa_eixo_osm` (FASE 24)
+Instantâneo da tarifa por eixo (`charge` … `BRL/hgv/axle`) das cabines do
+OpenStreetMap perto de cada praça completa, carregado por script (sem
+chamada externa em tempo de execução; licença ODbL, crédito na tela).
+
+| coluna | tipo | notas |
+|---|---|---|
+| praca_id | pk, fk praca_pedagio | `on delete cascade` |
+| valor_eixo | numeric(10,2) | |
+| osm_conferido_em | date null | `check_date` da cabine no OSM |
+| osm_ids | text[] | cabines usadas (`node/…`, `way/…`) |
+| carregado_em | timestamptz | |
+
+### `tarifa_eixo_sugestao` (FASE 24)
+Sugestão de valor por eixo por praça, calculada das faturas de um período
+(`gerar_sugestoes_tarifa`) e comparada com o OSM. Se dividir o período num
+dia de corte explica ≥ 5% a mais dos débitos (mínimo 5), a praça recebe duas
+sugestões, uma por trecho (reajuste no meio do mês — ex.: Litoral Sul 5,70
+até 13/09 e 5,90 a partir de 14/09). Aprovar (`aprovar_sugestoes_tarifa`,
+fonte fatura ou OSM) grava `tarifa_praca` a partir de `periodo_inicio`,
+fechando a tarifa aberta anterior e terminando na véspera de uma tarifa
+posterior já gravada (a ordem de aprovação dos trechos não importa).
+
+| coluna | tipo | notas |
+|---|---|---|
+| id | uuid pk | |
+| praca_id | fk praca_pedagio | `on delete cascade`; no máximo 1 `pendente` por praça + `periodo_inicio` (índice único parcial) |
+| periodo_inicio / periodo_fim | date | dias (horário local) dos débitos usados |
+| valor_eixo_fatura | numeric(10,2) | candidato que explica mais débitos |
+| passagens_total / passagens_explicadas | int | débitos do período / explicados com eixos ≤ composição |
+| valor_eixo_osm / osm_conferido_em | null | cópia de `tarifa_eixo_osm` no momento da geração |
+| fontes_concordam | boolean | \|fatura − OSM\| ≤ 0,01 |
+| status | text | `pendente` \| `aprovada` \| `descartada` |
+| decidido_por / decidido_em | | e-mail do JWT e momento da decisão |
+| tarifa_praca_id | fk tarifa_praca null | tarifa gravada na aprovação; `on delete set null` |
 
 ### `veiculo`
 Cadastro único de cavalo mecânico e carreta (FASE 16 — antes eram tabelas
@@ -221,7 +259,7 @@ Resultado do cruzamento geoespacial + tarifário para cada passagem.
 | dentro_poligono | boolean | |
 | distancia_metros | numeric | distância do ping ao centróide/borda, se fora |
 | diferenca_segundos | int | |ping.data_hora - passagem.data_hora| |
-| valor_esperado | numeric(10,2) | tarifa vigente na data |
+| valor_esperado | numeric(10,2) | conferência por eixo (FASE 24): igual ao cobrado quando completo/eixos suspensos; tarifa por eixo × eixos da composição (com −5% se veio com TAG) quando eixos a maior/não múltiplo; null sem tarifa vigente, sem categoria ou em crédito |
 | divergencia_valor | numeric(10,2) | valor_cobrado - valor_esperado |
 | resultado | text | `ok` \| `sem_dados_gps` \| `fora_poligono` \| `valor_divergente` \| `local_e_valor_divergentes` |
 | validado_em | timestamptz | |
@@ -231,6 +269,10 @@ Resultado do cruzamento geoespacial + tarifário para cada passagem.
 | vinculo_viagem_status | text | `vinculado` (1 candidata) \| `ambiguo` (2+ candidatas — não escolhe sozinho) \| `sem_vinculo` (0 candidatas) — FASE 21 |
 | viagem_transporte_candidatas | int | quantas `viagem_transporte` da mesma placa cobrem o horário da passagem |
 | numero_viagem_bate | boolean null | `viagem_informada` (fatura) == `viagem_transporte.numero_transporte`, só quando `vinculado`; null se ambíguo/sem vínculo/sem número na fatura — informativo, não é divergência (numerações de sistemas diferentes) |
+| eixos_composicao | int null | eixos da categoria usada (FASE 24); preenchido só quando houve conferência por eixo |
+| eixos_cobrados | int null | k inteiro com valor ≈ tarifa por eixo × k (`eixos_cobrados()`); null se nenhum k de 1 a 12 explica |
+| desconto_tag | boolean null | o valor veio com 5% de desconto de TAG |
+| motivo_valor | text null | `completo` \| `eixos_suspensos` \| `eixos_a_maior` \| `nao_multiplo`; null = sem conferência (sem tarifa, sem categoria ou crédito) |
 
 Ver [fluxo-validacao.md](fluxo-validacao.md) para o algoritmo que popula esta
 tabela, incluindo como `categoria_veiculo_id`/`origem_categoria` são

@@ -17,7 +17,13 @@ export function useAvisoAoSair(ativo: boolean) {
   }, [ativo]);
 }
 
-export function BarraProgresso({ progresso }: { progresso: Progresso }) {
+export function BarraProgresso({
+  progresso,
+  unidade = "linhas processadas",
+}: {
+  progresso: Progresso;
+  unidade?: string;
+}) {
   return (
     <div className="space-y-1" role="status" aria-live="polite">
       <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
@@ -29,7 +35,7 @@ export function BarraProgresso({ progresso }: { progresso: Progresso }) {
       <p className="text-xs text-gray-500 dark:text-gray-400">
         {progresso.total === 0
           ? "Lendo o arquivo..."
-          : `${formatNumber(progresso.enviadas)} de ${formatNumber(progresso.total)} linhas processadas — não feche esta aba.`}
+          : `${formatNumber(progresso.enviadas)} de ${formatNumber(progresso.total)} ${unidade} — não feche esta aba.`}
       </p>
     </div>
   );

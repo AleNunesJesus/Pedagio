@@ -18,9 +18,8 @@ export function SecaoPrimeirosPassos() {
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           O sistema concilia as passagens de pedágio informadas pelo
           fornecedor (planilha da fatura) contra a posição real dos veículos
-          (GPS) e contra as tarifas vigentes, praça a praça e categoria a
-          categoria, para identificar cobranças indevidas ou com valor
-          divergente.
+          (GPS) e contra a tarifa por eixo vigente de cada praça, para
+          identificar cobranças indevidas ou com valor divergente.
         </p>
         <Steps
           items={[

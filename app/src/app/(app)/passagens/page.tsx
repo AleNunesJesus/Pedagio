@@ -10,6 +10,7 @@ type SearchParams = {
   pracaId?: string;
   veiculoId?: string;
   tipoUso?: string;
+  motivo?: string;
   embarcadorId?: string;
   viagem?: string;
   dataInicio?: string;
@@ -31,6 +32,7 @@ export default async function PassagensPage({
       pracaId: params.pracaId,
       veiculoId: params.veiculoId,
       tipoUso: params.tipoUso,
+      motivo: params.motivo,
       embarcadorId: params.embarcadorId,
       viagem: params.viagem,
       dataInicio: params.dataInicio,

@@ -15,6 +15,7 @@ const CADASTROS_ITEMS = [
   { href: "/cadastros/veiculos", label: "Veículos" },
   { href: "/cadastros/pracas", label: "Praças" },
   { href: "/cadastros/tarifas", label: "Tarifas" },
+  { href: "/cadastros/tarifas/sugestoes", label: "Sugestões de tarifa" },
   { href: "/cadastros/estacionamentos", label: "Estacionamentos" },
   { href: "/cadastros/tarifas-estacionamento", label: "Tarifas estacionamento" },
   { href: "/cadastros/embarcadores", label: "Embarcadores" },

@@ -167,8 +167,7 @@ export async function salvarTarifa(
 ): Promise<FormState> {
   const parsed = tarifaSchema.safeParse({
     praca_id: formData.get("praca_id"),
-    categoria_veiculo_id: formData.get("categoria_veiculo_id"),
-    valor: formData.get("valor"),
+    valor_eixo: formData.get("valor_eixo"),
     vigencia_inicio: formData.get("vigencia_inicio"),
     vigencia_fim: formData.get("vigencia_fim") || undefined,
   });
@@ -185,7 +184,7 @@ export async function salvarTarifa(
     return {
       error:
         error.code === "23P01"
-          ? "Já existe uma tarifa vigente para essa praça e categoria nesse período."
+          ? "Já existe uma tarifa vigente para essa praça nesse período."
           : error.message,
     };
   }
@@ -201,6 +200,61 @@ export async function excluirTarifas(ids: string[]): Promise<{ error?: string }>
   if (error) return { error: error.message };
 
   revalidatePath("/cadastros/tarifas");
+  return {};
+}
+
+// devolve o período enviado: o reset do form (React 19) limparia os campos
+export type GerarSugestoesState = FormState & { geradas?: number; inicio?: string; fim?: string };
+
+export async function gerarSugestoesTarifa(
+  _prevState: GerarSugestoesState,
+  formData: FormData,
+): Promise<GerarSugestoesState> {
+  const inicio = (formData.get("inicio") as string | null)?.trim() ?? "";
+  const fim = (formData.get("fim") as string | null)?.trim() ?? "";
+  if (!inicio || !fim) return { error: "Informe o período.", inicio, fim };
+  if (fim < inicio) return { error: "Fim do período não pode ser antes do início.", inicio, fim };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("gerar_sugestoes_tarifa", { p_inicio: inicio, p_fim: fim });
+  if (error) return { error: error.message, inicio, fim };
+
+  revalidatePath("/cadastros/tarifas/sugestoes");
+  return { success: true, geradas: data ?? 0, inicio, fim };
+}
+
+// Um bloco por chamada: aprovar grava a tarifa e revalida as passagens da
+// praça, então o componente envia blocos limitados por quantidade de
+// passagens (statement_timeout do papel authenticated).
+export async function aprovarSugestoesTarifa(
+  ids: string[],
+  fonte: "fatura" | "osm",
+): Promise<{ error?: string; aprovadas?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("aprovar_sugestoes_tarifa", { p_ids: ids, p_fonte: fonte });
+  if (error) {
+    return {
+      error:
+        error.code === "23P01"
+          ? "Já existe tarifa cadastrada a partir do início do período de uma das praças — ajuste em Tarifas."
+          : error.message,
+    };
+  }
+  return { aprovadas: data ?? 0 };
+}
+
+export async function finalizarAprovacaoSugestoes(): Promise<void> {
+  revalidatePath("/cadastros/tarifas");
+  revalidatePath("/cadastros/tarifas/sugestoes");
+  revalidatePath("/dashboard");
+}
+
+export async function descartarSugestoesTarifa(ids: string[]): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("descartar_sugestoes_tarifa", { p_ids: ids });
+  if (error) return { error: error.message };
+
+  revalidatePath("/cadastros/tarifas/sugestoes");
   return {};
 }
 

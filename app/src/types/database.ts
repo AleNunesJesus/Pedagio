@@ -101,28 +101,28 @@ export type Database = {
         Row: {
           id: string;
           praca_id: string;
-          categoria_veiculo_id: string;
-          valor: number;
+          valor_eixo: number;
           vigencia_inicio: string;
           vigencia_fim: string | null;
+          origem: string;
           created_at: string;
         };
         Insert: {
           id?: string;
           praca_id: string;
-          categoria_veiculo_id: string;
-          valor: number;
+          valor_eixo: number;
           vigencia_inicio: string;
           vigencia_fim?: string | null;
+          origem?: string;
           created_at?: string;
         };
         Update: {
           id?: string;
           praca_id?: string;
-          categoria_veiculo_id?: string;
-          valor?: number;
+          valor_eixo?: number;
           vigencia_inicio?: string;
           vigencia_fim?: string | null;
+          origem?: string;
           created_at?: string;
         };
         Relationships: [
@@ -133,11 +133,105 @@ export type Database = {
             referencedRelation: "praca_pedagio";
             referencedColumns: ["id"];
           },
+        ];
+      };
+      tarifa_eixo_osm: {
+        Row: {
+          praca_id: string;
+          valor_eixo: number;
+          osm_conferido_em: string | null;
+          osm_ids: string[];
+          carregado_em: string;
+        };
+        Insert: {
+          praca_id: string;
+          valor_eixo: number;
+          osm_conferido_em?: string | null;
+          osm_ids?: string[];
+          carregado_em?: string;
+        };
+        Update: {
+          praca_id?: string;
+          valor_eixo?: number;
+          osm_conferido_em?: string | null;
+          osm_ids?: string[];
+          carregado_em?: string;
+        };
+        Relationships: [
           {
-            foreignKeyName: "tarifa_praca_categoria_veiculo_id_fkey";
-            columns: ["categoria_veiculo_id"];
+            foreignKeyName: "tarifa_eixo_osm_praca_id_fkey";
+            columns: ["praca_id"];
+            isOneToOne: true;
+            referencedRelation: "praca_pedagio";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      tarifa_eixo_sugestao: {
+        Row: {
+          id: string;
+          praca_id: string;
+          periodo_inicio: string;
+          periodo_fim: string;
+          valor_eixo_fatura: number;
+          passagens_total: number;
+          passagens_explicadas: number;
+          valor_eixo_osm: number | null;
+          osm_conferido_em: string | null;
+          fontes_concordam: boolean;
+          status: string;
+          decidido_por: string | null;
+          decidido_em: string | null;
+          tarifa_praca_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          praca_id: string;
+          periodo_inicio: string;
+          periodo_fim: string;
+          valor_eixo_fatura: number;
+          passagens_total: number;
+          passagens_explicadas: number;
+          valor_eixo_osm?: number | null;
+          osm_conferido_em?: string | null;
+          fontes_concordam?: boolean;
+          status?: string;
+          decidido_por?: string | null;
+          decidido_em?: string | null;
+          tarifa_praca_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          praca_id?: string;
+          periodo_inicio?: string;
+          periodo_fim?: string;
+          valor_eixo_fatura?: number;
+          passagens_total?: number;
+          passagens_explicadas?: number;
+          valor_eixo_osm?: number | null;
+          osm_conferido_em?: string | null;
+          fontes_concordam?: boolean;
+          status?: string;
+          decidido_por?: string | null;
+          decidido_em?: string | null;
+          tarifa_praca_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tarifa_eixo_sugestao_praca_id_fkey";
+            columns: ["praca_id"];
             isOneToOne: false;
-            referencedRelation: "categoria_veiculo";
+            referencedRelation: "praca_pedagio";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tarifa_eixo_sugestao_tarifa_praca_id_fkey";
+            columns: ["tarifa_praca_id"];
+            isOneToOne: false;
+            referencedRelation: "tarifa_praca";
             referencedColumns: ["id"];
           },
         ];
@@ -661,6 +755,10 @@ export type Database = {
           vinculo_viagem_status: string;
           viagem_transporte_candidatas: number;
           numero_viagem_bate: boolean | null;
+          eixos_composicao: number | null;
+          eixos_cobrados: number | null;
+          desconto_tag: boolean | null;
+          motivo_valor: string | null;
         };
         Insert: {
           id?: string;
@@ -679,6 +777,10 @@ export type Database = {
           vinculo_viagem_status?: string;
           viagem_transporte_candidatas?: number;
           numero_viagem_bate?: boolean | null;
+          eixos_composicao?: number | null;
+          eixos_cobrados?: number | null;
+          desconto_tag?: boolean | null;
+          motivo_valor?: string | null;
         };
         Update: {
           id?: string;
@@ -697,6 +799,10 @@ export type Database = {
           vinculo_viagem_status?: string;
           viagem_transporte_candidatas?: number;
           numero_viagem_bate?: boolean | null;
+          eixos_composicao?: number | null;
+          eixos_cobrados?: number | null;
+          desconto_tag?: boolean | null;
+          motivo_valor?: string | null;
         };
         Relationships: [
           {
@@ -895,6 +1001,10 @@ export type Database = {
           viagem_transporte_candidatas: number | null;
           numero_viagem_bate: boolean | null;
           frota: string | null;
+          eixos_composicao: number | null;
+          eixos_cobrados: number | null;
+          desconto_tag: boolean | null;
+          motivo_valor: string | null;
         };
         Relationships: [];
       };
@@ -1014,6 +1124,16 @@ export type Database = {
           rodovia: string | null;
           qtd_passagens: number | null;
           total_cobrado: number | null;
+        };
+        Relationships: [];
+      };
+      vw_divergencia_por_motivo: {
+        Row: {
+          motivo_valor: string | null;
+          qtd_passagens: number | null;
+          total_cobrado: number | null;
+          total_esperado: number | null;
+          divergencia_valor: number | null;
         };
         Relationships: [];
       };
@@ -1265,6 +1385,22 @@ export type Database = {
       excluir_tarifas: {
         Args: { p_ids: string[] };
         Returns: undefined;
+      };
+      eixos_cobrados: {
+        Args: { p_valor: number; p_tarifa_eixo: number };
+        Returns: { eixos: number | null; com_desconto: boolean | null };
+      };
+      gerar_sugestoes_tarifa: {
+        Args: { p_inicio: string; p_fim: string };
+        Returns: number;
+      };
+      aprovar_sugestoes_tarifa: {
+        Args: { p_ids: string[]; p_fonte?: string };
+        Returns: number;
+      };
+      descartar_sugestoes_tarifa: {
+        Args: { p_ids: string[] };
+        Returns: number;
       };
       excluir_lote_importacao: {
         Args: { p_lote_id: string };

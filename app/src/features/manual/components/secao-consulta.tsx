@@ -122,8 +122,9 @@ export function SecaoConsulta() {
         </h3>
         <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
           Rota <code>/passagens</code>. Filtros: Status, Praça, Veículo,
-          Tipo de uso (Passagem/Contrato/Estacionamento), Embarcador, Viagem
-          (texto), De / Até.
+          Tipo de uso (Passagem/Contrato/Estacionamento), Conferência por
+          eixo (Eixos completos, Eixos suspensos, Eixos a maior, Valor fora
+          da tarifa, Sem tarifa), Embarcador, Viagem (texto), De / Até.
         </p>
         <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-gray-600 dark:text-gray-400">
           <li>Fatura, Data/hora, Placa, Frota, Praça (ou estacionamento), Tipo.</li>
@@ -144,7 +145,13 @@ export function SecaoConsulta() {
             &quot;Ambíguo (N)&quot; quando há mais de uma viagem candidata
             no mesmo horário, ou &quot;—&quot; sem vínculo.
           </li>
-          <li>Valor cobrado e Status (link para o detalhe).</li>
+          <li>
+            Valor cobrado,{" "}
+            <strong className="text-gray-900 dark:text-gray-100">Eixos</strong> — eixos
+            cobrados / eixos da composição (com &quot;TAG&quot; quando veio com
+            desconto; em vermelho quando são mais eixos que a composição ou o
+            valor não é múltiplo da tarifa) — e Status (link para o detalhe).
+          </li>
         </ul>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           Admin pode selecionar linhas e excluí-las em lote — é a única ação
@@ -170,8 +177,9 @@ export function SecaoConsulta() {
             se o veículo estava dentro do polígono da praça, distância até o
             polígono, diferença de tempo entre GPS e passagem, categoria
             usada na tarifa e sua origem (composição da viagem ou cadastro
-            do veículo), valor esperado, divergência de valor e vínculo com
-            a viagem de transporte.
+            do veículo), conferência por eixo (ex.: &quot;Eixos suspensos — 4
+            de 7 eixos, TAG −5%&quot;), valor esperado, divergência de valor
+            e vínculo com a viagem de transporte.
           </li>
         </ul>
         <p className="text-sm text-gray-600 dark:text-gray-400">

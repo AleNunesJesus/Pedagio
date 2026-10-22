@@ -7,6 +7,7 @@ export type FiltrosPassagens = {
   pracaId?: string;
   veiculoId?: string;
   tipoUso?: string;
+  motivo?: string;
   embarcadorId?: string;
   viagem?: string;
   dataInicio?: string;
@@ -30,6 +31,12 @@ export async function listPassagens(filtros: FiltrosPassagens) {
   if (filtros.pracaId) query = query.eq("praca_id", filtros.pracaId);
   if (filtros.veiculoId) query = query.eq("veiculo_id", filtros.veiculoId);
   if (filtros.tipoUso) query = query.eq("tipo_uso", filtros.tipoUso);
+  // FASE 24: sem_tarifa = débito de passagem sem conferência por eixo
+  if (filtros.motivo === "sem_tarifa") {
+    query = query.is("motivo_valor", null).eq("tipo_uso", "passagem").eq("condicao", "debito");
+  } else if (filtros.motivo) {
+    query = query.eq("motivo_valor", filtros.motivo);
+  }
   if (filtros.embarcadorId) query = query.eq("embarcador_id", filtros.embarcadorId);
   if (filtros.viagem) query = query.ilike("viagem", `%${filtros.viagem}%`);
   if (filtros.dataInicio) query = query.gte("data_hora", filtros.dataInicio);

@@ -19,24 +19,20 @@ function SubmitButton({ editando }: { editando: boolean }) {
 }
 
 type Praca = { id: string; nome: string };
-type Categoria = { id: string; codigo: string; descricao: string };
 
 type TarifaExistente = {
   id: string;
   praca_id: string;
-  categoria_veiculo_id: string;
-  valor: number;
+  valor_eixo: number;
   vigencia_inicio: string;
   vigencia_fim: string | null;
 };
 
 export function TarifaForm({
   pracas,
-  categorias,
   tarifa,
 }: {
   pracas: Praca[];
-  categorias: Categoria[];
   tarifa?: TarifaExistente;
 }) {
   const [state, formAction] = useActionState(salvarTarifa, initialState);
@@ -58,23 +54,15 @@ export function TarifaForm({
         defaultValue={tarifa?.praca_id}
         options={pracas.map((p) => ({ value: p.id, label: p.nome }))}
       />
-      <SelectField
-        id="categoria_veiculo_id"
-        name="categoria_veiculo_id"
-        label="Categoria"
-        required
-        placeholder="Selecione"
-        defaultValue={tarifa?.categoria_veiculo_id}
-        options={categorias.map((c) => ({ value: c.id, label: `${c.codigo} — ${c.descricao}` }))}
-      />
       <TextField
-        id="valor"
-        name="valor"
-        label="Valor (R$)"
+        id="valor_eixo"
+        name="valor_eixo"
+        label="Valor por eixo (R$)"
         type="number"
         step="0.01"
+        min="0.01"
         required
-        defaultValue={tarifa?.valor}
+        defaultValue={tarifa?.valor_eixo}
       />
       <TextField
         id="vigencia_inicio"

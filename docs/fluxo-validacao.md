@@ -91,19 +91,35 @@ Cadastro `pedagio.carreta` (placa/código → `tipo` `comum` [3 eixos] ou
 `vanderleia` [4 eixos]) é gerenciado em `/cadastros/carretas`
 (admin-only para escrever, leitura para qualquer usuário autorizado).
 
-Com a categoria resolvida:
+Com a categoria resolvida (FASE 24 — tarifa por eixo):
 
-1. Buscar em `tarifa_praca` o valor vigente para `praca_id` + a
-   `categoria_veiculo_id` resolvida acima onde
+1. Só **débitos** são conferidos. Crédito com praça é o vale-pedágio do
+   embarcador (confrontado com o débito na FASE 18) — fica sem
+   `valor_esperado`.
+2. Buscar em `tarifa_praca` o **valor por eixo** vigente para `praca_id` onde
    `vigencia_inicio <= (passagem.data_hora at time zone 'America/Sao_Paulo')::date`
    e (`vigencia_fim is null` ou `vigencia_fim >= (passagem.data_hora at time zone 'America/Sao_Paulo')::date`).
    A data é sempre convertida para o horário local (Brasil) antes do
    cast — `data_hora` é `timestamptz` gravado em UTC, e o dia "de
    verdade" pra efeito de tarifa é o dia local, não o dia UTC.
-2. Comparar com `valor_cobrado`:
-   - Igual (ou dentro de uma tolerância de centavos) → ok.
-   - Diferente → `divergencia_valor = valor_cobrado - valor_esperado`,
+3. `pedagio.eixos_cobrados(valor_cobrado, valor_eixo)` acha o número inteiro
+   de eixos k (1 a 12) com valor ≈ valor_eixo × k — cheio ou com 5% de
+   desconto de TAG (arredondando o desconto no total ou por eixo, as duas
+   formas aparecem na fatura real), tolerância de 2 centavos.
+4. Comparar k com os eixos da categoria (`quantidade_eixos`):
+   - k = eixos → `completo`; k < eixos → `eixos_suspensos` (caminhão vazio
+     paga menos eixos). Os dois são cobrança correta:
+     `valor_esperado = valor_cobrado`, divergência 0.
+   - k > eixos → `eixos_a_maior`; nenhum k → `nao_multiplo`. Divergência
+     contra `valor_eixo × eixos` (com −5% se o valor veio com TAG) —
      contribui para `resultado = valor_divergente`.
+
+Motivo, k, eixos e desconto ficam em `validacao_passagem`
+(`motivo_valor`, `eixos_cobrados`, `eixos_composicao`, `desconto_tag`).
+
+Medido na fatura real de set/2026 (22.017 débitos com tarifa do OSM):
+53% completos, 13,5% eixos suspensos, 12,5% TAG, 3% TAG + suspensos, 1,9%
+eixos a maior, 15,7% não explicados (maioria tarifa OSM defasada).
 
 **Revalidação automática:** como a composição depende de dados que
 podem chegar depois da passagem (viagem de transporte importada depois,

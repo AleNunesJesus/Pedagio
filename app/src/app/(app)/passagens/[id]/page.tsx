@@ -8,6 +8,7 @@ import { VinculoViagemBadge } from "@/features/passagens/components/vinculo-viag
 import { formatBRL, formatNumber } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { tipoUsoLabel } from "@/lib/tipo-uso";
+import { descreverEixos, motivoValorLabel } from "@/lib/motivo-valor";
 
 
 const LABEL_CONDICAO: Record<string, string> = {
@@ -172,7 +173,15 @@ export default async function PassagemDetalhePage({
                   ? LABEL_ORIGEM_CATEGORIA[passagem.origem_categoria] ?? passagem.origem_categoria
                   : "—",
               },
-              { label: "Valor esperado (tarifa vigente)", valor: valorOuSemTarifa(passagem.valor_esperado) },
+              {
+                label: "Conferência por eixo",
+                valor: passagem.motivo_valor
+                  ? `${motivoValorLabel(passagem.motivo_valor)} — ${descreverEixos(passagem)}`
+                  : passagem.condicao === "credito"
+                    ? "crédito não é conferido contra a tarifa"
+                    : "—",
+              },
+              { label: "Valor esperado (tarifa por eixo vigente)", valor: valorOuSemTarifa(passagem.valor_esperado) },
               {
                 label: "Divergência de valor",
                 valor: valorOuSemTarifa(passagem.divergencia_valor),

@@ -91,9 +91,41 @@ export async function listTarifas() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("tarifa_praca")
-    .select("*, praca_pedagio(nome), categoria_veiculo(codigo)")
+    .select("*, praca_pedagio(nome)")
     .order("vigencia_inicio", { ascending: false });
   return data ?? [];
+}
+
+// FASE 24: sugestões pendentes (as decididas ficam no banco só como histórico)
+export async function listSugestoesTarifa() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tarifa_eixo_sugestao")
+    .select("*, praca_pedagio(nome)")
+    .eq("status", "pendente")
+    .order("passagens_total", { ascending: false });
+  return data ?? [];
+}
+
+export async function contarSugestoesTarifaPendentes() {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("tarifa_eixo_sugestao")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pendente");
+  return count ?? 0;
+}
+
+// período padrão do "gerar sugestões": o das passagens importadas
+export async function getPeriodoPassagens() {
+  const supabase = await createClient();
+  const [{ data: primeira }, { data: ultima }] = await Promise.all([
+    supabase.from("passagem_pedagio").select("data_hora").order("data_hora").limit(1).maybeSingle(),
+    supabase.from("passagem_pedagio").select("data_hora").order("data_hora", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const dia = (iso: string | undefined) =>
+    iso ? new Date(iso).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" }) : "";
+  return { inicio: dia(primeira?.data_hora), fim: dia(ultima?.data_hora) };
 }
 
 export async function getTarifa(id: string) {

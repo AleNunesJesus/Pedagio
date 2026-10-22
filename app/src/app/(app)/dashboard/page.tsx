@@ -15,6 +15,7 @@ import { ValorSinalizado } from "@/components/ui/valor-sinalizado";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { formatBRL, formatMonth, formatNumber, formatPercent } from "@/lib/format";
 import { tipoUsoLabel } from "@/lib/tipo-uso";
+import { motivoValorLabel } from "@/lib/motivo-valor";
 
 // total_esperado nulo (sem_cadastro/nao_aplicavel/pendente) não é "esperado
 // zero" — é "não há tarifa de referência calculada para comparar".
@@ -79,6 +80,42 @@ export default async function DashboardPage() {
           <ValorSinalizado valor={1} />) é cobrado a mais que a tarifa;
           negativo (<ValorSinalizado valor={-1} />) é cobrado a menos.
         </p>
+        {data.qtdEixosAMaior > 0 && (
+          <Alert variant="warning" className="mb-4">
+            {formatNumber(data.qtdEixosAMaior)} débito(s) cobrando mais eixos do que a composição
+            tem — <ValorSinalizado valor={data.valorEixosAMaior} /> a mais.{" "}
+            <Link href="/passagens?motivo=eixos_a_maior" className="underline">
+              Ver passagens
+            </Link>
+          </Alert>
+        )}
+        <div className="mb-4">
+          <Card
+            title="Por motivo (tarifa por eixo)"
+            subtitle="débitos conferidos contra a tarifa por eixo da praça"
+          >
+            <DataTable
+              rows={data.divergenciaPorMotivo}
+              keyField={(row) => row.motivo_valor ?? "—"}
+              emptyMessage="Nenhum débito de passagem importado ainda."
+              columns={[
+                { header: "Motivo", render: (r) => motivoValorLabel(r.motivo_valor) },
+                { header: "Qtd", align: "right", render: (r) => formatNumber(r.qtd_passagens) },
+                { header: "Cobrado", align: "right", render: (r) => formatBRL(r.total_cobrado) },
+                {
+                  header: "Esperado",
+                  align: "right",
+                  render: (r) => valorEsperadoLabel(r.total_esperado),
+                },
+                {
+                  header: "Divergência",
+                  align: "right",
+                  render: (r) => <ValorSinalizado valor={r.divergencia_valor} />,
+                },
+              ]}
+            />
+          </Card>
+        </div>
         <div className="grid gap-4 lg:grid-cols-3">
           <Card title="Por causa (status de validação)" subtitle="por que a divergência existe">
             <DataTable

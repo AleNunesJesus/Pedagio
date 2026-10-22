@@ -21,6 +21,7 @@ export async function getDashboardData() {
     { data: semDadosGpsPorDia },
     { data: diferencaTempoMedia },
     { data: volumePorPracaDia },
+    { data: divergenciaPorMotivo },
   ] = await Promise.all([
     supabase.from("praca_pedagio").select("*", { count: "exact", head: true }),
     supabase.from("veiculo").select("*", { count: "exact", head: true }),
@@ -58,7 +59,15 @@ export async function getDashboardData() {
       .select("*")
       .order("diferenca_media_segundos", { ascending: false }),
     supabase.from("vw_volume_passagens_praca_dia").select("dia, qtd_passagens").order("dia"),
+    supabase.from("vw_divergencia_por_motivo").select("*"),
   ]);
+
+  // FASE 24: ordem fixa (do correto ao que pede atenção), não por volume
+  const ORDEM_MOTIVO = ["completo", "eixos_suspensos", "eixos_a_maior", "nao_multiplo", "sem_tarifa"];
+  const divergenciaPorMotivoOrdenada = [...(divergenciaPorMotivo ?? [])].sort(
+    (a, b) => ORDEM_MOTIVO.indexOf(a.motivo_valor ?? "") - ORDEM_MOTIVO.indexOf(b.motivo_valor ?? ""),
+  );
+  const eixosAMaior = divergenciaPorMotivoOrdenada.find((r) => r.motivo_valor === "eixos_a_maior");
 
   // vw_volume_passagens_praca_dia é por praça+dia; para a tendência geral do
   // painel somamos por dia (o detalhe por praça fica para uma tela futura de
@@ -215,6 +224,9 @@ export async function getDashboardData() {
     gastoPorVeiculo: gastoPorVeiculo ?? [],
     gastoPorPraca: gastoPorPraca ?? [],
     divergenciaPorStatus: divergenciaPorStatus ?? [],
+    divergenciaPorMotivo: divergenciaPorMotivoOrdenada,
+    qtdEixosAMaior: eixosAMaior?.qtd_passagens ?? 0,
+    valorEixosAMaior: eixosAMaior?.divergencia_valor ?? 0,
     topDivergenciaPorPraca,
     topDivergenciaPorVeiculo,
     totalCredito,
