@@ -2657,7 +2657,7 @@ informativo** (não é status próprio).
    Lourenço da Serra (Régis Bittencourt), não em Franco da Rocha/SP-348 —
    cadastro de teste antigo, rever.
 
-**Status:** 🟢 Concluído (2026-10-22, não commitado)
+**Status:** 🟢 Concluído (2026-10-22, commit `1cf84c4`)
 
 - [x] Migration `20261024160000_pedagio_fase24_tarifa_por_eixo`.
   **Desvio do plano:** em vez de uma tabela nova `tarifa_praca_eixo`,
@@ -2737,11 +2737,58 @@ as 334 "concordam", o Painel passa a mostrar a conferência por eixo.
 - 110 praças continuam `cadastro_pendente` (sem sugestão: as passagens
   delas não têm validação/categoria).
 
+## FASE 25 — Endereço da praça + localizar no mapa para desenhar o polígono
+
+**Gatilho:** revisão manual das 110 praças `cadastro_pendente`. O mapa do
+cadastro abre sempre em São Paulo e o usuário precisa achar a cabine na
+mão para desenhar o polígono. O GPS dos veículos não ajuda por enquanto:
+a base tem só 12 posições (de teste), nenhuma bate com as passagens dessas
+praças (conferido em 2026-10-22).
+
+**Decisão do usuário (2026-10-22):** fazer a busca no mapa **e guardar o
+endereço** na praça.
+
+**Status:** ⏳ Planejada
+
+- [ ] Migration: colunas `endereco` (texto livre), `municipio` e `uf`
+  (char 2, check de UF válida) em `praca_pedagio`, todas opcionais;
+  `atualizar_praca`/inserção levando os campos novos; nome e sentido
+  continuam sendo a chave de casamento da importação (endereço não entra
+  no casamento). Preenchimento inicial de `municipio`/`uf` das 480 praças
+  já completas a partir das fontes do ajuste ANTT/OSM, sem tocar
+  nome/sentido.
+- [ ] Busca "Localizar no mapa" acima do mapa do cadastro: texto livre →
+  Nominatim (geocodificador do OpenStreetMap, sem chave; uma busca por
+  clique, respeitando o limite de 1 req/s) → lista de resultados → mapa
+  centraliza no escolhido. Busca já sugerida a partir do nome da praça
+  (`SP021, KM25+360, SUL, SÃO PAULO` → "SP-021, São Paulo, SP"). Ao
+  escolher um resultado, endereço/município/UF são preenchidos no
+  formulário (editáveis antes de salvar).
+- [ ] Cabines do OSM no mapa: após localizar, marcadores das
+  `barrier=toll_booth`/`highway=toll_gantry` na área visível (Overpass);
+  clicar num marcador cria um polígono inicial em volta dele (~200 m ao
+  longo da pista), para só ajustar e salvar. Polígono já existente não é
+  substituído sem confirmação.
+- [ ] Camada de satélite (Esri World Imagery) alternável com o mapa, com
+  crédito da fonte.
+- [ ] Lista de praças: colunas município/UF + filtro por UF.
+- [ ] Manual (seção de praças) e `modelo-dados.md`.
+- [ ] Verificação: ensaio da migration em rollback, advisors, `typecheck`/
+  `eslint`/`build`, navegador (buscar, escolher resultado, clicar cabine,
+  salvar com endereço, praça pendente deixa de ser pendente).
+
+**Limitações já conhecidas:** o Nominatim não entende "rodovia + km" —
+acerta cidade/trecho, o ponto exato vem das cabines do OSM ou do satélite.
+Muitas das 110 pendentes ficaram de fora do ajuste justamente por não
+estarem claras no OSM; nelas o caminho é o satélite. Só o texto da busca e
+a área do mapa saem do sistema (Nominatim/Overpass/Esri), nenhum dado de
+fatura.
+
 ## Próximo passo
 
-**FASE 24 concluída — aguardando teste do usuário no navegador e o
-pedido de commit.** Aprovar as sugestões pela tela; revisão manual das 110
-praças pendentes em paralelo.
+**FASE 24 concluída e commitada (`1cf84c4`, com push).** Aprovar as sugestões pela tela; revisão manual das 110
+praças pendentes em paralelo. **Próxima fase: FASE 25** (endereço da praça
++ localizar no mapa), aguardando início.
 
 FASE 01 a FASE 23 concluídas — conferir também a
 FASE 21 com dados reais (casos ambíguos podem aparecer com mais
