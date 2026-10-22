@@ -5,7 +5,7 @@ import { PassagensTable } from "@/features/passagens/components/passagens-table"
 import { StatTile } from "@/components/ui/stat-tile";
 import { Card, EmptyState } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatNumber } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { getMeuPapel } from "@/lib/auth/guards";
 
@@ -90,14 +90,27 @@ export default async function FaturaDetalhePage({
         </h1>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="Período inicial" value={formatData(resumo.periodo_inicio)} />
         <StatTile label="Período final" value={formatData(resumo.periodo_fim)} />
+        <StatTile label="Total de linhas" value={formatNumber(resumo.qtd_total ?? 0)} />
+      </div>
+
+      {/* valores em grade própria, com largura mínima por tile: em 7 colunas
+          um valor de 6 dígitos não cabia e vazava do card */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-4">
         <StatTile label="Valor total a pagar" value={formatBRL(resumo.valor_total)} />
         <StatTile label="Valor passagens" value={formatBRL(resumo.valor_passagem)} />
         <StatTile label="Valor contrato" value={formatBRL(resumo.valor_contrato)} />
         <StatTile label="Valor estacionamento" value={formatBRL(resumo.valor_estacionamento)} />
-        <StatTile label="Total de linhas" value={String(resumo.qtd_total ?? 0)} />
+        {/* tipos da fatura real (FASE 23) — só aparecem se a fatura tiver */}
+        {(resumo.qtd_adesao ?? 0) > 0 && <StatTile label="Valor adesão" value={formatBRL(resumo.valor_adesao)} />}
+        {(resumo.qtd_outras_taxas ?? 0) > 0 && (
+          <StatTile label="Valor outras taxas" value={formatBRL(resumo.valor_outras_taxas)} />
+        )}
+        {(resumo.qtd_credito_plano_contratado ?? 0) > 0 && (
+          <StatTile label="Crédito plano contratado" value={formatBRL(resumo.valor_credito_plano_contratado)} />
+        )}
       </div>
 
       <Card title="Situação das passagens" subtitle="Contagem por status de validação nesta fatura">
@@ -109,7 +122,7 @@ export default async function FaturaDetalhePage({
                 style={{ backgroundColor: STATUS[STATUS_VALIDACAO_INFO[status].role] }}
                 aria-hidden
               />
-              {STATUS_VALIDACAO_INFO[status].label}: {qtdPorStatus[status]}
+              {STATUS_VALIDACAO_INFO[status].label}: {formatNumber(qtdPorStatus[status] ?? 0)}
             </li>
           ))}
         </ul>

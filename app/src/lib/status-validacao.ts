@@ -19,7 +19,8 @@ export const STATUS_VALIDACAO_INFO: Record<string, { label: string; role: Status
   valor_divergente: { label: "Valor divergente", role: "serious" },
   fora_poligono: { label: "Fora do polígono", role: "critical" },
   local_e_valor_divergentes: { label: "Local e valor divergentes", role: "critical" },
-  nao_aplicavel: { label: "Não aplicável (contrato)", role: "neutral" },
+  // contrato/taxas e crédito de vale-pedágio sem praça (FASE 23)
+  nao_aplicavel: { label: "Não aplicável", role: "neutral" },
 };
 
 export function statusLabel(status: string | null): string {

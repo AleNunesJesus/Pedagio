@@ -22,6 +22,12 @@ export type FaturaResumo = {
   qtd_fora_poligono: number | null;
   qtd_local_e_valor_divergentes: number | null;
   qtd_nao_aplicavel: number | null;
+  qtd_adesao: number | null;
+  valor_adesao: number | null;
+  qtd_outras_taxas: number | null;
+  valor_outras_taxas: number | null;
+  qtd_credito_plano_contratado: number | null;
+  valor_credito_plano_contratado: number | null;
 };
 
 export type FiltrosFaturas = {

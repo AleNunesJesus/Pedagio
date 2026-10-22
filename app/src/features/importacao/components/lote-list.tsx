@@ -13,6 +13,7 @@ type Lote = {
   usuario: string | null;
   total_linhas: number | null;
   total_erros: number | null;
+  erros_por_motivo?: unknown;
   created_at: string;
 };
 
@@ -63,7 +64,24 @@ export function LoteList({ rows, podeExcluir }: { rows: Lote[]; podeExcluir: boo
           { header: "Arquivo", render: (r) => r.arquivo_nome ?? "—" },
           { header: "Usuário", render: (r) => r.usuario ?? "—" },
           { header: "Linhas", align: "right", render: (r) => formatNumber(r.total_linhas) },
-          { header: "Erros", align: "right", render: (r) => formatNumber(r.total_erros) },
+          {
+            header: "Erros",
+            align: "right",
+            render: (r) => {
+              // motivos só existem em lotes de passagens a partir da FASE 23
+              const motivos = Object.entries((r.erros_por_motivo ?? {}) as Record<string, number>);
+              return motivos.length > 0 ? (
+                <span
+                  className="cursor-help underline decoration-dotted"
+                  title={motivos.map(([motivo, qtd]) => `${qtd} — ${motivo}`).join("\n")}
+                >
+                  {formatNumber(r.total_erros)}
+                </span>
+              ) : (
+                formatNumber(r.total_erros)
+              );
+            },
+          },
           {
             header: "Data",
             render: (r) => new Date(r.created_at).toLocaleString("pt-BR"),

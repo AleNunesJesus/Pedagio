@@ -7,12 +7,8 @@ import { MapaValidacaoLoader } from "@/features/passagens/components/mapa-valida
 import { VinculoViagemBadge } from "@/features/passagens/components/vinculo-viagem-badge";
 import { formatBRL, formatNumber } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
+import { tipoUsoLabel } from "@/lib/tipo-uso";
 
-const LABEL_TIPO_USO: Record<string, string> = {
-  passagem: "Passagem",
-  contrato: "Contrato",
-  estacionamento: "Estacionamento",
-};
 
 const LABEL_CONDICAO: Record<string, string> = {
   debito: "Débito",
@@ -101,7 +97,7 @@ export default async function PassagemDetalhePage({
             { label: "Sentido (informado)", valor: passagem.sentido_informado ?? "—" },
             {
               label: "Tipo de uso",
-              valor: passagem.tipo_uso ? LABEL_TIPO_USO[passagem.tipo_uso] ?? passagem.tipo_uso : "—",
+              valor: tipoUsoLabel(passagem.tipo_uso),
             },
             {
               label: "Condição",

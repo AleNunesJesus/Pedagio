@@ -199,6 +199,7 @@ export type Database = {
           total_linhas: number | null;
           total_erros: number | null;
           created_at: string;
+          erros_por_motivo: Json;
         };
         Insert: {
           id?: string;
@@ -208,6 +209,7 @@ export type Database = {
           total_linhas?: number | null;
           total_erros?: number | null;
           created_at?: string;
+          erros_por_motivo?: Json;
         };
         Update: {
           id?: string;
@@ -217,6 +219,7 @@ export type Database = {
           total_linhas?: number | null;
           total_erros?: number | null;
           created_at?: string;
+          erros_por_motivo?: Json;
         };
         Relationships: [];
       };
@@ -280,6 +283,7 @@ export type Database = {
           lote_importacao_id: string;
           status_validacao: string;
           created_at: string;
+          ocorrencia: number;
         };
         Insert: {
           id?: string;
@@ -302,6 +306,7 @@ export type Database = {
           lote_importacao_id: string;
           status_validacao?: string;
           created_at?: string;
+          ocorrencia?: number;
         };
         Update: {
           id?: string;
@@ -324,6 +329,7 @@ export type Database = {
           lote_importacao_id?: string;
           status_validacao?: string;
           created_at?: string;
+          ocorrencia?: number;
         };
         Relationships: [
           {
@@ -601,6 +607,7 @@ export type Database = {
           carreta2: string | null;
           tipo_viagem_texto: string | null;
           criado_em: string;
+          lote_id: string | null;
         };
         Insert: {
           id?: number;
@@ -616,6 +623,7 @@ export type Database = {
           carreta2?: string | null;
           tipo_viagem_texto?: string | null;
           criado_em?: string;
+          lote_id?: string | null;
         };
         Update: {
           id?: number;
@@ -631,6 +639,7 @@ export type Database = {
           carreta2?: string | null;
           tipo_viagem_texto?: string | null;
           criado_em?: string;
+          lote_id?: string | null;
         };
         Relationships: [];
       };
@@ -773,6 +782,8 @@ export type Database = {
           embarcador: string | null;
           sentido: string | null;
           criado_em: string;
+          lote_id: string | null;
+          ocorrencia: number | null;
         };
         Insert: {
           id?: number;
@@ -789,6 +800,8 @@ export type Database = {
           embarcador?: string | null;
           sentido?: string | null;
           criado_em?: string;
+          lote_id?: string | null;
+          ocorrencia?: number | null;
         };
         Update: {
           id?: number;
@@ -805,6 +818,8 @@ export type Database = {
           embarcador?: string | null;
           sentido?: string | null;
           criado_em?: string;
+          lote_id?: string | null;
+          ocorrencia?: number | null;
         };
         Relationships: [];
       };
@@ -973,6 +988,12 @@ export type Database = {
           qtd_nao_aplicavel: number | null;
           qtd_estacionamento: number | null;
           valor_estacionamento: number | null;
+          qtd_adesao: number | null;
+          valor_adesao: number | null;
+          qtd_outras_taxas: number | null;
+          valor_outras_taxas: number | null;
+          qtd_credito_plano_contratado: number | null;
+          valor_credito_plano_contratado: number | null;
         };
         Relationships: [];
       };
@@ -1144,6 +1165,22 @@ export type Database = {
       processar_validacoes_pendentes: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      processar_bloco_viagens_transporte: {
+        Args: { p_lote_id: string; p_limite?: number };
+        Returns: Json;
+      };
+      atualizar_estatisticas_importacao: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      completar_embarcador_viagens: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      processar_bloco_passagens: {
+        Args: { p_lote_id: string; p_limite?: number };
+        Returns: Json;
       };
       processar_staging_passagens: {
         Args: { p_arquivo_nome?: string | null; p_usuario?: string | null };

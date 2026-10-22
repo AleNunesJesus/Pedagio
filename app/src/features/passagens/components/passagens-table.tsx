@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO, statusLabel } from "@/lib/status-validacao";
 import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
+import { tipoUsoLabel } from "@/lib/tipo-uso";
 import { excluirPassagens } from "../actions";
 import { VinculoViagemBadge } from "./vinculo-viagem-badge";
 
@@ -28,11 +29,6 @@ type Passagem = {
   numero_viagem_bate: boolean | null;
 };
 
-const LABEL_TIPO_USO: Record<string, string> = {
-  passagem: "Passagem",
-  contrato: "Contrato",
-  estacionamento: "Estacionamento",
-};
 
 
 export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeExcluir: boolean }) {
@@ -74,7 +70,7 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
           { header: "Placa", render: (r) => r.placa ?? "—" },
           { header: "Frota", render: (r) => r.frota ?? "—" },
           { header: "Praça", render: (r) => r.praca_nome ?? r.estacionamento_nome ?? "—" },
-          { header: "Tipo", render: (r) => (r.tipo_uso ? LABEL_TIPO_USO[r.tipo_uso] ?? r.tipo_uso : "—") },
+          { header: "Tipo", render: (r) => tipoUsoLabel(r.tipo_uso) },
           {
             header: "Categoria",
             render: (r) =>

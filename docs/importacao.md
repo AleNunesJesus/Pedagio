@@ -31,19 +31,18 @@ caminho manual via SQL).
 | **Placa Veículo** (`placa`) | texto | `ABC1D23` |
 | **Tipo do veículo** (`tipo_veiculo`) | texto livre, apenas informativo (a tarifa usa a categoria já cadastrada do veículo, não este campo) | `Caminhão` |
 | **Descrição** (`praca_nome`) | precisa bater com `pedagio.praca_pedagio.nome` **e** `sentido` juntos (case-insensitive, espaços nas pontas ignorados) | `Praça KM 45 - BR-101` |
-| **Tipo de uso** (`tipo_uso_texto`) | `passagem`/`passagens`, `contrato`/`plano contratado` ou `estacionamento`/`estacinoamento` (case-insensitive). **Contrato/plano contratado** (ex.: mensalidade do plano, fatura real de 2026-10-21) pode vir sem Descrição e sem Sentido da Praça; não cria praça pendente — só liga a uma praça já cadastrada se vier Descrição | `passagem` |
+| **Tipo de uso** (`tipo_uso_texto`) | `passagem`/`passagens`, `contrato`/`plano contratado`, `estacionamento`/`estacinoamento`, `adesão`, `outras taxas` ou `crédito plano contratado` (case-insensitive). **Contrato/plano contratado** (ex.: mensalidade do plano, fatura real de 2026-10-21) pode vir sem Descrição e sem Sentido da Praça; não cria praça pendente — só liga a uma praça já cadastrada se vier Descrição | `passagem` |
 | **Valor(R$)** (`valor_texto`) | formato BR: vírgula decimal, ponto como milhar (opcional); também aceita ponto decimal simples (`3.5`) quando não há vírgula. Aceita também o símbolo `R$` (com ou sem espaço, inclusive o espaço não separável do Excel), sinal antes ou depois do `R$` e negativo entre parênteses. **O sinal é normalizado pela `condicao_texto` na importação — débito sempre fica positivo, crédito sempre negativo, independente do sinal que vier no arquivo** | `12,50`, `-30,00`, `23`, `R$ 10,00`, `R$ -10,00`, `-R$ 1.234,56`, `(R$ 10,00)` |
 | **Débito/Crédito** (`condicao_texto`) | `debito`/`db` ou `credito`/`cr` (com ou sem acento, case-insensitive) | `debito` ou `DB` |
 | **Viagem de Vale Pedágio** (`viagem`) | texto livre, opcional — preenchido quando o crédito é lançado direto para uma viagem. Auto-cadastrado em `pedagio.viagem` na importação (FASE 10) se ainda não existir | `VIAGEM-9` |
 | **Embarcador** (`embarcador`) | texto livre, opcional — quem lançou o crédito da viagem. Auto-cadastrado em `pedagio.embarcador` na importação (FASE 10) se ainda não existir; CNPJ (opcional) só é preenchido manualmente depois, em `/cadastros/embarcadores` | `Embarcador X` |
-| **Sentido da Praça** (`sentido`) | texto — obrigatório só em passagem; usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
+| **Sentido da Praça** (`sentido`) | texto — opcional (FASE 23: vazio, a praça é reconhecida só pela Descrição); usado junto com `praca_nome` para casar com o cadastro da praça. **Não se aplica a `tipo_uso_texto = estacionamento`** (pode vir vazio nessas linhas) | `Norte` |
 
 Qualquer linha com `data_texto`/`horario_texto`/`valor_texto` fora do
 formato, `tipo_uso_texto`/`condicao_texto` não reconhecidos (fora dos
-valores listados na tabela acima), `praca_nome` vazio (exceto em
-contrato/plano contratado), ou `sentido` vazio em linha de passagem, é
-contada como erro
-(`total_erros` do lote) e **não** é importada — não há tentativa de
+valores listados na tabela acima), ou `praca_nome` vazio em linha de
+estacionamento ou de passagem **a débito**, é contada como erro
+(`total_erros` do lote, com o motivo em `erros_por_motivo` — FASE 23) e **não** é importada — não há tentativa de
 adivinhar formatos alternativos além dos já mapeados, para não arriscar
 interpretar um dado errado silenciosamente. O sinal do valor **não** é
 motivo de erro: é sempre normalizado pela condição (ver tabela acima),
@@ -80,12 +79,42 @@ constraint não prevista pelas checagens acima) também é contado como erro
 daquela linha, e nunca aborta o lote inteiro — uma linha ruim não pode
 travar as demais nem deixar lixo na staging.
 
+### Sem praça (FASE 23)
+
+- **Crédito de vale-pedágio** (PASSAGENS, crédito, com Viagem e
+  Embarcador) costuma vir **sem Descrição**: entra sem praça, com
+  `status_validacao = nao_aplicavel` (não é cobrança de praça), e conta na
+  tela Crédito × Débito por viagem. Passagem **a débito** sem Descrição
+  continua sendo erro.
+- **Sentido da Praça vazio** em passagem é aceito: a Descrição da fatura
+  real já traz o sentido (`SP310, KM181+500, NORTE, RIO CLARO`). Usa a praça
+  de mesmo nome se existir; senão cria uma pendente sem sentido.
+- **Contrato, adesão, outras taxas, crédito plano contratado**: sem praça,
+  `nao_aplicavel`, um `tipo_uso` para cada (separados no resumo da fatura e
+  no Painel).
+
+### Arquivo grande (FASE 23)
+
+A tela lê o CSV no navegador e envia em blocos de 500 linhas
+(`TAMANHO_BLOCO_PASSAGENS`), cada bloco processado por
+`pedagio.processar_bloco_passagens(lote, limite)` — por causa do limite de
+1 MB por Server Action e do `statement_timeout` de 8 s do papel
+`authenticated`. Não há limite de linhas: a fatura real de um mês (34.536
+linhas, 4,4 MB) leva ~3 minutos, com barra de progresso. Se a importação
+parar no meio, o lote fica parcial no histórico: exclua-o e importe de
+novo. O caminho manual via SQL (`processar_staging_passagens`) usa o mesmo
+processamento por blocos.
+
 ### Duplicidade
 
 Reenviar o mesmo arquivo (ou uma linha já importada antes) é seguro: uma
 linha com a mesma combinação de `placa` + `data_hora` + `condicao` +
-`valor_cobrado` de uma passagem já existente é contada como erro do lote
-e **não** cria uma linha nova. Débito e crédito pareados na mesma
+`valor_cobrado` + **ocorrência** de uma passagem já existente é contada
+como erro do lote ("Linha já importada") e **não** cria uma linha nova.
+Ocorrência (FASE 23): linha 100% idêntica repetida dentro do mesmo arquivo
+é outra cobrança/crédito (ex.: vale-pedágio de duas praças com a mesma
+tarifa na mesma viagem — decisão do usuário), numerada 1ª, 2ª…; reenviar o
+arquivo gera os mesmos números e não duplica. Débito e crédito pareados na mesma
 passagem (mesma placa/horário) continuam sendo tratados como linhas
 diferentes, já que têm condição/valor distintos.
 
@@ -226,8 +255,12 @@ select * from pedagio.processar_staging_posicoes('nome_do_arquivo.csv', 'seu_nom
 
 Mesmo padrão das demais: tela **Importação** (`/importacao`) → seção
 "Nova importação de viagens (documento fiscal)" → escolhe o CSV → o app
-grava na staging e chama `processar_staging_viagens_transporte`
-automaticamente. Consulta pela tela **Viagens** (`/viagens-transporte`).
+lê o arquivo no navegador e envia em blocos de 200 viagens
+(`TAMANHO_BLOCO_VIAGENS`), cada um processado por
+`processar_bloco_viagens_transporte` (FASE 23 — numa chamada só, 4.981
+viagens estouravam o tempo máximo de 8 s do banco). Sem limite de linhas,
+com barra de progresso e erros por motivo, igual às passagens. Consulta pela
+tela **Viagens** (`/viagens-transporte`).
 
 Essa é uma entidade independente de `pedagio.viagem` (a tabela
 auto-cadastrada a partir do campo `viagem` da planilha de passagens) —
@@ -255,7 +288,11 @@ descoberto automaticamente cruzando `placa` + a janela
 `data_hora_saida`/`data_hora_chegada` contra as passagens de pedágio
 (`passagem_pedagio.embarcador_informada`) do mesmo veículo naquele
 período. Se nenhuma passagem com embarcador cair dentro da janela, o
-campo fica `null` — não é erro, só fica sem embarcador identificado.
+campo fica `null` — não é erro, só fica sem embarcador identificado. Desde
+a FASE 23, ao terminar uma importação de **passagens** o app chama
+`completar_embarcador_viagens()`, que preenche o embarcador das viagens
+que ainda estavam sem — então a ordem das importações (viagens antes ou
+depois das passagens do mês) não importa mais.
 
 Uma linha conta como erro (`total_erros` do lote) e **não** é importada
 quando: `numero_transporte`/`placa` estão vazios, `data_hora_saida`/

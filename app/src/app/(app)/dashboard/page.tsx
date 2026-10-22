@@ -14,6 +14,7 @@ import { TrendAreaChart } from "@/features/dashboard/components/trend-area-chart
 import { ValorSinalizado } from "@/components/ui/valor-sinalizado";
 import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { formatBRL, formatMonth, formatNumber, formatPercent } from "@/lib/format";
+import { tipoUsoLabel } from "@/lib/tipo-uso";
 
 // total_esperado nulo (sem_cadastro/nao_aplicavel/pendente) não é "esperado
 // zero" — é "não há tarifa de referência calculada para comparar".
@@ -215,6 +216,17 @@ export default async function DashboardPage() {
             />
             <StatTile label="Qtd. contratos" value={formatNumber(data.totalQtdContrato)} />
           </div>
+          {data.outrosTiposUso.length > 0 && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Outros tipos de uso:{" "}
+              {data.outrosTiposUso.map((t, i) => (
+                <span key={t.tipo_uso}>
+                  {i > 0 && " · "}
+                  {tipoUsoLabel(t.tipo_uso)} {formatBRL(t.valor)} ({formatNumber(t.qtd)})
+                </span>
+              ))}
+            </p>
+          )}
           <Card title="Valores por tipo de uso por mês" subtitle="passagem x contrato">
             <ValoresTipoUsoChart rows={data.valoresPorTipoUsoMensal} />
           </Card>

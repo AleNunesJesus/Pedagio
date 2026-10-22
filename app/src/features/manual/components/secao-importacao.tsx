@@ -51,12 +51,12 @@ const PASSOS_IMPORTAR = [
   {
     titulo: "Clique em \"Importar\"",
     descricao:
-      "O botão mostra \"Importando...\" enquanto processa. Linhas com erro de formato não são importadas, mas não travam o restante do lote.",
+      "O arquivo é enviado em partes, com uma barra de progresso (uma fatura de um mês leva alguns minutos) — não feche a aba até terminar. Linhas com erro não são importadas, mas não travam o restante do lote.",
   },
   {
     titulo: "Confira o resultado",
     descricao:
-      "Mensagem final do tipo \"Lote importado: N linha(s), N erro(s)\". O lote também aparece no histórico, no fim da página. Se a planilha trouxer uma praça ou estacionamento que não existe no sistema, ele é criado automaticamente com os dados da planilha e listado logo abaixo, num aviso amarelo, para ser completado depois (ver Cadastros › Praças).",
+      "Mensagem final do tipo \"Lote importado: N linha(s), N não importada(s)\", com os motivos das linhas não importadas logo abaixo (também no histórico, passando o mouse sobre o número de erros). O lote também aparece no histórico, no fim da página. Se a planilha trouxer uma praça ou estacionamento que não existe no sistema, ele é criado automaticamente com os dados da planilha e listado logo abaixo, num aviso amarelo, para ser completado depois (ver Cadastros › Praças).",
   },
 ];
 
@@ -86,7 +86,7 @@ export function SecaoImportacao() {
             },
             {
               nome: "Tipo de uso",
-              formato: "passagem, contrato/plano contratado ou estacionamento",
+              formato: "passagens, plano contratado, estacionamento, adesão, outras taxas ou crédito plano contratado",
               exemplo: "passagem",
             },
             {
@@ -99,7 +99,7 @@ export function SecaoImportacao() {
             { nome: "Embarcador", formato: "texto livre, opcional", exemplo: "Embarcador X" },
             {
               nome: "Sentido da Praça",
-              formato: "obrigatório só em passagem; usado com a Descrição",
+              formato: "opcional; quando vem, é usado com a Descrição para achar a praça",
               exemplo: "Norte",
             },
           ]}
@@ -115,7 +115,9 @@ export function SecaoImportacao() {
         <Dica>
           Reenviar o mesmo arquivo é seguro: uma linha já importada (mesma
           placa + data/hora + condição + valor) é contada como erro e não
-          duplica.
+          duplica. Linhas idênticas dentro do mesmo arquivo (ex.: dois créditos
+          de vale-pedágio iguais na mesma viagem) entram todas. Crédito de
+          vale-pedágio sem Descrição entra sem praça, como &quot;Não aplicável&quot;.
         </Dica>
       </ManualSection>
 
@@ -146,6 +148,12 @@ export function SecaoImportacao() {
         titulo="Importar viagens (documento fiscal)"
         tags={<RoleTag role="operador">Todos os perfis</RoleTag>}
       >
+        <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
+          Mesmo jeito das passagens: o arquivo vai em partes, com barra de
+          progresso, sem limite de linhas. Pode importar as viagens antes ou
+          depois das passagens do mês — o embarcador da viagem é completado
+          quando as passagens chegam.
+        </p>
         <TabelaFormato
           colunas={[
             { nome: "placa", formato: "texto", exemplo: "UGF9B40" },

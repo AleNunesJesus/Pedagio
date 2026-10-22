@@ -86,7 +86,16 @@ export async function getDashboardData() {
   let totalQtdPassagem = 0;
   let totalValorContrato = 0;
   let totalQtdContrato = 0;
+  // estacionamento e os tipos da fatura real (FASE 23) ficam fora do gráfico
+  // passagem x contrato; vão somados por tipo numa linha à parte
+  const outrosTiposUsoMap = new Map<string, { tipo_uso: string; valor: number; qtd: number }>();
   for (const linha of valoresPorTipoUso ?? []) {
+    if (linha.tipo_uso && linha.tipo_uso !== "passagem" && linha.tipo_uso !== "contrato") {
+      const outro = outrosTiposUsoMap.get(linha.tipo_uso) ?? { tipo_uso: linha.tipo_uso, valor: 0, qtd: 0 };
+      outro.valor += linha.total_cobrado ?? 0;
+      outro.qtd += linha.qtd_passagens ?? 0;
+      outrosTiposUsoMap.set(linha.tipo_uso, outro);
+    }
     if (!linha.mes) continue;
     const entry = tipoUsoPorMesMap.get(linha.mes) ?? {
       mes: linha.mes,
@@ -227,6 +236,7 @@ export async function getDashboardData() {
     totalQtdPassagem,
     totalValorContrato,
     totalQtdContrato,
+    outrosTiposUso: Array.from(outrosTiposUsoMap.values()).sort((a, b) => b.valor - a.valor),
     valoresPorVinculoViagemMensal,
     totalValorCarregado,
     totalQtdCarregado,

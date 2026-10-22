@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
+import { OPCOES_TIPO_USO } from "@/lib/tipo-uso";
 import { SelectField, TextField } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 
@@ -20,12 +21,6 @@ type FiltrosFormProps = {
     dataFim?: string;
   };
 };
-
-const OPCOES_TIPO_USO = [
-  { value: "passagem", label: "Passagem" },
-  { value: "contrato", label: "Contrato" },
-  { value: "estacionamento", label: "Estacionamento" },
-];
 
 export function FiltrosForm({ pracas, veiculos, embarcadores, valores }: FiltrosFormProps) {
   return (

@@ -15,6 +15,11 @@ export const COLUNAS_PLANILHA_PASSAGENS = [
   { cabecalho: "Sentido da Praça", coluna: "sentido" },
 ] as const;
 
+// Passagens vão ao servidor em blocos (FASE 23): limite de 1 MB por Server
+// Action e statement_timeout de 8 s do papel authenticated. 500 linhas ≈ 100 KB
+// e ~3 s de banco no pior bloco medido com a fatura real de 34.536 linhas.
+export const TAMANHO_BLOCO_PASSAGENS = 500;
+
 export type ColunaStagingPassagem = (typeof COLUNAS_PLANILHA_PASSAGENS)[number]["coluna"];
 
 // "Número da Fatura" e "NUMERO DA FATURA " viram a mesma chave: ignora
@@ -22,7 +27,7 @@ export type ColunaStagingPassagem = (typeof COLUNAS_PLANILHA_PASSAGENS)[number][
 export function chaveCabecalho(texto: string): string {
   return texto
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
 }
@@ -50,6 +55,23 @@ function vazio(valor: unknown): string | null {
   if (typeof valor !== "string") return null;
   const trimmed = valor.trim();
   return trimmed === "" ? null : trimmed;
+}
+
+// Linha 100% idêntica que aparece de novo no mesmo arquivo é outra ocorrência
+// (ex.: dois créditos de vale-pedágio iguais na mesma viagem): 1ª, 2ª… O
+// número entra na trava de duplicidade do banco, então reimportar o mesmo
+// arquivo continua não duplicando. Precisa rodar sobre o arquivo inteiro,
+// antes de dividir em blocos.
+export function numerarOcorrencias<T extends Record<ColunaStagingPassagem, string | null>>(
+  linhas: T[],
+): (T & { ocorrencia: number })[] {
+  const vistas = new Map<string, number>();
+  return linhas.map((linha) => {
+    const chave = JSON.stringify(COLUNAS_PLANILHA_PASSAGENS.map((c) => linha[c.coluna]));
+    const ocorrencia = (vistas.get(chave) ?? 0) + 1;
+    vistas.set(chave, ocorrencia);
+    return { ...linha, ocorrencia };
+  });
 }
 
 // Linha lida com os cabeçalhos já passados por chaveCabecalho → linha da staging.

@@ -2478,9 +2478,129 @@ fornecido pelo usuário: colunas `placa;tipo;categoria;fallback;frota;ativo`,
 - `ABC1234`/`ABC5678` (carretas de teste antigas, fora do arquivo) não
   foram mexidas.
 
+## FASE 23 — Importação da fatura real de um mês (2026-10-22)
+
+**Gatilho:** importar `Passagens_31082026_30092026.csv` (4,4 MB, 34.536
+linhas) falhava com "Body exceeded 1 MB limit" (Server Action). O console
+também mostrava um aviso de hidratação, mas era a extensão Dark Reader
+(`data-darkreader-inline-*`), não o app. Além do tamanho, o processamento
+numa chamada só levaria ~47 s (medido: 1,4 ms/linha) contra o
+`statement_timeout` de 8 s do papel `authenticated`.
+
+**Diagnóstico do arquivo real** (antes de mexer, em transação com rollback):
+1.066 créditos de vale-pedágio sem Descrição, 632 passagens sem Sentido (o
+sentido vem dentro da Descrição), 3 tipos de uso novos (ADESÃO 8, OUTRAS
+TAXAS 25, CRÉDITO PLANO CONTRATADO 6), 144 linhas 100% idênticas (créditos
+de vale-pedágio), 606 combinações praça+sentido.
+
+**Decisões do usuário:** crédito de vale-pedágio sem Descrição entra sem
+praça como `nao_aplicavel`; Sentido vazio é reconhecido pela Descrição; um
+`tipo_uso` próprio para cada tipo novo; linhas idênticas no mesmo arquivo
+entram todas (créditos distintos).
+
+- [x] Migration `20261024130000_pedagio_fase23_importacao_em_blocos`:
+  `processar_bloco_passagens(lote, limite)` (staging ganha `lote_id`);
+  `processar_staging_passagens` vira laço sobre ela (uma regra só);
+  `lote_importacao.erros_por_motivo`; tipos `adesao`/`outras_taxas`/
+  `credito_plano_contratado` (+ `normalizar_tipo_uso` tolerante a espaço
+  duplo); `ocorrencia` em staging/passagem e trava de duplicidade com
+  ocorrência; `obter_ou_criar_praca_importacao` casa por nome quando falta
+  sentido; `validar_passagem` mantém crédito sem praça como `nao_aplicavel`
+  também em revalidações; `vw_fatura_resumo` com os tipos novos. Funções
+  geradas a partir da definição ativa.
+- [x] App: CSV lido no navegador, enviado em blocos de 500 com barra de
+  progresso e aviso ao fechar a aba (`iniciar`/`importarBloco`/`finalizar`
+  em `features/importacao/actions.ts`); ocorrências numeradas sobre o
+  arquivo inteiro; resultado com erros por motivo (também no histórico, no
+  `title` do número de erros) e lista de cadastros criados resumida ("e
+  mais N"); rótulos de tipo de uso centralizados em `lib/tipo-uso.ts`
+  (lista, detalhe, filtro); "Não aplicável" sem "(contrato)"; tipos novos no
+  detalhe da fatura e no Painel ("Outros tipos de uso").
+- [x] Regex de acentos em `planilha-passagens.ts` estava gravada com os
+  caracteres combinantes literais desde a criação (funcionava, mas
+  ilegível) — trocada por `̀-ͯ`.
+- [x] Verificação: arquivo real inteiro como operador com
+  `statement_timeout` 8 s, em rollback — 70 blocos, bloco mais lento
+  3,3 s, total ~3 min; 34.536 linhas, 9 não importadas (2 débitos sem
+  Descrição + 7 já existentes), 1.064 créditos VP não aplicáveis ligados a
+  viagem/embarcador, 144 cópias como 2ª–6ª ocorrência, 632 sem sentido
+  reconhecidos, 586 praças pendentes sem duplicar, reimportação não
+  duplica, caminho manual via SQL ok. Suítes da FASE 22, valor R$ e plano
+  contratado de novo verdes (a do plano atualizada para as regras novas).
+  No navegador (dev server do usuário, admin temporário): amostra de 1.471
+  linhas do arquivo real — progresso, resultado por motivo, tipos novos,
+  cópias, histórico com motivos, filtro "Outras taxas"; sem erros na
+  página; limpeza completa (inclusive viagens/embarcadores criados).
+  `typecheck`/`eslint`/`next build` limpos.
+
+**Para o usuário:** o arquivo real ainda **não** foi importado (testes em
+rollback/limpos) — importar pela tela. Esperado: ~34.527 linhas gravadas,
+9 não importadas, 586 praças pendentes a completar.
+
+## FASE 23 (cont.) — viagens em blocos, RLS sem custo por linha (2026-10-22)
+
+**Gatilho:** importar `transporte.csv` (4.981 viagens) dava "canceling
+statement due to statement timeout"; a tentativa deixou as 4.981 linhas
+na staging (o insert é uma chamada, o processamento outra), que a próxima
+importação teria engolido — removidas.
+
+**Diagnóstico (medido, não suposto):** com o volume de um mês de
+passagens, como usuário logado, o RLS tirava a placa da condição do índice
+(`upper()`/`trim()` não são leakproof) e chamava `usuario_autorizado()` em
+cada linha lida — 0,07 ms → 8 ms por busca. Atualizar estatísticas sozinho
+não resolveu (hipótese descartada pelo teste).
+
+- [x] Migration `20261024140000_pedagio_fase23_viagens_em_blocos`: índices
+  de expressão por placa em `passagem_pedagio` e `viagem_transporte`;
+  staging de viagens por lote + `processar_bloco_viagens_transporte`
+  (erros por motivo); `processar_bloco_passagens`/`_viagens_` como
+  SECURITY DEFINER com a checagem de autorização na entrada; as 60
+  políticas do schema com `(select pedagio.usuario_autorizado())` /
+  `(select pedagio.eh_admin())` (avaliadas uma vez por consulta);
+  `atualizar_estatisticas_importacao()` (ANALYZE ao finalizar);
+  `completar_embarcador_viagens()` — importando viagens antes das
+  passagens só 1 de 4.981 recebia embarcador (944 na ordem inversa).
+  Execute revogado de public/anon nas 4 funções novas SECURITY DEFINER.
+- [x] Migration `20261024150000_pedagio_fix_excluir_viagem_vinculada`: FK
+  `validacao_passagem.viagem_transporte_id` com `on delete set null` —
+  excluir lote/viagem já vinculada a passagem (FASE 21) falhava.
+- [x] App: importação de viagens no mesmo fluxo em blocos (200 por bloco,
+  `planilha-viagens.ts`); barra de progresso, aviso ao sair e erros por
+  motivo compartilhados (`progresso-importacao.tsx`); finalizar passagens
+  atualiza estatísticas e completa embarcador; finalizar viagens atualiza
+  estatísticas.
+- [x] Verificação: arquivos reais inteiros (34.536 passagens + 4.981
+  viagens) nas duas ordens, como operador com timeout 8 s, em rollback —
+  passagens 70 blocos, pior 1,5 s, ~80 s no total (antes ~200 s); viagens
+  25 blocos, pior 0,9 s, ~15 s; 944 viagens com embarcador nas duas ordens.
+  Pela API: anônimo e logado sem perfil barrados nas 4 funções novas,
+  operador passa. Suítes anteriores verdes. No navegador: viagens (500 do
+  arquivo real, arquivo sem coluna recusado) e passagens de novo.
+  `typecheck`/`eslint`/`next build` limpos.
+- **Incidente na limpeza do teste:** a limpeza do e2e de viagens falhou
+  justamente no bug da FK acima e deixou os dois lotes de amostra no
+  banco; foram removidos pelo fluxo normal (excluir lote) depois da
+  correção. Em seguida, a remoção de viagens VP/embarcadores "sem uso"
+  apagou também 3 `pedagio.viagem` e 1 `pedagio.embarcador` que já
+  existiam soltos (sobras de importações antigas). Viagem VP é só o
+  número e se recria sozinha; o embarcador pode ter tido CNPJ preenchido à
+  mão — não foi possível confirmar. Usuário avisado (recuperação: backup
+  diário do Supabase).
+
+**Pendente conhecido:** importação de posições de GPS continua no formato
+antigo (uma chamada, limite de 5.000 linhas) — mesmo risco de tempo com
+arquivos grandes.
+
+**Ajuste (layout do detalhe da fatura):** os 7 indicadores numa linha só
+deixavam valores de 6 dígitos vazando do card. Período/total de linhas
+viraram uma linha própria e os valores uma grade com largura mínima por
+card (4/2/1 colunas); `StatTile` com `min-w-0`/`break-words`; contagens com
+separador de milhar. Conferido no navegador com a fatura real de
+R$ 945.133,14 em 1280/820/390 px.
+
 ## Próximo passo
 
-Nenhum item pendente do plano atual (FASE 01 a FASE 22 concluídas) —
+Nenhum item pendente do plano atual (FASE 01 a FASE 23 concluídas) —
 próximos passos dependem do uso real do sistema, incluindo conferir a
 FASE 21 com dados reais (casos ambíguos podem aparecer com mais
 frequência do que nos testes sintéticos, o que reabriria a decisão nº2
