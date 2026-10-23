@@ -2748,7 +2748,7 @@ praças (conferido em 2026-10-22).
 **Decisão do usuário (2026-10-22):** fazer a busca no mapa **e guardar o
 endereço** na praça.
 
-**Status:** 🟢 Concluída (2026-10-22, ainda não commitada)
+**Status:** 🟢 Concluída (2026-10-22, commit `39439b5`)
 
 - [x] Migration `20261024180000_pedagio_fase25_endereco_praca`: `endereco`,
   `municipio`, `uf` (CHECK nas 27 UFs, índice) em `praca_pedagio`;
@@ -2810,7 +2810,7 @@ sistema, nenhum dado de fatura.
 
 ## Próximo passo
 
-**FASE 25 concluída, aguardando commit.** Completar as 110 praças
+**FASE 25 concluída e commitada (`39439b5`, sem push).** Completar as 110 praças
 pendentes pela tela (filtro "Sem UF" na lista); aprovar as sugestões de
 tarifa (FASE 24) em paralelo.
 
