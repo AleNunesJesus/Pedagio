@@ -147,15 +147,15 @@ export type CabineOsm = {
   rumo: number | null;
 };
 
-// Polígono inicial em volta da cabine: retângulo de 200 m ao longo da pista
-// × 80 m de largura; sem direção conhecida, quadrado de 150 m.
+// Polígono inicial em volta da cabine: retângulo de 600 m ao longo da pista
+// × 240 m de largura; sem direção conhecida, quadrado de 450 m.
 export function poligonoEmVolta(c: { lat: number; lon: number; rumo: number | null }): {
   type: "Polygon";
   coordinates: number[][][];
 } {
   const mLat = 110_540;
   const mLon = 111_320 * Math.cos((c.lat * Math.PI) / 180);
-  const [meioComp, meioLarg] = c.rumo === null ? [75, 75] : [100, 40];
+  const [meioComp, meioLarg] = c.rumo === null ? [225, 225] : [300, 120];
   const r = ((c.rumo ?? 0) * Math.PI) / 180;
   const u = { x: Math.sin(r), y: Math.cos(r) };
   const v = { x: u.y, y: -u.x };
