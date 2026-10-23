@@ -62,7 +62,7 @@ export function SecaoCadastros() {
             <strong className="text-gray-900 dark:text-gray-100">Cabines do OpenStreetMap</strong>:
             ao aproximar o mapa aparecem as cabines de pedágio (laranja) e pórticos free flow
             (roxo) conhecidos no OpenStreetMap. Clique numa e em &quot;Criar polígono aqui&quot;
-            para gerar um retângulo inicial de uns 600 m ao longo da pista — ajuste se
+            para gerar um retângulo inicial de uns 900 m ao longo da pista — ajuste se
             precisar e salve. Se a praça já tem polígono, o sistema pede confirmação antes de
             substituir.
           </li>
