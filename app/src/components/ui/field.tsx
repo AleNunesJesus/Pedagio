@@ -1,4 +1,4 @@
-import type { ComponentPropsWithoutRef } from "react";
+import type { ComponentProps, ComponentPropsWithoutRef } from "react";
 
 const INPUT_CLASSES =
   "mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800";
@@ -23,7 +23,7 @@ function FieldWrapper({ label, htmlFor, children }: FieldWrapperProps) {
   );
 }
 
-type TextFieldProps = ComponentPropsWithoutRef<"input"> & { label: string };
+type TextFieldProps = ComponentProps<"input"> & { label: string };
 
 export function TextField({ label, id, className = "", ...props }: TextFieldProps) {
   return (
@@ -33,7 +33,7 @@ export function TextField({ label, id, className = "", ...props }: TextFieldProp
   );
 }
 
-type SelectFieldProps = ComponentPropsWithoutRef<"select"> & {
+type SelectFieldProps = ComponentProps<"select"> & {
   label: string;
   options: { value: string; label: string }[];
   placeholder?: string;

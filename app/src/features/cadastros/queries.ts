@@ -43,7 +43,7 @@ export async function listPracas() {
   const { data } = await supabase
     .from("praca_pedagio")
     .select(
-      "id, nome, rodovia, concessionaria, km, sentido, ativo, cadastro_pendente, lote_importacao(arquivo_nome, created_at)",
+      "id, nome, rodovia, concessionaria, km, sentido, municipio, uf, ativo, cadastro_pendente, lote_importacao(arquivo_nome, created_at)",
     )
     .order("cadastro_pendente", { ascending: false })
     .order("nome");

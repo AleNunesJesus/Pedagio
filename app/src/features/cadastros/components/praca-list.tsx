@@ -13,6 +13,8 @@ type Praca = {
   rodovia: string | null;
   km: number | null;
   sentido: string | null;
+  municipio: string | null;
+  uf: string | null;
   ativo: boolean;
   cadastro_pendente: boolean;
   lote_importacao: { arquivo_nome: string | null; created_at: string } | null;
@@ -65,6 +67,8 @@ export function PracaList({ rows, isAdmin }: { rows: Praca[]; isAdmin: boolean }
           },
           { header: "Sentido", render: (r) => r.sentido ?? "—" },
           { header: "Rodovia", render: (r) => r.rodovia ?? "—" },
+          { header: "Município", render: (r) => r.municipio ?? "—" },
+          { header: "UF", render: (r) => r.uf ?? "—" },
           { header: "Km", align: "right", render: (r) => r.km ?? "—" },
           { header: "Ativa", render: (r) => (r.ativo ? "Sim" : "Não") },
           {

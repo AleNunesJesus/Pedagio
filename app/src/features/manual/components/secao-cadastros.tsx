@@ -37,13 +37,41 @@ export function SecaoCadastros() {
       <ManualSection id="cadastros-pracas" titulo="Praças" tags={TAGS_CADASTRO}>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Praça de pedágio. Campos: Nome, Rodovia, Concessionária, Km,
-          Sentido, Ativa e a área da praça, desenhada num mapa (ferramenta
-          de polígono no canto superior direito do mapa — só um polígono
-          por praça; desenhar um novo substitui o anterior). O polígono é
-          obrigatório para salvar e é o que o motor de validação usa para
-          conferir se o veículo realmente esteve na praça. Não é possível
-          excluir uma praça com tarifas ou passagens vinculadas.
+          Sentido, Ativa, Endereço, Município, UF e a área da praça,
+          desenhada num mapa (ferramenta de polígono à esquerda do mapa — só
+          um polígono por praça; desenhar um novo substitui o anterior). O
+          polígono é obrigatório para salvar e é o que o motor de validação
+          usa para conferir se o veículo realmente esteve na praça. Não é
+          possível excluir uma praça com tarifas ou passagens vinculadas. A
+          lista de praças pode ser filtrada por UF.
         </p>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Para achar o local da praça:
+        </p>
+        <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-gray-600 dark:text-gray-400">
+          <li>
+            <strong className="text-gray-900 dark:text-gray-100">Localizar no mapa</strong>:
+            digite um endereço, cidade ou rodovia e clique em Buscar (ou Enter). Numa praça já
+            existente, a busca vem sugerida pelo nome (ex.: &quot;SP127, KM128+900, NORTE,
+            TATUÍ&quot; → &quot;SP-127, Tatuí, SP&quot;). Escolher um resultado leva o mapa até
+            lá e preenche Endereço, Município e UF — dá para corrigir antes de salvar. A busca
+            não entende quilômetro de rodovia: ela acerta a cidade ou o trecho, e o ponto exato
+            vem das cabines ou do satélite.
+          </li>
+          <li>
+            <strong className="text-gray-900 dark:text-gray-100">Cabines do OpenStreetMap</strong>:
+            ao aproximar o mapa aparecem as cabines de pedágio (laranja) e pórticos free flow
+            (roxo) conhecidos no OpenStreetMap. Clique numa e em &quot;Criar polígono aqui&quot;
+            para gerar um retângulo inicial de uns 200 m ao longo da pista — ajuste se
+            precisar e salve. Se a praça já tem polígono, o sistema pede confirmação antes de
+            substituir.
+          </li>
+          <li>
+            <strong className="text-gray-900 dark:text-gray-100">Satélite</strong>: no canto
+            superior direito do mapa, troque &quot;Mapa&quot; por &quot;Satélite&quot; para
+            ver a cabine na imagem — útil quando a praça não está no OpenStreetMap.
+          </li>
+        </ul>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Quando a fatura importada traz uma praça que ainda não existe
           (nome + sentido), o sistema cria a praça sozinho, só com esses

@@ -10,8 +10,33 @@ import {
   estacionamentoSchema,
   tarifaEstacionamentoSchema,
 } from "./schemas";
+import type { CabineOsm } from "@/lib/geo-osm";
 
 export type FormState = { error?: string; success?: boolean };
+
+// FASE 25: cabines do instantâneo do OSM na área visível do mapa da praça
+const MAX_CABINES = 300;
+export async function listarCabinesOsm(
+  sul: number,
+  oeste: number,
+  norte: number,
+  leste: number,
+): Promise<{ cabines: CabineOsm[]; truncado: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cabine_osm")
+    .select("osm_id, lat, lon, tipo, nome, operadora, tarifa, rumo")
+    .gte("lat", sul)
+    .lte("lat", norte)
+    .gte("lon", oeste)
+    .lte("lon", leste)
+    .limit(MAX_CABINES + 1);
+  if (error) return { cabines: [], truncado: false, error: error.message };
+  return {
+    cabines: data.slice(0, MAX_CABINES).map((c) => ({ ...c, rumo: c.rumo === null ? null : Number(c.rumo) })),
+    truncado: data.length > MAX_CABINES,
+  };
+}
 
 function firstIssue(error: { issues: { message: string }[] }): string {
   return error.issues[0]?.message ?? "Dados inválidos.";
@@ -125,6 +150,9 @@ export async function salvarPraca(
     concessionaria: formData.get("concessionaria") || undefined,
     km: formData.get("km") || undefined,
     sentido: formData.get("sentido") || undefined,
+    endereco: formData.get("endereco") || undefined,
+    municipio: formData.get("municipio") || undefined,
+    uf: formData.get("uf") || undefined,
     ativo: formData.get("ativo") === "on",
     poligono_geojson: formData.get("poligono_geojson"),
   });
@@ -133,12 +161,21 @@ export async function salvarPraca(
   const pracaId = formData.get("praca_id") as string | null;
   const supabase = await createClient();
 
-  const rpc = pracaId ? "atualizar_praca" : "criar_praca";
-  const args = pracaId
-    ? { p_id: pracaId, p_nome: parsed.data.nome, p_poligono_geojson: parsed.data.poligono_geojson, p_rodovia: parsed.data.rodovia ?? null, p_concessionaria: parsed.data.concessionaria ?? null, p_km: parsed.data.km ?? null, p_sentido: parsed.data.sentido ?? null, p_ativo: parsed.data.ativo }
-    : { p_nome: parsed.data.nome, p_poligono_geojson: parsed.data.poligono_geojson, p_rodovia: parsed.data.rodovia ?? null, p_concessionaria: parsed.data.concessionaria ?? null, p_km: parsed.data.km ?? null, p_sentido: parsed.data.sentido ?? null, p_ativo: parsed.data.ativo };
-
-  const { error } = await supabase.rpc(rpc, args);
+  const comuns = {
+    p_nome: parsed.data.nome,
+    p_poligono_geojson: parsed.data.poligono_geojson,
+    p_rodovia: parsed.data.rodovia ?? null,
+    p_concessionaria: parsed.data.concessionaria ?? null,
+    p_km: parsed.data.km ?? null,
+    p_sentido: parsed.data.sentido ?? null,
+    p_ativo: parsed.data.ativo,
+    p_endereco: parsed.data.endereco ?? null,
+    p_municipio: parsed.data.municipio ?? null,
+    p_uf: parsed.data.uf ?? null,
+  };
+  const { error } = pracaId
+    ? await supabase.rpc("atualizar_praca", { p_id: pracaId, ...comuns })
+    : await supabase.rpc("criar_praca", comuns);
   if (error) return { error: error.message };
 
   revalidatePath("/cadastros/pracas");

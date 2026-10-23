@@ -63,8 +63,18 @@ cobrança/detecção.
 | created_at | timestamptz | default now() |
 | cadastro_pendente | boolean | default false — `true` quando criada automaticamente pela importação (FASE 22); vira `false` ao salvar pelo formulário (`atualizar_praca`) |
 | criada_no_lote_id | fk lote_importacao null | lote que criou a praça automaticamente (`on delete set null`) |
+| endereco | text null | FASE 25 — livre, preenchido pela busca "Localizar no mapa" (Nominatim) e editável |
+| municipio | text null | FASE 25 |
+| uf | char(2) null | FASE 25 — CHECK nas 27 UFs |
 
-Índice: `GIST(poligono)`, `criada_no_lote_id`.
+Índice: `GIST(poligono)`, `criada_no_lote_id`, `uf`.
+
+FASE 25: endereço/município/UF não entram no casamento da importação (a
+chave continua nome + sentido). `criar_praca`/`atualizar_praca` ganharam
+`p_endereco`/`p_municipio`/`p_uf` (opcionais; vazio vira nulo, UF em
+maiúsculas). As 480 praças completas tiveram município/UF preenchidos por
+geocodificação reversa do centro do polígono (Nominatim), conferida contra
+a UF do nome em 217 delas (sem divergência).
 
 FASE 22: a importação cria a praça que não encontra (nome + sentido da
 planilha) via `obter_ou_criar_praca_importacao` (SECURITY DEFINER — insert
@@ -104,6 +114,27 @@ eixos cobrados (ver [fluxo-validacao.md](fluxo-validacao.md)).
 Constraint: sem sobreposição de vigência para a mesma praça (via
 `EXCLUDE USING gist` com `daterange`). Gravar/alterar/excluir revalida as
 passagens da praça no período (trigger).
+
+### `cabine_osm` (FASE 25)
+Instantâneo das cabines de pedágio (`barrier=toll_booth`) e pórticos free
+flow (`highway=toll_gantry`) do OpenStreetMap em 14 UFs, carregado por
+script em 2026-10-22 (1.086 nós; áreas/portarias ficaram de fora). O mapa
+do cadastro de praça lê as cabines da área visível (`listarCabinesOsm`) e
+cria um polígono inicial em volta da escolhida — o Overpass público levava
+~30 s por consulta. RLS: leitura para autorizados, escrita admin.
+
+| coluna | tipo | notas |
+|---|---|---|
+| osm_id | bigint pk | id do nó no OSM |
+| tipo | text | `cabine` \| `free_flow` |
+| nome | text null | `name` ou `note` |
+| operadora | text null | `operator` |
+| tarifa | text null | `charge` como está no OSM |
+| rumo | numeric(5,1) null | `direction` (sentido de circulação, 0 = norte) — orienta o retângulo inicial |
+| lat, lon | double precision | índice `(lat, lon)` |
+| uf | char(2) null | UF da consulta que trouxe o nó |
+| osm_conferido_em | date null | `check_date` |
+| carregado_em | timestamptz | |
 
 ### `tarifa_eixo_osm` (FASE 24)
 Instantâneo da tarifa por eixo (`charge` … `BRL/hgv/axle`) das cabines do

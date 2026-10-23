@@ -2748,47 +2748,71 @@ praças (conferido em 2026-10-22).
 **Decisão do usuário (2026-10-22):** fazer a busca no mapa **e guardar o
 endereço** na praça.
 
-**Status:** ⏳ Planejada
+**Status:** 🟢 Concluída (2026-10-22, ainda não commitada)
 
-- [ ] Migration: colunas `endereco` (texto livre), `municipio` e `uf`
-  (char 2, check de UF válida) em `praca_pedagio`, todas opcionais;
-  `atualizar_praca`/inserção levando os campos novos; nome e sentido
-  continuam sendo a chave de casamento da importação (endereço não entra
-  no casamento). Preenchimento inicial de `municipio`/`uf` das 480 praças
-  já completas a partir das fontes do ajuste ANTT/OSM, sem tocar
-  nome/sentido.
-- [ ] Busca "Localizar no mapa" acima do mapa do cadastro: texto livre →
-  Nominatim (geocodificador do OpenStreetMap, sem chave; uma busca por
-  clique, respeitando o limite de 1 req/s) → lista de resultados → mapa
-  centraliza no escolhido. Busca já sugerida a partir do nome da praça
-  (`SP021, KM25+360, SUL, SÃO PAULO` → "SP-021, São Paulo, SP"). Ao
-  escolher um resultado, endereço/município/UF são preenchidos no
-  formulário (editáveis antes de salvar).
-- [ ] Cabines do OSM no mapa: após localizar, marcadores das
-  `barrier=toll_booth`/`highway=toll_gantry` na área visível (Overpass);
-  clicar num marcador cria um polígono inicial em volta dele (~200 m ao
-  longo da pista), para só ajustar e salvar. Polígono já existente não é
-  substituído sem confirmação.
-- [ ] Camada de satélite (Esri World Imagery) alternável com o mapa, com
-  crédito da fonte.
-- [ ] Lista de praças: colunas município/UF + filtro por UF.
-- [ ] Manual (seção de praças) e `modelo-dados.md`.
-- [ ] Verificação: ensaio da migration em rollback, advisors, `typecheck`/
-  `eslint`/`build`, navegador (buscar, escolher resultado, clicar cabine,
-  salvar com endereço, praça pendente deixa de ser pendente).
+- [x] Migration `20261024180000_pedagio_fase25_endereco_praca`: `endereco`,
+  `municipio`, `uf` (CHECK nas 27 UFs, índice) em `praca_pedagio`;
+  `vw_praca_pedagio_mapa` com as 3 colunas no fim; `criar_praca`/
+  `atualizar_praca` recriadas com `p_endereco`/`p_municipio`/`p_uf`
+  (assinatura antiga removida para não deixar sobrecarga ambígua; vazio
+  vira nulo, UF em maiúsculas; execute só authenticated/service_role).
+  Município/UF das 480 praças completas por **geocodificação reversa do
+  centro do polígono** (Nominatim, 1 req/s, script) — mais uniforme que
+  remontar das fontes ANTT/OSM; 480/480 preenchidas, conferidas contra a UF
+  do nome em 217 (0 divergências). As 110 pendentes ficam sem UF ("Sem UF"
+  no filtro) até serem completadas.
+- [x] **Desvio do plano — cabines vêm de um instantâneo, não do Overpass ao
+  vivo:** o Overpass público levou 27–35 s por consulta (fila do servidor,
+  mesmo na consulta mais simples) e bloqueia o User-Agent padrão. Tabela
+  nova `cabine_osm` (1.086 nós de 14 UFs: 944 cabines + 142 free flow, 1.069
+  com `direction`), carregada por script do mesmo levantamento OSM do
+  ajuste de 2026-10-22; RLS no padrão (leitura autorizados, escrita admin).
+  Com o instantâneo local as cabines aparecem sozinhas ao mover o mapa
+  (zoom ≥ 9, até 300 por vez) via `listarCabinesOsm` (server action).
+- [x] Busca "Localizar no mapa" (`localizar-no-mapa.tsx`, `lib/geo-osm.ts`):
+  Nominatim direto do navegador, intervalo mínimo de 1 s entre buscas;
+  sugestão pelo nome (rodovia normalizada, cidade, UF do sufixo "- SC" ou
+  do prefixo estadual da rodovia, vírgula decimal do km, abreviações
+  "S. B.", "PRES.", "STA.", sufixo "AUX"; testada nas 590 praças — todas
+  com sugestão); sem resultado para rodovia + cidade, tenta só a cidade.
+  Resultado preenche endereço/município/UF (UF pelo código ISO ou, na
+  falta, pelo nome do estado — "Itu, SP" vinha sem o código).
+- [x] Mapa (`polygon-map-editor.tsx`): camada Satélite (Esri World
+  Imagery) no canto superior direito; marcadores de cabine (laranja) e
+  free flow (roxo) com popup (nome, operadora, tarifa OSM) e "Criar
+  polígono aqui" → retângulo de 200 × 80 m orientado pelo `direction`
+  (quadrado de 150 m sem direção), confirmação antes de substituir
+  polígono existente. Cabines só no cadastro de praça (`mostrarCabines`);
+  o estacionamento ganha só o satélite.
+- [x] Formulário da praça enviado por `onSubmit` + `startTransition` em vez
+  de `action=`: o reset automático do React 19 apagava os campos após erro
+  — e um `<select>` não volta pelo `defaultValue` atualizado (UF sumia).
+- [x] Lista de praças: colunas Município/UF + filtro por UF com contagem.
+- [x] Manual (Praças: localizar, cabines, satélite, filtro) e
+  `modelo-dados.md` (`praca_pedagio` + `cabine_osm`).
+- [x] Verificação: ensaio da migration em rollback (12/12 — view, uma
+  sobrecarga só, ACL, criar/atualizar com e sem endereço, pendente deixa de
+  ser pendente, UF inválida e rumo 360 barrados, admin lê e anon não lê
+  `cabine_osm`); advisors por SQL (RLS em todas, search_path, views
+  security_invoker, grants nos dois papéis); `tsc`/`eslint`/`next build`
+  limpos; navegador (dev server do usuário, admin temporário, Playwright):
+  21/21 — busca sugerida e resultados reais, preenchimento, cabines e
+  popup, polígono pela cabine, satélite, praça pendente intacta sem salvar,
+  Enter na busca não salva, erro mantém campos, nova praça salva com
+  endereço/UF/polígono, lista/filtro, estacionamento sem cabines, 390 px,
+  sem erros no console; limpeza conferida.
 
-**Limitações já conhecidas:** o Nominatim não entende "rodovia + km" —
-acerta cidade/trecho, o ponto exato vem das cabines do OSM ou do satélite.
-Muitas das 110 pendentes ficaram de fora do ajuste justamente por não
-estarem claras no OSM; nelas o caminho é o satélite. Só o texto da busca e
-a área do mapa saem do sistema (Nominatim/Overpass/Esri), nenhum dado de
-fatura.
+**Limitações:** o Nominatim não entende "rodovia + km" — acerta
+cidade/trecho, o ponto exato vem das cabines ou do satélite. O instantâneo
+`cabine_osm` não se atualiza sozinho (recarregar por script se precisar).
+Só o texto da busca (Nominatim) e os tiles do mapa (OSM/Esri) saem do
+sistema, nenhum dado de fatura.
 
 ## Próximo passo
 
-**FASE 24 concluída e commitada (`1cf84c4`, com push).** Aprovar as sugestões pela tela; revisão manual das 110
-praças pendentes em paralelo. **Próxima fase: FASE 25** (endereço da praça
-+ localizar no mapa), aguardando início.
+**FASE 25 concluída, aguardando commit.** Completar as 110 praças
+pendentes pela tela (filtro "Sem UF" na lista); aprovar as sugestões de
+tarifa (FASE 24) em paralelo.
 
 FASE 01 a FASE 23 concluídas — conferir também a
 FASE 21 com dados reais (casos ambíguos podem aparecer com mais

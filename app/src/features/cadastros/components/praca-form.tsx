@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { useFormStatus } from "react-dom";
 import { salvarPraca, type FormState } from "../actions";
 import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form-message";
 import { Alert } from "@/components/ui/alert";
-import { TextField, CheckboxField } from "@/components/ui/field";
+import { TextField, SelectField, CheckboxField } from "@/components/ui/field";
+import { sugerirBusca, type ResultadoBusca } from "@/lib/geo-osm";
+import { UFS } from "@/lib/ufs";
+import { LocalizarNoMapa } from "./localizar-no-mapa";
+import type { FocoMapa } from "./polygon-map-editor";
 
 const PolygonMapEditor = dynamic(
   () => import("./polygon-map-editor").then((m) => m.PolygonMapEditor),
@@ -25,27 +28,42 @@ type PracaExistente = {
   concessionaria: string | null;
   km: number | null;
   sentido: string | null;
+  endereco: string | null;
+  municipio: string | null;
+  uf: string | null;
   ativo: boolean;
   poligono_geojson: Polygon | null;
   cadastro_pendente: boolean;
   origem: { arquivo_nome: string | null; created_at: string } | null;
 };
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Salvando..." : "Salvar"}
-    </Button>
-  );
-}
-
 export function PracaForm({ praca }: { praca?: PracaExistente }) {
-  const [state, formAction] = useActionState(salvarPraca, initialState);
+  const [state, formAction, pending] = useActionState(salvarPraca, initialState);
   const [poligono, setPoligono] = useState<Polygon | null>(praca?.poligono_geojson ?? null);
+  const [foco, setFoco] = useState<FocoMapa | null>(null);
+  const enderecoRef = useRef<HTMLInputElement>(null);
+  const municipioRef = useRef<HTMLInputElement>(null);
+  const ufRef = useRef<HTMLSelectElement>(null);
+
+  function escolherResultado(r: ResultadoBusca) {
+    setFoco((f) => ({ lat: r.lat, lon: r.lon, bbox: r.bbox, seq: (f?.seq ?? 0) + 1 }));
+    // campos não controlados: preenche direto e o usuário ainda pode editar
+    if (enderecoRef.current) enderecoRef.current.value = r.endereco;
+    if (municipioRef.current) municipioRef.current.value = r.municipio ?? "";
+    if (ufRef.current && r.uf && UFS.includes(r.uf)) ufRef.current.value = r.uf;
+  }
 
   return (
-    <form action={formAction} className="space-y-4">
+    // envio por onSubmit (e não action=): com action= o React 19 reseta o form
+    // depois da resposta, apagando o que foi digitado mesmo quando dá erro
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const dados = new FormData(e.currentTarget);
+        startTransition(() => formAction(dados));
+      }}
+      className="space-y-4"
+    >
       {praca && <input type="hidden" name="praca_id" value={praca.id} />}
       {praca?.cadastro_pendente && (
         <Alert variant="warning">
@@ -84,21 +102,61 @@ export function PracaForm({ praca }: { praca?: PracaExistente }) {
         />
       </div>
 
-      <div>
-        <p className="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-          Área da praça (desenhe o polígono)
-        </p>
-        <PolygonMapEditor initialGeoJSON={praca?.poligono_geojson ?? null} onChange={setPoligono} />
-        {!poligono && (
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Use a ferramenta de polígono no canto superior direito do mapa para
-            desenhar a área.
+      <div className="grid gap-3 sm:grid-cols-[1fr_14rem_6rem]">
+        <TextField
+          ref={enderecoRef}
+          id="endereco"
+          name="endereco"
+          label="Endereço"
+          defaultValue={praca?.endereco ?? ""}
+        />
+        <TextField
+          ref={municipioRef}
+          id="municipio"
+          name="municipio"
+          label="Município"
+          defaultValue={praca?.municipio ?? ""}
+        />
+        <SelectField
+          id="uf"
+          name="uf"
+          label="UF"
+          placeholder="—"
+          options={UFS.map((uf) => ({ value: uf, label: uf }))}
+          ref={ufRef}
+          defaultValue={praca?.uf ?? ""}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <LocalizarNoMapa
+          sugestoes={praca ? sugerirBusca(praca.nome, praca.rodovia) : []}
+          onEscolher={escolherResultado}
+        />
+        <div>
+          <p className="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+            Área da praça (desenhe o polígono)
           </p>
-        )}
+          <PolygonMapEditor
+            initialGeoJSON={praca?.poligono_geojson ?? null}
+            onChange={setPoligono}
+            foco={foco}
+            mostrarCabines
+          />
+          {!poligono && (
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Clique numa cabine do OpenStreetMap para criar um polígono inicial, ou use a
+              ferramenta de polígono (à esquerda do mapa) para desenhar a área. A camada
+              &quot;Satélite&quot; (canto superior direito) ajuda a ver a cabine.
+            </p>
+          )}
+        </div>
       </div>
 
       {state.error && <FormMessage type="error">{state.error}</FormMessage>}
-      <SubmitButton />
+      <Button type="submit" disabled={pending}>
+        {pending ? "Salvando..." : "Salvar"}
+      </Button>
     </form>
   );
 }

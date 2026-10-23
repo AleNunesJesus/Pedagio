@@ -31,6 +31,14 @@ export const pracaSchema = z.object({
   concessionaria: z.string().trim().optional(),
   km: z.coerce.number().optional(),
   sentido: z.string().trim().optional(),
+  endereco: z.string().trim().optional(),
+  municipio: z.string().trim().optional(),
+  uf: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/, "UF inválida.")
+    .optional(),
   ativo: z.coerce.boolean(),
   poligono_geojson: z
     .string()

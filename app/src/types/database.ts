@@ -60,6 +60,9 @@ export type Database = {
           created_at: string;
           cadastro_pendente: boolean;
           criada_no_lote_id: string | null;
+          endereco: string | null;
+          municipio: string | null;
+          uf: string | null;
         };
         Insert: {
           id?: string;
@@ -73,6 +76,9 @@ export type Database = {
           created_at?: string;
           cadastro_pendente?: boolean;
           criada_no_lote_id?: string | null;
+          endereco?: string | null;
+          municipio?: string | null;
+          uf?: string | null;
         };
         Update: {
           id?: string;
@@ -86,6 +92,9 @@ export type Database = {
           created_at?: string;
           cadastro_pendente?: boolean;
           criada_no_lote_id?: string | null;
+          endereco?: string | null;
+          municipio?: string | null;
+          uf?: string | null;
         };
         Relationships: [
           {
@@ -134,6 +143,48 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      cabine_osm: {
+        Row: {
+          osm_id: number;
+          tipo: "cabine" | "free_flow";
+          nome: string | null;
+          operadora: string | null;
+          tarifa: string | null;
+          rumo: number | null;
+          lat: number;
+          lon: number;
+          uf: string | null;
+          osm_conferido_em: string | null;
+          carregado_em: string;
+        };
+        Insert: {
+          osm_id: number;
+          tipo: "cabine" | "free_flow";
+          nome?: string | null;
+          operadora?: string | null;
+          tarifa?: string | null;
+          rumo?: number | null;
+          lat: number;
+          lon: number;
+          uf?: string | null;
+          osm_conferido_em?: string | null;
+          carregado_em?: string;
+        };
+        Update: {
+          osm_id?: number;
+          tipo?: "cabine" | "free_flow";
+          nome?: string | null;
+          operadora?: string | null;
+          tarifa?: string | null;
+          rumo?: number | null;
+          lat?: number;
+          lon?: number;
+          uf?: string | null;
+          osm_conferido_em?: string | null;
+          carregado_em?: string;
+        };
+        Relationships: [];
       };
       tarifa_eixo_osm: {
         Row: {
@@ -944,6 +995,9 @@ export type Database = {
           created_at: string | null;
           cadastro_pendente: boolean | null;
           criada_no_lote_id: string | null;
+          endereco: string | null;
+          municipio: string | null;
+          uf: string | null;
         };
         Relationships: [];
       };
@@ -1250,6 +1304,9 @@ export type Database = {
           p_km?: number | null;
           p_sentido?: string | null;
           p_ativo?: boolean;
+          p_endereco?: string | null;
+          p_municipio?: string | null;
+          p_uf?: string | null;
         };
         Returns: Database["pedagio"]["Tables"]["praca_pedagio"]["Row"];
       };
@@ -1263,6 +1320,9 @@ export type Database = {
           p_km?: number | null;
           p_sentido?: string | null;
           p_ativo?: boolean;
+          p_endereco?: string | null;
+          p_municipio?: string | null;
+          p_uf?: string | null;
         };
         Returns: Database["pedagio"]["Tables"]["praca_pedagio"]["Row"];
       };
