@@ -9,7 +9,7 @@ export function Steps({ items }: { items: Passo[] }) {
     <ol className="mb-4 divide-y divide-gray-200 dark:divide-gray-800">
       {items.map((passo, indice) => (
         <li key={passo.titulo} className="flex gap-3 py-3 first:pt-0">
-          <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+          <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-indigo-50 text-xs font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
             {indice + 1}
           </span>
           <div className="text-sm">

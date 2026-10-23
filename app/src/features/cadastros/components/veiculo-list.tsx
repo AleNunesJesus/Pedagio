@@ -58,7 +58,7 @@ export function VeiculoList({ rows, isAdmin }: { rows: Veiculo[]; isAdmin: boole
               isAdmin ? (
                 <Link
                   href={`/cadastros/veiculos/${r.id}`}
-                  className="text-blue-600 hover:underline dark:text-blue-400"
+                  className="text-indigo-600 hover:underline dark:text-indigo-400"
                 >
                   {r.placa}
                 </Link>

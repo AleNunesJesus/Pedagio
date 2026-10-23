@@ -36,9 +36,9 @@ export function DataTable<T>({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-600 dark:border-gray-800 dark:bg-gray-800/50 dark:text-gray-400">
             {selecao && (
-              <th className="w-8 py-2 pr-2">
+              <th className="w-8 py-2.5 pl-3 pr-2">
                 <input
                   type="checkbox"
                   checked={selecao.todosSelecionados}
@@ -50,7 +50,7 @@ export function DataTable<T>({
             {columns.map((col) => (
               <th
                 key={col.header}
-                className={`py-2 pr-4 font-medium last:pr-0 ${col.align === "right" ? "text-right" : "text-left"}`}
+                className={`py-2.5 pr-4 font-semibold first:pl-3 last:pr-3 ${col.align === "right" ? "text-right" : "text-left"}`}
               >
                 {col.header}
               </th>
@@ -63,10 +63,10 @@ export function DataTable<T>({
             return (
               <tr
                 key={id}
-                className="border-b border-gray-100 last:border-0 dark:border-gray-900"
+                className="border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/40"
               >
                 {selecao && (
-                  <td className="w-8 py-2 pr-2">
+                  <td className="w-8 py-2.5 pl-3 pr-2">
                     <input
                       type="checkbox"
                       checked={selecao.selecionados.has(id)}
@@ -78,7 +78,7 @@ export function DataTable<T>({
                 {columns.map((col) => (
                   <td
                     key={col.header}
-                    className={`py-2 pr-4 text-gray-900 last:pr-0 dark:text-gray-100 ${col.align === "right" ? "text-right tabular-nums" : "text-left"}`}
+                    className={`py-2.5 pr-4 text-gray-700 first:pl-3 first:font-medium first:text-gray-900 last:pr-3 dark:text-gray-300 dark:first:text-gray-100 ${col.align === "right" ? "text-right tabular-nums" : "text-left"}`}
                   >
                     {col.render(row)}
                   </td>

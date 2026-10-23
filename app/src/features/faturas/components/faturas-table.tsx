@@ -20,7 +20,7 @@ export function FaturasTable({ rows }: { rows: FaturaResumo[] }) {
           render: (r) => (
             <Link
               href={`/faturas/${r.numero_fatura ? encodeURIComponent(r.numero_fatura) : "sem-fatura"}`}
-              className="text-blue-600 hover:underline dark:text-blue-400"
+              className="text-indigo-600 hover:underline dark:text-indigo-400"
             >
               {r.numero_fatura ?? "Sem fatura"}
             </Link>

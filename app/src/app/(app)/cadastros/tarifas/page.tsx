@@ -20,7 +20,7 @@ export default async function TarifasPage() {
         composição ou de menos eixos (eixos suspensos), com ou sem 5% de desconto de TAG.{" "}
         <Link
           href="/cadastros/tarifas/sugestoes"
-          className="text-blue-600 hover:underline dark:text-blue-400"
+          className="text-indigo-600 hover:underline dark:text-indigo-400"
         >
           Sugestões de tarifa
           {sugestoesPendentes > 0 && ` (${formatNumber(sugestoesPendentes)} pendentes)`}

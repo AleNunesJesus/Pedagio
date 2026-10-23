@@ -143,7 +143,7 @@ export function PolygonMapEditor({ initialGeoJSON, onChange, foco, mostrarCabine
       if (c.tarifa) linha(`Tarifa no OSM: ${c.tarifa}`);
       const botao = document.createElement("button");
       botao.type = "button";
-      botao.className = "mt-1 rounded bg-blue-600 px-2 py-1 text-white hover:bg-blue-700";
+      botao.className = "mt-1 rounded bg-indigo-600 px-2 py-1 text-white hover:bg-indigo-700";
       botao.textContent = "Criar polígono aqui";
       botao.addEventListener("click", () => usarCabine(c));
       popup.append(botao);

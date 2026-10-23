@@ -28,7 +28,7 @@ export function BarraProgresso({
     <div className="space-y-1" role="status" aria-live="polite">
       <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
         <div
-          className="h-2 rounded-full bg-blue-600 transition-[width] dark:bg-blue-500"
+          className="h-2 rounded-full bg-indigo-600 transition-[width] dark:bg-indigo-500"
           style={{ width: progresso.total ? `${(progresso.enviadas / progresso.total) * 100}%` : "0%" }}
         />
       </div>

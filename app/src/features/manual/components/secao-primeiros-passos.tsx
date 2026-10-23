@@ -63,7 +63,7 @@ export function SecaoPrimeirosPassos() {
           afetada é revalidada automaticamente. O detalhe de cada etapa da
           validação (geoespacial, tarifária e vínculo com a viagem de
           transporte) está em{" "}
-          <a href="#fluxo-validacao" className="text-blue-600 hover:underline dark:text-blue-400">
+          <a href="#fluxo-validacao" className="text-indigo-600 hover:underline dark:text-indigo-400">
             Referência rápida
           </a>
           .
@@ -89,7 +89,7 @@ export function SecaoPrimeirosPassos() {
         </Alert>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Assim que um admin atribuir seu papel em{" "}
-          <Link href="/usuarios" className="text-blue-600 hover:underline dark:text-blue-400">
+          <Link href="/usuarios" className="text-indigo-600 hover:underline dark:text-indigo-400">
             Usuários
           </Link>
           , a próxima página que você abrir já libera o acesso normal.
@@ -152,7 +152,7 @@ export function SecaoPrimeirosPassos() {
             desfavorável, negativo (<ValorSinalizado valor={-1} />) é
             favorável — nunca só a cor, o sinal também aparece no texto.
             Detalhes em{" "}
-            <a href="#valor-sinalizado" className="text-blue-600 hover:underline dark:text-blue-400">
+            <a href="#valor-sinalizado" className="text-indigo-600 hover:underline dark:text-indigo-400">
               Referência rápida
             </a>
             .

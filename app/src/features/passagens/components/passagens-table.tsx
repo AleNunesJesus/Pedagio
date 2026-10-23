@@ -128,7 +128,7 @@ export function PassagensTable({ rows, podeExcluir }: { rows: Passagem[]; podeEx
               return (
                 <Link
                   href={`/passagens/${r.passagem_id}`}
-                  className="inline-flex items-center gap-2 text-blue-600 hover:underline dark:text-blue-400"
+                  className="inline-flex items-center gap-2 text-indigo-600 hover:underline dark:text-indigo-400"
                 >
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"

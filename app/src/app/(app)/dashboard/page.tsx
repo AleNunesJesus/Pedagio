@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   );
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+    <main className="mx-auto max-w-[1800px] space-y-8 px-6 py-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
           Painel
@@ -67,8 +67,12 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Praças cadastradas" value={formatNumber(data.totalPracas)} />
         <StatTile label="Veículos cadastrados" value={formatNumber(data.totalVeiculos)} />
-        <StatTile label="Total cobrado" value={formatBRL(totalCobradoGeral)} />
-        <StatTile label="Divergência total" value={formatBRL(divergenciaTotalGeral)} />
+        <StatTile label="Total cobrado" value={formatBRL(totalCobradoGeral)} tom="destaque" />
+        <StatTile
+          label="Divergência total"
+          value={formatBRL(divergenciaTotalGeral)}
+          tom={divergenciaTotalGeral > 0 ? "perigo" : divergenciaTotalGeral < 0 ? "sucesso" : "neutro"}
+        />
       </div>
 
       <section>
@@ -280,7 +284,7 @@ export default async function DashboardPage() {
             <StatTile label="Qtd. carregado" value={formatNumber(data.totalQtdCarregado)} />
             <StatTile label="Vazio" value={formatBRL(data.totalValorVazio)} />
             <StatTile label="Qtd. vazio" value={formatNumber(data.totalQtdVazio)} />
-            <StatTile label="Sem vínculo" value={formatBRL(data.totalValorSemVinculo)} />
+            <StatTile label="Sem vínculo" value={formatBRL(data.totalValorSemVinculo)} tom="alerta" />
             <StatTile label="Qtd. sem vínculo" value={formatNumber(data.totalQtdSemVinculo)} />
           </div>
           <Card
@@ -299,7 +303,7 @@ export default async function DashboardPage() {
           </h2>
           <Link
             href="/credito-debito"
-            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
           >
             Ver todas as viagens →
           </Link>
@@ -352,7 +356,7 @@ export default async function DashboardPage() {
           </h3>
           <Link
             href="/credito-debito?situacao=so_credito"
-            className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+            className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
           >
             Ver todas →
           </Link>

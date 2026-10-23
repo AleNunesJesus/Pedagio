@@ -1,5 +1,5 @@
 import { requireAutorizado } from "@/lib/auth/guards";
-import { AppHeader } from "@/components/app-header";
+import { AppSidebar } from "@/components/app-sidebar";
 
 export default async function AppLayout({
   children,
@@ -9,9 +9,9 @@ export default async function AppLayout({
   const { papel } = await requireAutorizado();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AppHeader papel={papel} />
-      {children}
+    <div className="min-h-screen bg-gray-100 md:flex dark:bg-gray-950">
+      <AppSidebar papel={papel} />
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }

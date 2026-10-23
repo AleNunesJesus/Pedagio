@@ -9,7 +9,7 @@ export default async function ImportacaoPage() {
   const [lotes, papel] = await Promise.all([listLotesImportacao(), getMeuPapel()]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
       <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Importação</h1>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">

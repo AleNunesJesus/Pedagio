@@ -2808,7 +2808,43 @@ cidade/trecho, o ponto exato vem das cabines ou do satélite. O instantâneo
 Só o texto da busca (Nominatim) e os tiles do mapa (OSM/Esri) saem do
 sistema, nenhum dado de fatura.
 
+## FASE 26 — Novo layout (Modelo 3: painel operacional)
+
+**Gatilho (2026-10-23):** no tema claro tudo fica "meio igual" (dados em
+preto, sem hierarquia), o conteúdo fica espremido numa coluna central de
+~1000 px e o menu repete "Faturas → Faturas". Três modelos foram
+desenhados num canvas; o usuário escolheu o **Modelo 3**: menu lateral
+fino com ícones, conteúdo em largura total, filtros fixos ao lado da
+lista e painel de detalhe do item selecionado. Destaque índigo.
+
+**Status:** 🟡 Em andamento
+
+### Etapa 1 — estrutura e sistema visual (todas as telas)
+- [x] Fonte Inter (`next/font/google`) no layout raiz.
+- [x] Menu lateral com ícones (`AppSidebar`) no lugar do `AppHeader`:
+  Painel, Viagens, Faturamento (Faturas, Passagens, Crédito/Débito),
+  Rastreamento, Importação, Cadastros (submenu), Sistema (Usuários,
+  Manual); item ativo pela rota; tema e sair no rodapé; vira barra
+  horizontal no celular.
+- [x] Páginas em largura total (sai o `max-w-5xl` centralizado).
+- [x] Destaque azul → índigo; fundo da página `gray-100` com cartões
+  brancos; tabelas com cabeçalho destacado, hover de linha e texto
+  secundário em cinza (1ª coluna em destaque).
+
+Etapa 1 feita em 2026-10-23 (tsc + eslint limpos; aguardando conferência visual).
+Também: `StatTile` ganhou `tom` (destaque/alerta/perigo/sucesso), aplicado em
+Total cobrado, Divergência total e Sem vínculo no Painel; `AppHeader` e
+`NavDropdown` removidos.
+
+### Etapa 2 — Viagens no padrão completo
+- [ ] Filtros fixos na lateral esquerda, com contagens por tipo.
+- [ ] Painel de detalhe à direita com os pedágios da viagem selecionada.
+
+### Etapa 3 — demais listas (Passagens, Faturas, Crédito/Débito, cadastros)
+
 ## Próximo passo
+
+**FASE 26 (novo layout) — etapa 1 feita, aguardando conferência visual antes da etapa 2.**
 
 **FASE 25 concluída e commitada (`39439b5`, sem push).** Completar as 110 praças
 pendentes pela tela (filtro "Sem UF" na lista); aprovar as sugestões de

@@ -21,7 +21,7 @@ export default async function EditarTarifaPage({
     <div className="space-y-4">
       <Link
         href="/cadastros/tarifas"
-        className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+        className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
       >
         ← Voltar para tarifas
       </Link>

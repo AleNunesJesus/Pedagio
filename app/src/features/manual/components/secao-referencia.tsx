@@ -45,7 +45,7 @@ export function SecaoReferencia() {
       >
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           Recapitulando o fluxo já apresentado em{" "}
-          <a href="#como-funciona" className="text-blue-600 hover:underline dark:text-blue-400">
+          <a href="#como-funciona" className="text-indigo-600 hover:underline dark:text-indigo-400">
             Primeiros passos
           </a>
           : importação das três planilhas, validação automática (geoespacial

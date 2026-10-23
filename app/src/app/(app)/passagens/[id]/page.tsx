@@ -64,8 +64,8 @@ export default async function PassagemDetalhePage({
   const statusLabel = statusInfo?.label ?? passagem.status_validacao ?? "—";
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <Link href="/passagens" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+    <main className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+      <Link href="/passagens" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
         ← Voltar para passagens
       </Link>
 
@@ -222,7 +222,7 @@ export default async function PassagemDetalhePage({
               Praça criada automaticamente pela importação da fatura e ainda sem polígono —{" "}
               <Link
                 href={`/cadastros/pracas/${praca.id}`}
-                className="text-blue-600 hover:underline dark:text-blue-400"
+                className="text-indigo-600 hover:underline dark:text-indigo-400"
               >
                 completar o cadastro
               </Link>

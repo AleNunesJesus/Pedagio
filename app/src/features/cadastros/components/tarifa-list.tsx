@@ -53,7 +53,7 @@ export function TarifaList({ rows, isAdmin }: { rows: Tarifa[]; isAdmin: boolean
               isAdmin ? (
                 <Link
                   href={`/cadastros/tarifas/${r.id}`}
-                  className="text-blue-600 hover:underline dark:text-blue-400"
+                  className="text-indigo-600 hover:underline dark:text-indigo-400"
                 >
                   {r.praca_pedagio?.nome ?? "—"}
                 </Link>

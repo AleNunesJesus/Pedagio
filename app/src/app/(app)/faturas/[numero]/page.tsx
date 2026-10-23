@@ -79,8 +79,8 @@ export default async function FaturaDetalhePage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <Link href="/faturas" className="text-sm text-blue-600 hover:underline dark:text-blue-400">
+    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
+      <Link href="/faturas" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
         ← Voltar para faturas
       </Link>
 

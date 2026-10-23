@@ -37,7 +37,7 @@ export default async function CreditoDebitoPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
           Crédito x débito por viagem

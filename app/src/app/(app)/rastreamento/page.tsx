@@ -24,7 +24,7 @@ export default async function RastreamentoPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Rastreamento</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">

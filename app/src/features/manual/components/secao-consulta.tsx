@@ -51,7 +51,7 @@ export function SecaoConsulta() {
               Crédito x débito (viagem/embarcador):
             </strong>{" "}
             resumo com link para a tela{" "}
-            <a href="#credito-debito" className="text-blue-600 hover:underline dark:text-blue-400">
+            <a href="#credito-debito" className="text-indigo-600 hover:underline dark:text-indigo-400">
               Crédito x débito
             </a>
             , incluindo a subseção &quot;Crédito sem débito
@@ -225,7 +225,7 @@ export function SecaoConsulta() {
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
           Rota <code>/viagens-transporte</code> — lista as viagens de
           transporte importadas a partir do documento fiscal (ver{" "}
-          <a href="#importar-viagens" className="text-blue-600 hover:underline dark:text-blue-400">
+          <a href="#importar-viagens" className="text-indigo-600 hover:underline dark:text-indigo-400">
             Importação
           </a>
           ). O número de transporte é uma numeração diferente da
