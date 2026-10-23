@@ -23,7 +23,7 @@ export default async function ViagensTransportePage({
   const params = await searchParams;
   const pagina = params.pagina ? Number(params.pagina) : 1;
 
-  const [{ rows, total, totalPaginas }, veiculos, embarcadores, papel] = await Promise.all([
+  const [{ erro, rows, total, totalPaginas }, veiculos, embarcadores, papel] = await Promise.all([
     listViagensTransporte({
       numeroTransporte: params.numeroTransporte,
       veiculoId: params.veiculoId,
@@ -39,10 +39,16 @@ export default async function ViagensTransportePage({
   ]);
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Viagens</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{total} viagem(ns) encontrada(s).</p>
+        {erro ? (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+            Não foi possível carregar as viagens ({erro}). Tente novamente.
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{total} viagem(ns) encontrada(s).</p>
+        )}
       </div>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">

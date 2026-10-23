@@ -31,9 +31,11 @@ export async function listViagensTransporte(filtros: FiltrosViagensTransporte) {
   if (filtros.dataInicio) query = query.gte("data_hora_saida", filtros.dataInicio);
   if (filtros.dataFim) query = query.lte("data_hora_saida", `${filtros.dataFim}T23:59:59`);
 
-  const { data, count } = await query;
+  const { data, count, error } = await query;
 
   return {
+    // sem isso um erro do banco (ex.: statement timeout) aparecia como "0 viagens"
+    erro: error?.message ?? null,
     rows: data ?? [],
     total: count ?? 0,
     pagina,
