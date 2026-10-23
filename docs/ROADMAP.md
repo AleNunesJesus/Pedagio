@@ -2817,7 +2817,7 @@ desenhados num canvas; o usuário escolheu o **Modelo 3**: menu lateral
 fino com ícones, conteúdo em largura total, filtros fixos ao lado da
 lista e painel de detalhe do item selecionado. Destaque índigo.
 
-**Status:** 🟡 Em andamento
+**Status:** 🟢 Concluída (2026-10-23)
 
 ### Etapa 1 — estrutura e sistema visual (todas as telas)
 - [x] Fonte Inter (`next/font/google`) no layout raiz.
@@ -2867,12 +2867,21 @@ a divergência fica ≈ valor cobrado enquanto faltar validação.
   situação das linhas por status (barras) (`?fatura=<nº|sem-fatura>`).
 - [x] Crédito/Débito: busca pela viagem (parâmetro `viagem` → `busca`),
   situação com cor e contagem; sem painel (linhas já são agregadas).
-- [ ] Cadastros (praças, tarifas, sugestões, veículos, categorias,
-  embarcadores, estacionamentos, tarifas de estacionamento).
+- [x] Cadastros (praças, tarifas, sugestões, veículos, categorias,
+  embarcadores, estacionamentos, tarifas de estacionamento): todos em
+  `ListaComPainel` com busca (sem acento/maiúscula, `lib/texto`), filtros
+  com contagem filtrados no servidor sobre a lista carregada (Praças:
+  cadastro + UF; Tarifas: vigência + origem; Sugestões: situação; Veículos:
+  tipo + situação + categoria; Estacionamentos: cadastro; Tarifas
+  estacionamento: vigência), formulário "Novo/Nova" no painel da direita
+  (`PainelNovo`, só admin), "Nova praça"/"Novo estacionamento" no
+  cabeçalho. `filtros` ficou opcional (Categorias e Embarcadores só têm
+  busca, via form oculto). Sai `cadastros/layout.tsx`; as 8 páginas de
+  edição/criação ganharam contêiner próprio.
 
 ## Próximo passo
 
-**FASE 26 (novo layout) — etapas 1 e 2 commitadas; etapa 3 sem os cadastros feita (aguardando conferência visual); falta cadastros.**
+**FASE 26 (novo layout) concluída e commitada.**
 
 **FASE 25 concluída e commitada (`39439b5`, sem push).** Completar as 110 praças
 pendentes pela tela (filtro "Sem UF" na lista); aprovar as sugestões de

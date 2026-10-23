@@ -2,23 +2,28 @@ import { getMeuPapel } from "@/lib/auth/guards";
 import { listCategorias } from "@/features/cadastros/queries";
 import { CategoriaForm } from "@/features/cadastros/components/categoria-form";
 import { CategoriaList } from "@/features/cadastros/components/categoria-list";
+import { ListaComPainel, PainelNovo } from "@/components/layout/lista-com-painel";
+import { contem } from "@/lib/texto";
 
-export default async function CategoriasPage() {
-  const [categorias, papel] = await Promise.all([listCategorias(), getMeuPapel()]);
+export default async function CategoriasPage({ searchParams }: { searchParams: Promise<{ busca?: string }> }) {
+  const [params, categorias, papel] = await Promise.all([searchParams, listCategorias(), getMeuPapel()]);
+  const rows = categorias.filter((c) => contem(params.busca, c.codigo, c.descricao));
 
   return (
-    <div className="space-y-6">
-      {papel === "admin" && (
-        <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-            Nova categoria
-          </h2>
-          <CategoriaForm />
-        </section>
-      )}
-      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <CategoriaList rows={categorias} isAdmin={papel === "admin"} />
-      </section>
-    </div>
+    <ListaComPainel
+      titulo="Categorias"
+      total={rows.length}
+      unidade="categoria(s)"
+      busca={{ formId: "busca-categorias", valor: params.busca, placeholder: "Buscar código ou descrição" }}
+      detalhe={
+        papel === "admin" ? (
+          <PainelNovo titulo="Nova categoria">
+            <CategoriaForm />
+          </PainelNovo>
+        ) : undefined
+      }
+    >
+      <CategoriaList rows={rows} isAdmin={papel === "admin"} />
+    </ListaComPainel>
   );
 }

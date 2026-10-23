@@ -11,6 +11,15 @@ const TAGS_CADASTRO = (
 export function SecaoCadastros() {
   return (
     <>
+      <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+        Todas as telas de cadastro seguem o mesmo formato: busca no topo,
+        filtros na lateral esquerda (com a quantidade de itens de cada
+        opção), lista no meio e, para administradores, o formulário de
+        criação no painel da direita. Praças e estacionamentos, que precisam
+        do mapa, são criados pelo botão &quot;Nova praça&quot; /
+        &quot;Novo estacionamento&quot; no topo. Para editar, abra o item
+        pela lista.
+      </p>
       <ManualSection id="cadastros-categorias" titulo="Categorias" tags={TAGS_CADASTRO}>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Categoria tarifária por quantidade de eixos, usada tanto no

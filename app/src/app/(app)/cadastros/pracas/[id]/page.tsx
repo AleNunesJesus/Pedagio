@@ -23,7 +23,7 @@ export default async function EditarPracaPage({
   const origem = praca.cadastro_pendente ? await getOrigemCadastro(praca.criada_no_lote_id) : null;
 
   return (
-    <div className="space-y-4">
+    <main className="mx-auto max-w-[1800px] space-y-4 px-6 py-6">
       <Link
         href="/cadastros/pracas"
         className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
@@ -52,6 +52,6 @@ export default async function EditarPracaPage({
           }}
         />
       </section>
-    </div>
+    </main>
   );
 }

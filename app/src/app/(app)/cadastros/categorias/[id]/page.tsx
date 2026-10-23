@@ -18,7 +18,7 @@ export default async function EditarCategoriaPage({
   if (!categoria) notFound();
 
   return (
-    <div className="space-y-4">
+    <main className="mx-auto max-w-[1800px] space-y-4 px-6 py-6">
       <Link
         href="/cadastros/categorias"
         className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
@@ -31,6 +31,6 @@ export default async function EditarCategoriaPage({
         </h2>
         <CategoriaForm categoria={categoria} />
       </section>
-    </div>
+    </main>
   );
 }

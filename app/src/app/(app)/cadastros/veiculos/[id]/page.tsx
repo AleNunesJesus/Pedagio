@@ -18,7 +18,7 @@ export default async function EditarVeiculoPage({
   if (!veiculo) notFound();
 
   return (
-    <div className="space-y-4">
+    <main className="mx-auto max-w-[1800px] space-y-4 px-6 py-6">
       <Link
         href="/cadastros/veiculos"
         className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
@@ -31,6 +31,6 @@ export default async function EditarVeiculoPage({
         </h2>
         <VeiculoForm categorias={categorias} veiculo={veiculo} />
       </section>
-    </div>
+    </main>
   );
 }

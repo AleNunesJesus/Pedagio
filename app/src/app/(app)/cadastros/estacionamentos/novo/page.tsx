@@ -8,7 +8,7 @@ export default async function NovoEstacionamentoPage() {
   if (papel !== "admin") redirect("/cadastros/estacionamentos");
 
   return (
-    <div className="space-y-4">
+    <main className="mx-auto max-w-[1800px] space-y-4 px-6 py-6">
       <Link
         href="/cadastros/estacionamentos"
         className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
@@ -21,6 +21,6 @@ export default async function NovoEstacionamentoPage() {
         </h2>
         <EstacionamentoForm />
       </section>
-    </div>
+    </main>
   );
 }

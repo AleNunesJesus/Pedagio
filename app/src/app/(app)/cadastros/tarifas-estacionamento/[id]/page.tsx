@@ -21,7 +21,7 @@ export default async function EditarTarifaEstacionamentoPage({
   if (!tarifa) notFound();
 
   return (
-    <div className="space-y-4">
+    <main className="mx-auto max-w-[1800px] space-y-4 px-6 py-6">
       <Link
         href="/cadastros/tarifas-estacionamento"
         className="text-sm text-indigo-600 hover:underline dark:text-indigo-400"
@@ -34,6 +34,6 @@ export default async function EditarTarifaEstacionamentoPage({
         </h2>
         <TarifaEstacionamentoForm estacionamentos={estacionamentos} tarifa={tarifa} />
       </section>
-    </div>
+    </main>
   );
 }

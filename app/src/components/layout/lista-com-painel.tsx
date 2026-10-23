@@ -11,7 +11,8 @@ type ListaComPainelProps = {
   busca?: { formId: string; valor?: string; placeholder: string };
   // ações do cabeçalho (ex.: botão "Nova praça")
   acoes?: React.ReactNode;
-  filtros: React.ReactNode;
+  // lateral de filtros; sem ela (cadastros simples) a busca usa um form oculto
+  filtros?: React.ReactNode;
   children: React.ReactNode;
   // painel da direita; undefined = tela sem painel de detalhe
   detalhe?: React.ReactNode;
@@ -33,6 +34,12 @@ export function ListaComPainel({
   detalhe,
 }: ListaComPainelProps) {
   const comDetalhe = detalhe !== undefined;
+  const comFiltros = filtros !== undefined;
+  const colunas = comFiltros
+    ? `lg:grid-cols-[260px_minmax(0,1fr)] ${comDetalhe ? "xl:grid-cols-[260px_minmax(0,1fr)_380px]" : ""}`
+    : comDetalhe
+      ? "lg:grid-cols-[minmax(0,1fr)_380px]"
+      : "";
   return (
     <main className="flex min-h-screen flex-col">
       <header className="flex flex-wrap items-center gap-4 border-b border-gray-200 bg-white px-6 py-3.5 dark:border-gray-800 dark:bg-gray-900">
@@ -66,16 +73,15 @@ export function ListaComPainel({
           )}
           {acoes}
         </div>
+        {busca && !comFiltros && <form id={busca.formId} method="get" className="hidden" />}
       </header>
 
-      <div
-        className={`grid flex-1 lg:grid-cols-[260px_minmax(0,1fr)] ${
-          comDetalhe ? "xl:grid-cols-[260px_minmax(0,1fr)_380px]" : ""
-        }`}
-      >
-        <aside className="border-b border-gray-200 bg-white p-5 lg:border-b-0 lg:border-r dark:border-gray-800 dark:bg-gray-900">
-          {filtros}
-        </aside>
+      <div className={`grid flex-1 ${colunas}`}>
+        {comFiltros && (
+          <aside className="border-b border-gray-200 bg-white p-5 lg:border-b-0 lg:border-r dark:border-gray-800 dark:bg-gray-900">
+            {filtros}
+          </aside>
+        )}
 
         <section className="min-w-0 p-5">
           <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
@@ -84,12 +90,37 @@ export function ListaComPainel({
         </section>
 
         {comDetalhe && (
-          <aside className="border-t border-gray-200 bg-white p-5 lg:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0 dark:border-gray-800 dark:bg-gray-900">
+          <aside
+            className={`border-t border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 ${
+              comFiltros
+                ? "lg:col-span-2 xl:col-span-1 xl:border-l xl:border-t-0"
+                : "lg:border-l lg:border-t-0"
+            }`}
+          >
             {detalhe}
           </aside>
         )}
       </div>
     </main>
+  );
+}
+
+// painel da direita com um formulário de criação (cadastros)
+export function PainelNovo({
+  titulo,
+  descricao,
+  children,
+}: {
+  titulo: string;
+  descricao?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">{titulo}</h2>
+      {descricao && <div className="text-sm text-gray-600 dark:text-gray-400">{descricao}</div>}
+      {children}
+    </div>
   );
 }
 
