@@ -1,19 +1,11 @@
 import Link from "next/link";
+import { hrefViagens } from "../href";
 
 type PaginacaoProps = {
   pagina: number;
   totalPaginas: number;
   searchParams: Record<string, string | undefined>;
 };
-
-function hrefParaPagina(searchParams: Record<string, string | undefined>, pagina: number) {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams)) {
-    if (value && key !== "pagina") params.set(key, value);
-  }
-  params.set("pagina", String(pagina));
-  return `/viagens-transporte?${params.toString()}`;
-}
 
 export function Paginacao({ pagina, totalPaginas, searchParams }: PaginacaoProps) {
   if (totalPaginas <= 1) return null;
@@ -25,12 +17,12 @@ export function Paginacao({ pagina, totalPaginas, searchParams }: PaginacaoProps
       </span>
       <div className="flex gap-3">
         {pagina > 1 && (
-          <Link href={hrefParaPagina(searchParams, pagina - 1)} className="hover:underline">
+          <Link href={hrefViagens(searchParams, { pagina: String(pagina - 1) })} className="hover:underline">
             ← Anterior
           </Link>
         )}
         {pagina < totalPaginas && (
-          <Link href={hrefParaPagina(searchParams, pagina + 1)} className="hover:underline">
+          <Link href={hrefViagens(searchParams, { pagina: String(pagina + 1) })} className="hover:underline">
             Próxima →
           </Link>
         )}

@@ -429,6 +429,8 @@ export type Database = {
           status_validacao: string;
           created_at: string;
           ocorrencia: number;
+          // coluna gerada: upper(trim(placa_informada))
+          placa_norm: string | null;
         };
         Insert: {
           id?: string;
@@ -698,6 +700,8 @@ export type Database = {
           embarcador_id: string | null;
           lote_importacao_id: string | null;
           created_at: string;
+          // coluna gerada: upper(trim(placa_informada))
+          placa_norm: string | null;
         };
         Insert: {
           id?: string;

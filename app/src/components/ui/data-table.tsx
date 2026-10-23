@@ -19,6 +19,9 @@ type DataTableProps<T> = {
   keyField: (row: T) => string;
   emptyMessage: string;
   selecao?: DataTableSelecao;
+  // lista + painel de detalhe: linha clicável e destaque da selecionada
+  onLinhaClick?: (row: T) => void;
+  linhaAtiva?: (row: T) => boolean;
 };
 
 export function DataTable<T>({
@@ -27,6 +30,8 @@ export function DataTable<T>({
   keyField,
   emptyMessage,
   selecao,
+  onLinhaClick,
+  linhaAtiva,
 }: DataTableProps<T>) {
   if (rows.length === 0) {
     return <EmptyState>{emptyMessage}</EmptyState>;
@@ -63,10 +68,17 @@ export function DataTable<T>({
             return (
               <tr
                 key={id}
-                className="border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/40"
+                onClick={onLinhaClick ? () => onLinhaClick(row) : undefined}
+                aria-selected={linhaAtiva ? linhaAtiva(row) : undefined}
+                className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${onLinhaClick ? "cursor-pointer" : ""} ${
+                  linhaAtiva?.(row)
+                    ? "bg-indigo-50 shadow-[inset_3px_0_0_var(--color-indigo-700)] dark:bg-indigo-950/60"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                }`}
               >
                 {selecao && (
-                  <td className="w-8 py-2.5 pl-3 pr-2">
+                  // o clique no checkbox não abre o detalhe da linha
+                  <td className="w-8 py-2.5 pl-3 pr-2" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selecao.selecionados.has(id)}

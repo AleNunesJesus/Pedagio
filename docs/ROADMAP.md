@@ -2837,14 +2837,27 @@ Total cobrado, Divergência total e Sem vínculo no Painel; `AppHeader` e
 `NavDropdown` removidos.
 
 ### Etapa 2 — Viagens no padrão completo
-- [ ] Filtros fixos na lateral esquerda, com contagens por tipo.
-- [ ] Painel de detalhe à direita com os pedágios da viagem selecionada.
+- [x] Filtros fixos na lateral esquerda, com contagens por tipo.
+- [x] Painel de detalhe à direita com os pedágios da viagem selecionada.
+
+Etapa 2 feita em 2026-10-23 (tsc + eslint limpos; aguardando conferência
+visual). Busca única no cabeçalho (transporte **ou placa**, ligada ao form
+de filtros via `form=""`); filtro novo de **divergência** (a mais / a menos
+/ sem), com contagens por opção respeitando os demais filtros (~140 ms cada
+sob RLS); tabela compacta (Transporte, Placa, Rota, Saída, Pedágios,
+Divergência colorida); viagem selecionada em `?viagem=<id>` (linha
+destacada, painel com cobrado/estimado, tarifa, divergência e pedágios da
+viagem — mesmo critério da view, link para a passagem). `DataTable` ganhou
+`onLinhaClick`/`linhaAtiva`; tipos ganharam `placa_norm`. Manual atualizado.
+Observação: "cobrado a mais" traz 2.022 de 4.983 viagens porque a tarifa
+esperada só existe para passagens validadas (soma de tarifa hoje R$ 357) —
+a divergência fica ≈ valor cobrado enquanto faltar validação.
 
 ### Etapa 3 — demais listas (Passagens, Faturas, Crédito/Débito, cadastros)
 
 ## Próximo passo
 
-**FASE 26 (novo layout) — etapa 1 feita, aguardando conferência visual antes da etapa 2.**
+**FASE 26 (novo layout) — etapas 1 e 2 feitas (etapa 2 aguardando conferência visual); depois, etapa 3.**
 
 **FASE 25 concluída e commitada (`39439b5`, sem push).** Completar as 110 praças
 pendentes pela tela (filtro "Sem UF" na lista); aprovar as sugestões de

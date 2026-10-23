@@ -232,16 +232,24 @@ export function SecaoConsulta() {
           &quot;viagem&quot; informada na fatura de pedágio.
         </p>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Filtros: Transporte (nº), Veículo, Tipo (Carregado/Vazio),
-          Embarcador, Saída de / Saída até.
+          Busca no topo (número do transporte ou placa) e filtros na lateral
+          esquerda: Saída de / Saída até, Tipo (Carregado/Vazio),
+          Divergência (cobrado a mais, a menos ou sem divergência),
+          Embarcador e Veículo. Ao lado de cada opção de Tipo e Divergência
+          aparece quantas viagens ela traria com os outros filtros atuais.
+        </p>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Colunas: Transporte (bolinha índigo = carregado, cinza = vazio),
+          Placa, Rota, Saída, Pedágios e Divergência (vermelho = cobrado a
+          mais que a tarifa, verde = a menos).
         </p>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Colunas: Transporte, Placa, Frota, Origem → Destino, Saída,
-          Chegada, Tipo, Embarcador, Valor pedágios (confirmado por GPS
-          dentro do polígono da praça; se houver também valor estimado —
-          passagem que cai na janela da viagem mas sem confirmação por GPS —
-          aparece como &quot;+ R$ X estimado&quot;), Valor praça (tarifa) e
-          Divergência.
+          Clique numa viagem para abrir o painel de detalhe à direita:
+          embarcador, frota, saída e chegada, valor cobrado (com a parte
+          estimada — passagem que cai na janela da viagem mas sem
+          confirmação por GPS dentro do polígono da praça), tarifa,
+          divergência e a lista de pedágios da viagem com o status de cada
+          um. Clicar num pedágio abre o detalhe da passagem.
         </p>
       </ManualSection>
 
