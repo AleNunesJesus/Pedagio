@@ -2854,10 +2854,25 @@ esperada só existe para passagens validadas (soma de tarifa hoje R$ 357) —
 a divergência fica ≈ valor cobrado enquanto faltar validação.
 
 ### Etapa 3 — demais listas (Passagens, Faturas, Crédito/Débito, cadastros)
+- [x] Peças compartilhadas: `ListaComPainel` (cabeçalho com total e busca,
+  filtros à esquerda, lista, painel à direita), `PainelFiltros`/`GrupoRadio`,
+  `Paginacao` única (`components/ui`) e `hrefCom` (`lib/href`) — saem as 4
+  paginações duplicadas por feature; Viagens passa a usar as peças.
+- [x] Passagens: busca por placa/fatura/viagem, status com cor e contagem
+  (~30 ms cada sob RLS), tabela enxuta (Data/hora, Placa, Praça, Tipo,
+  Eixos, Valor, Status), painel com o resumo (`?passagem=<id>`) e link para
+  a página completa com mapa. No detalhe da fatura a linha abre a página
+  da passagem.
+- [x] Faturas: busca pelo número, painel com valor total, valores por tipo e
+  situação das linhas por status (barras) (`?fatura=<nº|sem-fatura>`).
+- [x] Crédito/Débito: busca pela viagem (parâmetro `viagem` → `busca`),
+  situação com cor e contagem; sem painel (linhas já são agregadas).
+- [ ] Cadastros (praças, tarifas, sugestões, veículos, categorias,
+  embarcadores, estacionamentos, tarifas de estacionamento).
 
 ## Próximo passo
 
-**FASE 26 (novo layout) — etapas 1 e 2 feitas (etapa 2 aguardando conferência visual); depois, etapa 3.**
+**FASE 26 (novo layout) — etapas 1 e 2 commitadas; etapa 3 sem os cadastros feita (aguardando conferência visual); falta cadastros.**
 
 **FASE 25 concluída e commitada (`39439b5`, sem push).** Completar as 110 praças
 pendentes pela tela (filtro "Sem UF" na lista); aprovar as sugestões de

@@ -86,12 +86,20 @@ export function SecaoConsulta() {
           Lista de faturas
         </h3>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Rota <code>/faturas</code>. Filtro por Período de / Período até.
-          Colunas: Fatura (link para o detalhe; &quot;Sem fatura&quot;
-          quando não há número), Período inicial, Período final, Passagens,
-          Contrato, Estacionamento, Valor total e Situação (bolinha verde
-          &quot;OK&quot; quando não há pendência, ou bolinha amarela
-          &quot;N pendente(s)&quot;).
+          Rota <code>/faturas</code>. Busca pelo número da fatura no topo e
+          filtro Período de / Período até na lateral. Colunas: Fatura
+          (&quot;Sem fatura&quot; quando não há número), Período, Passagens,
+          Linhas, Valor total e Situação (bolinha verde &quot;OK&quot;
+          quando não há pendência, ou bolinha amarela &quot;N
+          pendente(s)&quot;).
+        </p>
+        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+          Clique numa fatura para abrir o resumo à direita: valor total a
+          pagar, valor e quantidade por tipo (passagens, contrato,
+          estacionamento, adesão, outras taxas, crédito de plano) e a
+          situação das linhas por status de validação, com barras de
+          proporção. O link &quot;Abrir fatura completa&quot; leva ao
+          detalhe abaixo.
         </p>
         <h3 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
           Detalhe da fatura
@@ -121,36 +129,36 @@ export function SecaoConsulta() {
           Lista de passagens
         </h3>
         <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
-          Rota <code>/passagens</code>. Filtros: Status, Praça, Veículo,
-          Tipo de uso (Passagem/Contrato/Estacionamento), Conferência por
-          eixo (Eixos completos, Eixos suspensos, Eixos a maior, Valor fora
-          da tarifa, Sem tarifa), Embarcador, Viagem (texto), De / Até.
+          Rota <code>/passagens</code>. Busca no topo por placa, número da
+          fatura ou viagem informada. Filtros na lateral: De / Até, Status
+          (com a cor e a quantidade de cada um; status sem nenhuma passagem
+          ficam ocultos), Praça, Tipo de uso (Passagem/Contrato/
+          Estacionamento), Conferência por eixo (Eixos completos, Eixos
+          suspensos, Eixos a maior, Valor fora da tarifa, Sem tarifa),
+          Embarcador, Veículo e Viagem (fatura).
         </p>
         <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-gray-600 dark:text-gray-400">
-          <li>Fatura, Data/hora, Placa, Frota, Praça (ou estacionamento), Tipo.</li>
+          <li>Data/hora, Placa, Praça (ou estacionamento), Tipo.</li>
           <li>
-            <strong className="text-gray-900 dark:text-gray-100">Categoria</strong> —
-            código da categoria tarifária usada; quando estimada a partir do
-            cadastro do veículo (e não da composição real cavalo +
-            carreta(s) da viagem), aparece com &quot;(estimado)&quot; e um
-            aviso explicando a origem.
-          </li>
-          <li>
-            <strong className="text-gray-900 dark:text-gray-100">
-              Viagem (transporte)
-            </strong>{" "}
-            — vínculo com a viagem de transporte: número da viagem quando
-            vinculado (com &quot;(nº não confere)&quot; se o número da
-            fatura não bate com o do sistema de transporte),
-            &quot;Ambíguo (N)&quot; quando há mais de uma viagem candidata
-            no mesmo horário, ou &quot;—&quot; sem vínculo.
-          </li>
-          <li>
-            Valor cobrado,{" "}
             <strong className="text-gray-900 dark:text-gray-100">Eixos</strong> — eixos
             cobrados / eixos da composição (com &quot;TAG&quot; quando veio com
             desconto; em vermelho quando são mais eixos que a composição ou o
-            valor não é múltiplo da tarifa) — e Status (link para o detalhe).
+            valor não é múltiplo da tarifa), Valor e Status.
+          </li>
+          <li>
+            Clique numa passagem para abrir o resumo à direita: status,
+            valor cobrado e esperado, divergência, tipo, fatura, situação
+            do GPS (dentro/fora do polígono, com a distância),{" "}
+            <strong className="text-gray-900 dark:text-gray-100">Categoria</strong>{" "}
+            (com &quot;(estimado)&quot; quando vem do cadastro do veículo e
+            não da composição real cavalo + carreta(s) da viagem),
+            conferência por eixo, embarcador e{" "}
+            <strong className="text-gray-900 dark:text-gray-100">Viagem (transporte)</strong>{" "}
+            — número da viagem quando vinculado (com &quot;(nº não
+            confere)&quot; se o número da fatura não bate com o do sistema de
+            transporte), &quot;Ambíguo (N)&quot; quando há mais de uma viagem
+            candidata no mesmo horário, ou &quot;—&quot; sem vínculo. O link
+            &quot;Abrir passagem completa&quot; leva ao detalhe com mapa.
           </li>
         </ul>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -202,9 +210,10 @@ export function SecaoConsulta() {
           viagem e embarcador identificados.
         </p>
         <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Filtros: Embarcador, Viagem (texto) e Situação (&quot;Crédito e
-          débito&quot;, &quot;Só crédito (sem débito)&quot;, &quot;Só débito
-          (sem crédito)&quot;). Colunas: Viagem, Embarcador, Situação, Qtd.
+          Busca pelo número da viagem no topo; filtros na lateral: Situação
+          (&quot;Crédito e débito&quot;, &quot;Só crédito (sem débito)&quot;,
+          &quot;Só débito (sem crédito)&quot;, cada uma com a quantidade de
+          viagens) e Embarcador. Colunas: Viagem, Embarcador, Situação, Qtd.
           créditos, Creditado, Qtd. débitos, Debitado e Diferença.
         </p>
         <p className="text-sm text-gray-600 dark:text-gray-400">

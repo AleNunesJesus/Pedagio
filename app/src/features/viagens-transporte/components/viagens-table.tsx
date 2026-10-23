@@ -7,7 +7,7 @@ import { ValorSinalizado } from "@/components/ui/valor-sinalizado";
 import { formatBRL } from "@/lib/format";
 import { useSelecaoExclusao } from "@/hooks/use-selecao-exclusao";
 import { excluirViagensTransporte } from "../actions";
-import { hrefViagens } from "../href";
+import { hrefCom } from "@/lib/href";
 
 type Viagem = {
   id: string | null;
@@ -63,7 +63,7 @@ export function ViagensTable({ rows, podeExcluir, searchParams, viagemAtiva }: V
         keyField={(row) => row.id ?? ""}
         emptyMessage="Nenhuma viagem encontrada para esse filtro."
         onLinhaClick={(r) =>
-          r.id && router.push(hrefViagens(searchParams, { viagem: r.id }), { scroll: false })
+          r.id && router.push(hrefCom("/viagens-transporte", searchParams, { viagem: r.id }), { scroll: false })
         }
         linhaAtiva={(r) => !!viagemAtiva && r.id === viagemAtiva}
         selecao={

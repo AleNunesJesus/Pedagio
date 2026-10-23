@@ -1,6 +1,8 @@
-import Link from "next/link";
 import { TextField } from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
+import { PainelFiltros } from "@/components/ui/filtros";
+
+// a busca do cabeçalho da página aponta para este form via atributo form=""
+export const FILTROS_FORM_ID = "filtros-faturas";
 
 type FiltrosFormProps = {
   valores: {
@@ -11,25 +13,23 @@ type FiltrosFormProps = {
 
 export function FiltrosForm({ valores }: FiltrosFormProps) {
   return (
-    <form method="get" className="flex flex-wrap items-end gap-3">
-      <TextField
-        id="dataInicio"
-        name="dataInicio"
-        label="Período de"
-        type="date"
-        defaultValue={valores.dataInicio ?? ""}
-      />
-      <TextField
-        id="dataFim"
-        name="dataFim"
-        label="Período até"
-        type="date"
-        defaultValue={valores.dataFim ?? ""}
-      />
-      <Button type="submit">Filtrar</Button>
-      <Link href="/faturas" className="text-sm text-gray-500 hover:underline dark:text-gray-400">
-        Limpar
-      </Link>
-    </form>
+    <PainelFiltros id={FILTROS_FORM_ID} limparHref="/faturas">
+      <div className="space-y-3">
+        <TextField
+          id="dataInicio"
+          name="dataInicio"
+          label="Período de"
+          type="date"
+          defaultValue={valores.dataInicio ?? ""}
+        />
+        <TextField
+          id="dataFim"
+          name="dataFim"
+          label="Período até"
+          type="date"
+          defaultValue={valores.dataFim ?? ""}
+        />
+      </div>
+    </PainelFiltros>
   );
 }

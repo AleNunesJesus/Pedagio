@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FecharDetalhe } from "@/components/layout/lista-com-painel";
 import { ValorSinalizado } from "@/components/ui/valor-sinalizado";
 import { formatBRL } from "@/lib/format";
 import { STATUS, STATUS_VALIDACAO_INFO, statusLabel } from "@/lib/status-validacao";
@@ -50,16 +51,7 @@ export function ViagemDetalhe({ detalhe, hrefFechar }: { detalhe: Detalhe; hrefF
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{v.numero_transporte ?? "—"}</h2>
           <p className="mt-0.5 text-sm text-gray-700 dark:text-gray-300">{subtitulo}</p>
         </div>
-        <Link
-          href={hrefFechar}
-          scroll={false}
-          aria-label="Fechar detalhe"
-          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden className="h-4 w-4">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </Link>
+        <FecharDetalhe href={hrefFechar} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

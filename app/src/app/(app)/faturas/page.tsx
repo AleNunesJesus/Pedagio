@@ -1,12 +1,21 @@
-import { listFaturas } from "@/features/faturas/queries";
-import { FiltrosForm } from "@/features/faturas/components/filtros-form";
+import { getFaturaResumo, listFaturas } from "@/features/faturas/queries";
+import { FiltrosForm, FILTROS_FORM_ID } from "@/features/faturas/components/filtros-form";
 import { FaturasTable } from "@/features/faturas/components/faturas-table";
-import { Paginacao } from "@/features/faturas/components/paginacao";
+import { FaturaPainel } from "@/features/faturas/components/fatura-painel";
+import { DetalheVazio, ListaComPainel } from "@/components/layout/lista-com-painel";
+import { Paginacao } from "@/components/ui/paginacao";
+import { hrefCom } from "@/lib/href";
+
+const BASE = "/faturas";
+const ICONE_FATURA = "M7 3h10v18l-3-2-2 2-2-2-3 2zM10 8h4M10 12h4";
 
 type SearchParams = {
+  busca?: string;
   dataInicio?: string;
   dataFim?: string;
   pagina?: string;
+  // fatura aberta no painel de detalhe ("sem-fatura" = linhas sem número)
+  fatura?: string;
 };
 
 export default async function FaturasPage({
@@ -17,27 +26,38 @@ export default async function FaturasPage({
   const params = await searchParams;
   const pagina = params.pagina ? Number(params.pagina) : 1;
 
-  const { rows, total, totalPaginas } = await listFaturas({
-    dataInicio: params.dataInicio,
-    dataFim: params.dataFim,
-    pagina,
-  });
+  const [{ erro, rows, total, totalPaginas }, detalhe] = await Promise.all([
+    listFaturas({
+      busca: params.busca,
+      dataInicio: params.dataInicio,
+      dataFim: params.dataFim,
+      pagina,
+    }),
+    params.fatura
+      ? getFaturaResumo(params.fatura === "sem-fatura" ? null : params.fatura)
+      : Promise.resolve(null),
+  ]);
 
   return (
-    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Faturas</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{total} fatura(s) encontrada(s).</p>
-      </div>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <FiltrosForm valores={params} />
-      </section>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <FaturasTable rows={rows} />
-        <Paginacao pagina={pagina} totalPaginas={totalPaginas} searchParams={params} />
-      </section>
-    </main>
+    <ListaComPainel
+      titulo="Faturas"
+      total={total}
+      unidade="fatura(s)"
+      erro={erro}
+      busca={{ formId: FILTROS_FORM_ID, valor: params.busca, placeholder: "Buscar número da fatura" }}
+      filtros={<FiltrosForm valores={params} />}
+      detalhe={
+        detalhe ? (
+          <FaturaPainel fatura={detalhe} hrefFechar={hrefCom(BASE, params, { fatura: undefined })} />
+        ) : (
+          <DetalheVazio icone={ICONE_FATURA}>
+            {params.fatura ? "Fatura não encontrada." : "Clique numa fatura para ver o resumo dela."}
+          </DetalheVazio>
+        )
+      }
+    >
+      <FaturasTable rows={rows} searchParams={params} faturaAtiva={params.fatura} />
+      <Paginacao base={BASE} pagina={pagina} totalPaginas={totalPaginas} searchParams={params} />
+    </ListaComPainel>
   );
 }

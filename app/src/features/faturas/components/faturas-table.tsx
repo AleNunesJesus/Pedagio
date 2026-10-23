@@ -1,37 +1,51 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/data-table";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatNumber } from "@/lib/format";
+import { hrefCom } from "@/lib/href";
 import { STATUS } from "@/lib/status-validacao";
 import { qtdAtencao, type FaturaResumo } from "../queries";
+
+// fatura sem número vira "sem-fatura" na URL (mesma convenção de /faturas/[numero])
+export function chaveFatura(numero: string | null) {
+  return numero ?? "sem-fatura";
+}
 
 function formatData(data: string | null) {
   return data ? new Date(data).toLocaleDateString("pt-BR") : "—";
 }
 
-export function FaturasTable({ rows }: { rows: FaturaResumo[] }) {
+type FaturasTableProps = {
+  rows: FaturaResumo[];
+  searchParams: Record<string, string | undefined>;
+  faturaAtiva?: string;
+};
+
+export function FaturasTable({ rows, searchParams, faturaAtiva }: FaturasTableProps) {
+  const router = useRouter();
   return (
     <DataTable
       rows={rows}
-      keyField={(row) => row.numero_fatura ?? "sem-fatura"}
+      keyField={(row) => chaveFatura(row.numero_fatura)}
       emptyMessage="Nenhuma fatura encontrada para esse filtro."
+      onLinhaClick={(r) =>
+        router.push(hrefCom("/faturas", searchParams, { fatura: chaveFatura(r.numero_fatura) }), { scroll: false })
+      }
+      linhaAtiva={(r) => faturaAtiva === chaveFatura(r.numero_fatura)}
       columns={[
+        { header: "Fatura", render: (r) => r.numero_fatura ?? "Sem fatura" },
         {
-          header: "Fatura",
-          render: (r) => (
-            <Link
-              href={`/faturas/${r.numero_fatura ? encodeURIComponent(r.numero_fatura) : "sem-fatura"}`}
-              className="text-indigo-600 hover:underline dark:text-indigo-400"
-            >
-              {r.numero_fatura ?? "Sem fatura"}
-            </Link>
-          ),
+          header: "Período",
+          render: (r) => `${formatData(r.periodo_inicio)} – ${formatData(r.periodo_fim)}`,
         },
-        { header: "Período inicial", render: (r) => formatData(r.periodo_inicio) },
-        { header: "Período final", render: (r) => formatData(r.periodo_fim) },
-        { header: "Passagens", align: "right", render: (r) => r.qtd_passagem ?? 0 },
-        { header: "Contrato", align: "right", render: (r) => r.qtd_contrato ?? 0 },
-        { header: "Estacionamento", align: "right", render: (r) => r.qtd_estacionamento ?? 0 },
-        { header: "Valor total", align: "right", render: (r) => formatBRL(r.valor_total) },
+        { header: "Passagens", align: "right", render: (r) => formatNumber(r.qtd_passagem ?? 0) },
+        { header: "Linhas", align: "right", render: (r) => formatNumber(r.qtd_total ?? 0) },
+        {
+          header: "Valor total",
+          align: "right",
+          render: (r) => <span className="font-semibold text-gray-900 dark:text-gray-100">{formatBRL(r.valor_total)}</span>,
+        },
         {
           header: "Situação",
           render: (r) => {
@@ -43,7 +57,7 @@ export function FaturasTable({ rows }: { rows: FaturaResumo[] }) {
                   style={{ backgroundColor: atencao > 0 ? STATUS.warning : STATUS.good }}
                   aria-hidden
                 />
-                {atencao > 0 ? `${atencao} pendente(s)` : "OK"}
+                {atencao > 0 ? `${formatNumber(atencao)} pendente(s)` : "OK"}
               </span>
             );
           },

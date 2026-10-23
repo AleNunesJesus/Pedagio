@@ -31,6 +31,8 @@ export type FaturaResumo = {
 };
 
 export type FiltrosFaturas = {
+  // número da fatura
+  busca?: string;
   dataInicio?: string;
   dataFim?: string;
   pagina?: number;
@@ -48,12 +50,14 @@ export async function listFaturas(filtros: FiltrosFaturas) {
     .order("periodo_fim", { ascending: false, nullsFirst: false })
     .range(de, ate);
 
+  if (filtros.busca) query = query.ilike("numero_fatura", `%${filtros.busca}%`);
   if (filtros.dataInicio) query = query.gte("periodo_fim", filtros.dataInicio);
   if (filtros.dataFim) query = query.lte("periodo_inicio", `${filtros.dataFim}T23:59:59`);
 
-  const { data, count } = await query;
+  const { data, count, error } = await query;
 
   return {
+    erro: error?.message ?? null,
     rows: (data ?? []) as FaturaResumo[],
     total: count ?? 0,
     pagina,

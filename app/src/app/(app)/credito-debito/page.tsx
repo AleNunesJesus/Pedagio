@@ -1,13 +1,14 @@
 import { listCreditoDebitoPorViagem } from "@/features/credito-debito/queries";
 import { listEmbarcadores } from "@/features/cadastros/queries";
-import { FiltrosForm } from "@/features/credito-debito/components/filtros-form";
+import { FiltrosForm, FILTROS_FORM_ID } from "@/features/credito-debito/components/filtros-form";
 import { CreditoDebitoTable } from "@/features/credito-debito/components/credito-debito-table";
-import { Paginacao } from "@/features/credito-debito/components/paginacao";
 import type { SituacaoCreditoDebito } from "@/features/credito-debito/situacao";
+import { ListaComPainel } from "@/components/layout/lista-com-painel";
+import { Paginacao } from "@/components/ui/paginacao";
 
 type SearchParams = {
   embarcadorId?: string;
-  viagem?: string;
+  busca?: string;
   situacao?: string;
   pagina?: string;
 };
@@ -26,10 +27,10 @@ export default async function CreditoDebitoPage({
   const params = await searchParams;
   const pagina = params.pagina ? Number(params.pagina) : 1;
 
-  const [{ rows, total, totalPaginas }, embarcadores] = await Promise.all([
+  const [{ erro, rows, total, totalPaginas, contagemPorSituacao }, embarcadores] = await Promise.all([
     listCreditoDebitoPorViagem({
       embarcadorId: params.embarcadorId,
-      viagem: params.viagem,
+      busca: params.busca,
       situacao: situacaoValida(params.situacao),
       pagina,
     }),
@@ -37,30 +38,27 @@ export default async function CreditoDebitoPage({
   ]);
 
   return (
-    <main className="mx-auto max-w-[1800px] space-y-6 px-6 py-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Crédito x débito por viagem
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          {total} viagem(ns) encontrada(s). Diferença entre o valor creditado
-          pelo embarcador e o valor debitado na praça, só passagens reais
-          com viagem e embarcador identificados. &quot;Situação&quot; mostra se
-          a viagem já tem os dois lados ou se um deles ainda está em aberto.
-        </p>
-      </div>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+    <ListaComPainel
+      titulo="Crédito x débito por viagem"
+      total={total}
+      unidade="viagem(ns)"
+      erro={erro}
+      busca={{ formId: FILTROS_FORM_ID, valor: params.busca, placeholder: "Buscar número da viagem" }}
+      filtros={
         <FiltrosForm
           embarcadores={embarcadores.map((e) => ({ id: e.id, nome: e.nome }))}
           valores={params}
+          contagemPorSituacao={contagemPorSituacao}
         />
-      </section>
-
-      <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-        <CreditoDebitoTable rows={rows} />
-        <Paginacao pagina={pagina} totalPaginas={totalPaginas} searchParams={params} />
-      </section>
-    </main>
+      }
+    >
+      <p className="mb-3 px-1 text-sm text-gray-600 dark:text-gray-400">
+        Diferença entre o valor creditado pelo embarcador e o valor debitado na praça, só passagens reais
+        com viagem e embarcador identificados. &quot;Situação&quot; mostra se a viagem já tem os dois lados
+        ou se um deles ainda está em aberto.
+      </p>
+      <CreditoDebitoTable rows={rows} />
+      <Paginacao base="/credito-debito" pagina={pagina} totalPaginas={totalPaginas} searchParams={params} />
+    </ListaComPainel>
   );
 }

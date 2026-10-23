@@ -1,11 +1,13 @@
-import Link from "next/link";
-import { STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
+import { STATUS, STATUS_VALIDACAO_INFO } from "@/lib/status-validacao";
 import { OPCOES_TIPO_USO } from "@/lib/tipo-uso";
 import { OPCOES_MOTIVO_VALOR } from "@/lib/motivo-valor";
 import { SelectField, TextField } from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
+import { GrupoRadio, PainelFiltros } from "@/components/ui/filtros";
 
 type Opcao = { id: string; nome: string };
+
+// a busca do cabeçalho da página aponta para este form via atributo form=""
+export const FILTROS_FORM_ID = "filtros-passagens";
 
 type FiltrosFormProps = {
   pracas: Opcao[];
@@ -22,22 +24,35 @@ type FiltrosFormProps = {
     dataInicio?: string;
     dataFim?: string;
   };
+  contagemPorStatus: Record<string, number>;
 };
 
-export function FiltrosForm({ pracas, veiculos, embarcadores, valores }: FiltrosFormProps) {
+export function FiltrosForm({ pracas, veiculos, embarcadores, valores, contagemPorStatus }: FiltrosFormProps) {
   return (
-    <form method="get" className="flex flex-wrap items-end gap-3">
-      <SelectField
-        id="status"
+    <PainelFiltros id={FILTROS_FORM_ID} limparHref="/passagens">
+      <div className="space-y-3">
+        <TextField id="dataInicio" name="dataInicio" label="De" type="date" defaultValue={valores.dataInicio ?? ""} />
+        <TextField id="dataFim" name="dataFim" label="Até" type="date" defaultValue={valores.dataFim ?? ""} />
+      </div>
+
+      <GrupoRadio
+        legenda="Status"
         name="status"
-        label="Status"
-        placeholder="Todos"
-        defaultValue={valores.status ?? ""}
-        options={Object.entries(STATUS_VALIDACAO_INFO).map(([value, info]) => ({
-          value,
-          label: info.label,
-        }))}
+        valor={valores.status ?? ""}
+        opcoes={[
+          { value: "", label: "Todos" },
+          ...Object.entries(STATUS_VALIDACAO_INFO)
+            .map(([value, info]) => ({
+              value,
+              label: info.label,
+              cor: STATUS[info.role],
+              qtd: contagemPorStatus[value] ?? 0,
+            }))
+            // status zerados só aparecem se estiverem escolhidos
+            .filter((o) => o.qtd > 0 || o.value === valores.status),
+        ]}
       />
+
       <SelectField
         id="pracaId"
         name="pracaId"
@@ -45,14 +60,6 @@ export function FiltrosForm({ pracas, veiculos, embarcadores, valores }: Filtros
         placeholder="Todas"
         defaultValue={valores.pracaId ?? ""}
         options={pracas.map((p) => ({ value: p.id, label: p.nome }))}
-      />
-      <SelectField
-        id="veiculoId"
-        name="veiculoId"
-        label="Veículo"
-        placeholder="Todos"
-        defaultValue={valores.veiculoId ?? ""}
-        options={veiculos.map((v) => ({ value: v.id, label: v.nome }))}
       />
       <SelectField
         id="tipoUso"
@@ -78,34 +85,21 @@ export function FiltrosForm({ pracas, veiculos, embarcadores, valores }: Filtros
         defaultValue={valores.embarcadorId ?? ""}
         options={embarcadores.map((e) => ({ value: e.id, label: e.nome }))}
       />
+      <SelectField
+        id="veiculoId"
+        name="veiculoId"
+        label="Veículo"
+        placeholder="Todos"
+        defaultValue={valores.veiculoId ?? ""}
+        options={veiculos.map((v) => ({ value: v.id, label: v.nome }))}
+      />
       <TextField
         id="viagem"
         name="viagem"
-        label="Viagem"
+        label="Viagem (fatura)"
         placeholder="Número da viagem"
         defaultValue={valores.viagem ?? ""}
       />
-      <TextField
-        id="dataInicio"
-        name="dataInicio"
-        label="De"
-        type="date"
-        defaultValue={valores.dataInicio ?? ""}
-      />
-      <TextField
-        id="dataFim"
-        name="dataFim"
-        label="Até"
-        type="date"
-        defaultValue={valores.dataFim ?? ""}
-      />
-      <Button type="submit">Filtrar</Button>
-      <Link
-        href="/passagens"
-        className="text-sm text-gray-500 hover:underline dark:text-gray-400"
-      >
-        Limpar
-      </Link>
-    </form>
+    </PainelFiltros>
   );
 }

@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { SelectField, TextField } from "@/components/ui/field";
-import { Button } from "@/components/ui/button";
-import { formatNumber } from "@/lib/format";
+import { GrupoRadio, PainelFiltros } from "@/components/ui/filtros";
 
 type Opcao = { id: string; nome: string };
 
@@ -25,51 +23,9 @@ type FiltrosFormProps = {
   };
 };
 
-type OpcaoRadio = { value: string; label: string; qtd?: number; corQtd?: string };
-
-function GrupoRadio({
-  legenda,
-  name,
-  valor,
-  opcoes,
-}: {
-  legenda: string;
-  name: string;
-  valor: string;
-  opcoes: OpcaoRadio[];
-}) {
-  return (
-    <fieldset className="space-y-1.5">
-      <legend className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">{legenda}</legend>
-      {opcoes.map((o) => (
-        <label
-          key={o.value}
-          className="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-        >
-          <input
-            type="radio"
-            name={name}
-            value={o.value}
-            defaultChecked={valor === o.value}
-            className="h-4 w-4 accent-indigo-700"
-          />
-          {o.label}
-          {o.qtd !== undefined && (
-            <span className={`ml-auto text-xs tabular-nums ${o.corQtd ?? "text-gray-500 dark:text-gray-400"}`}>
-              {formatNumber(o.qtd)}
-            </span>
-          )}
-        </label>
-      ))}
-    </fieldset>
-  );
-}
-
 export function FiltrosForm({ veiculos, embarcadores, valores, contagens }: FiltrosFormProps) {
   return (
-    <form id={FILTROS_FORM_ID} method="get" className="space-y-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">Filtros</p>
-
+    <PainelFiltros id={FILTROS_FORM_ID} limparHref="/viagens-transporte">
       <div className="space-y-3">
         <TextField
           id="dataInicio"
@@ -130,18 +86,6 @@ export function FiltrosForm({ veiculos, embarcadores, valores, contagens }: Filt
         defaultValue={valores.veiculoId ?? ""}
         options={veiculos.map((v) => ({ value: v.id, label: v.nome }))}
       />
-
-      <div className="space-y-2">
-        <Button type="submit" fullWidth>
-          Aplicar filtros
-        </Button>
-        <Link
-          href="/viagens-transporte"
-          className="block text-center text-sm text-gray-600 hover:underline dark:text-gray-400"
-        >
-          Limpar filtros
-        </Link>
-      </div>
-    </form>
+    </PainelFiltros>
   );
 }
