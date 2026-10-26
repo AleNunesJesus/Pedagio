@@ -89,7 +89,7 @@ export default async function TarifasPage({ searchParams }: { searchParams: Prom
                 Cadastre ao menos uma praça antes de definir tarifas.
               </p>
             ) : (
-              <TarifaForm pracas={pracas} />
+              <TarifaForm pracas={pracas} tarifas={tarifas} />
             )}
           </PainelNovo>
         ) : undefined

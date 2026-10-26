@@ -3069,7 +3069,18 @@ foi gravada, valor certo por fonte, 20.912 passagens passaram a ter
 conferência de valor, datas mantidas, console limpo; tudo desfeito no fim
 (386 tarifas removidas → passagens revalidadas de volta, sugestões
 pendentes, usuário removido). **As tarifas reais serão gravadas quando o
-usuário clicar em "Gerar sugestões".**
+usuário clicar em "Gerar sugestões".** (Feito pelo usuário em 2026-10-26: 386
+tarifas gravadas, 194 pendentes.)
+
+**Ajuste (2026-10-26) — trocar a praça na edição da tarifa:** relato do
+usuário: ao editar uma tarifa e trocar a praça, o sistema não trazia os
+dados da outra praça — e salvar **movia** a tarifa para ela, deixando a
+original sem tarifa. Agora, na edição, escolher praça que já tem tarifa
+abre a tarifa mais recente dela; praça sem tarifa mostra o aviso de que
+salvar move esta tarifa. Em "Nova tarifa", praça que já tem tarifa mostra a
+atual (valor, vigência, link "abrir"). Página de edição com `key` pela
+tarifa. Navegador (admin temporário) 9/9, incluindo salvar sem mudar sem
+alterar o banco.
 
 **Pendentes:**
 - Sugestões suspeitas para revisão humana: Ecovias Araguaia e

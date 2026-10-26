@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getMeuPapel } from "@/lib/auth/guards";
-import { getTarifa, listPracas } from "@/features/cadastros/queries";
+import { getTarifa, listPracas, listTarifas } from "@/features/cadastros/queries";
 import { TarifaForm } from "@/features/cadastros/components/tarifa-form";
 
 export default async function EditarTarifaPage({
@@ -13,7 +13,7 @@ export default async function EditarTarifaPage({
   if (papel !== "admin") redirect("/cadastros/tarifas");
 
   const { id } = await params;
-  const [tarifa, pracas] = await Promise.all([getTarifa(id), listPracas()]);
+  const [tarifa, pracas, tarifas] = await Promise.all([getTarifa(id), listPracas(), listTarifas()]);
 
   if (!tarifa) notFound();
 
@@ -29,7 +29,7 @@ export default async function EditarTarifaPage({
         <h2 className="mb-3 text-sm font-medium text-gray-900 dark:text-gray-100">
           Editar tarifa
         </h2>
-        <TarifaForm pracas={pracas} tarifa={tarifa} />
+        <TarifaForm key={tarifa.id} pracas={pracas} tarifa={tarifa} tarifas={tarifas} />
       </section>
     </main>
   );
