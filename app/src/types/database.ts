@@ -885,6 +885,7 @@ export type Database = {
           data_texto: string | null;
           horario_texto: string | null;
           criado_em: string;
+          lote_id: string | null;
         };
         Insert: {
           id?: number;
@@ -894,6 +895,7 @@ export type Database = {
           data_texto?: string | null;
           horario_texto?: string | null;
           criado_em?: string;
+          lote_id?: string | null;
         };
         Update: {
           id?: number;
@@ -903,6 +905,7 @@ export type Database = {
           data_texto?: string | null;
           horario_texto?: string | null;
           criado_em?: string;
+          lote_id?: string | null;
         };
         Relationships: [];
       };
@@ -1349,6 +1352,14 @@ export type Database = {
       processar_validacoes_pendentes: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      processar_bloco_posicoes: {
+        Args: { p_lote_id: string; p_limite?: number };
+        Returns: Json;
+      };
+      revalidar_bloco_passagens_gps: {
+        Args: { p_lote_id: string; p_apos?: string | null; p_limite?: number };
+        Returns: Json;
       };
       processar_bloco_viagens_transporte: {
         Args: { p_lote_id: string; p_limite?: number };

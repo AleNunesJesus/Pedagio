@@ -212,12 +212,24 @@ select pedagio.processar_validacoes_pendentes();
 
 ## Posições de GPS (carga em lote — FASE 09)
 
-Mesmo padrão da importação de passagens: tela **Importação** (`/importacao`)
-→ seção "Nova importação de posições de GPS" → escolhe o CSV → o app grava
-na staging e chama `processar_staging_posicoes` automaticamente. Ao
-importar, os pings novos disparam a revalidação automática (FASE 03) das
-passagens `pendente`/`sem_dados_gps` do mesmo veículo que caírem dentro da
-janela de tolerância — não é preciso rodar nada manualmente depois.
+Tela **Importação** (`/importacao`) → seção "Nova importação de posições de
+GPS" → escolhe o CSV → o app lê o arquivo no navegador e envia em blocos de
+3.000 linhas (`TAMANHO_BLOCO_POSICOES`), cada um processado por
+`processar_bloco_posicoes` — sem limite de linhas (FASE 27; antes o arquivo
+inteiro ia numa chamada e passava do limite de 1 MB, além do teto de 5.000
+linhas). A tela mostra duas barras de progresso:
+
+1. **Gravando posições** — os blocos acima. Dentro deles a revalidação
+   automática por ping (trigger da FASE 03) fica desligada: numa carga
+   grande ela validaria a passagem contra o primeiro ponto que chegasse.
+2. **Revalidando passagens** — `revalidar_bloco_passagens_gps`, em blocos de
+   200, revalida as passagens `pendente`/`sem_dados_gps` (pedágio e
+   estacionamento) dos veículos do lote, no período coberto pelas posições do
+   arquivo (com a mesma janela de tolerância), já com todas as posições
+   gravadas.
+
+Não é preciso rodar nada manualmente depois. Inserção avulsa de uma posição
+(fora da importação) continua revalidando na hora pelo trigger.
 
 ### Formato do arquivo
 
@@ -235,7 +247,10 @@ fora do intervalo válido, a `placa` não corresponde a nenhum veículo
 cadastrado (diferente da importação de passagens, aqui não existe um
 status "sem cadastro" — o vínculo com o veículo é obrigatório), ou o ping
 é duplicado (mesmo veículo + mesmo horário já importado antes — a
-importação pode ser reenviada sem medo de duplicar dado).
+importação pode ser reenviada sem medo de duplicar dado). O resultado mostra
+as linhas não importadas por motivo: "Data/hora inválida", "Coordenada
+inválida", "Placa não cadastrada como cavalo mecânico" e "Posição repetida
+(mesmo veículo e horário)".
 
 `fonte` é sempre gravado como `carga_arquivo` nessa importação — o valor
 `api` no mesmo campo fica reservado para uma eventual integração direta
@@ -245,7 +260,8 @@ com o provedor de rastreamento no futuro.
 
 Mesmo fluxo do de passagens: importe o CSV na tabela
 `pedagio.staging_posicao_veiculo` (Table Editor → Insert → Import data
-from CSV, com as colunas da tabela acima) e rode:
+from CSV, com as colunas da tabela acima, deixando `lote_id` vazio) e rode
+(cria o lote, processa em blocos e revalida, tudo numa chamada):
 
 ```sql
 select * from pedagio.processar_staging_posicoes('nome_do_arquivo.csv', 'seu_nome');

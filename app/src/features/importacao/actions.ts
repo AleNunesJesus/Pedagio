@@ -1,10 +1,10 @@
 "use server";
 
-import Papa from "papaparse";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { COLUNAS_PLANILHA_PASSAGENS, type ColunaStagingPassagem } from "./planilha-passagens";
 import { COLUNAS_PLANILHA_VIAGENS, type ColunaStagingViagem } from "./planilha-viagens";
+import { COLUNAS_PLANILHA_POSICOES, type ColunaStagingPosicao } from "./planilha-posicoes";
 
 export type ImportacaoState = {
   error?: string;
@@ -21,22 +21,15 @@ export type ImportacaoState = {
   totalCadastrosCriados?: { pracas: number; estacionamentos: number };
 };
 
-// importação de posições de GPS (passagens e viagens vão em blocos, sem
-// limite de linhas — FASE 23)
-const LIMITE_LINHAS = 5000;
-
-// folga sobre TAMANHO_BLOCO_PASSAGENS / TAMANHO_BLOCO_VIAGENS
+// teto por bloco: TAMANHO_BLOCO_PASSAGENS / _VIAGENS ficam abaixo ou iguais
 const LIMITE_BLOCO = 1000;
+// posições de GPS são linhas curtas: 3.000 ≈ 360 KB (limite do Server Action: 1 MB)
+const LIMITE_BLOCO_POSICOES = 3000;
 const CADASTROS_CRIADOS_LISTADOS = 15;
 
 export type LinhaStagingPassagem = Record<ColunaStagingPassagem, string | null> & { ocorrencia: number };
 export type LinhaStagingViagem = Record<ColunaStagingViagem, string | null>;
-
-function vazio(valor: unknown): string | null {
-  if (typeof valor !== "string") return null;
-  const trimmed = valor.trim();
-  return trimmed === "" ? null : trimmed;
-}
+export type LinhaStagingPosicao = Record<ColunaStagingPosicao, string | null>;
 
 function linhaValida(linha: unknown): linha is LinhaStagingPassagem {
   if (typeof linha !== "object" || linha === null) return false;
@@ -55,7 +48,7 @@ function linhaViagemValida(linha: unknown): linha is LinhaStagingViagem {
 }
 
 async function criarLote(
-  tipo: "passagens" | "viagens_transporte",
+  tipo: "passagens" | "viagens_transporte" | "posicoes_gps",
   arquivoNome: string,
 ): Promise<{ loteId?: string; error?: string }> {
   const supabase = await createClient();
@@ -223,75 +216,131 @@ export async function excluirLotes(ids: string[]): Promise<{ error?: string }> {
   return {};
 }
 
-const COLUNAS_ESPERADAS_POSICOES = ["placa", "latitude", "longitude", "data", "horario"] as const;
+function linhaPosicaoValida(linha: unknown): linha is LinhaStagingPosicao {
+  if (typeof linha !== "object" || linha === null) return false;
+  const l = linha as Record<string, unknown>;
+  return COLUNAS_PLANILHA_POSICOES.every(({ coluna }) => l[coluna] === null || typeof l[coluna] === "string");
+}
 
-export async function importarPosicoes(
-  _prevState: ImportacaoState,
-  formData: FormData,
-): Promise<ImportacaoState> {
-  const arquivo = formData.get("arquivo");
+// Posições de GPS em blocos (FASE 27): mesmo fluxo de passagens/viagens. Os
+// blocos não revalidam passagens (o trigger fica desligado dentro deles); a
+// revalidação roda no fim, em blocos, com todas as posições já gravadas.
+export async function iniciarImportacaoPosicoes(
+  arquivoNome: string,
+): Promise<{ loteId?: string; error?: string }> {
+  return criarLote("posicoes_gps", arquivoNome);
+}
 
-  if (!(arquivo instanceof File) || arquivo.size === 0) {
-    return { error: "Selecione um arquivo CSV." };
+// Lote de GPS do mesmo arquivo que parou no meio (aba fechada, resposta
+// perdida): o app oferece continuar da linha em que parou. Cada linha do
+// arquivo vira uma linha contada em total_linhas, na ordem do arquivo.
+export async function buscarLotePosicoesIncompleto(
+  arquivoNome: string,
+  linhasNoArquivo: number,
+): Promise<{ loteId: string; processadas: number; criadoEm: string } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("lote_importacao")
+    .select("id, total_linhas, created_at")
+    .eq("tipo", "posicoes_gps")
+    .eq("arquivo_nome", arquivoNome.slice(0, 255))
+    .gt("created_at", new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const processadas = data?.total_linhas ?? 0;
+  // igual ao arquivo = posições todas gravadas; o app oferece só a revalidação
+  if (!data || processadas === 0 || processadas > linhasNoArquivo) return null;
+  return { loteId: data.id, processadas, criadoEm: data.created_at };
+}
+
+// Quantas linhas do lote o banco já processou, esperando um bloco que ainda
+// esteja em andamento terminar (staging do lote vazia). Usado para retomar
+// depois de uma resposta que não chegou.
+export async function progressoLotePosicoes(
+  loteId: string,
+): Promise<{ processadas?: number; pendentes?: number; error?: string }> {
+  const supabase = await createClient();
+  const [{ data, error }, { count }] = await Promise.all([
+    supabase.from("lote_importacao").select("total_linhas").eq("id", loteId).single(),
+    supabase.from("staging_posicao_veiculo").select("id", { count: "exact", head: true }).eq("lote_id", loteId),
+  ]);
+  if (error) return { error: error.message };
+  return { processadas: data.total_linhas ?? 0, pendentes: count ?? 0 };
+}
+
+// Linhas gravadas na staging por um bloco que falhou antes de processá-las
+// (não contam em total_linhas): descartadas para serem reenviadas a partir
+// da última linha contada.
+export async function descartarPendentesPosicoes(loteId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("staging_posicao_veiculo").delete().eq("lote_id", loteId);
+  return error ? { error: error.message } : {};
+}
+
+export async function importarBlocoPosicoes(
+  loteId: string,
+  linhas: LinhaStagingPosicao[],
+): Promise<{ processadas?: number; erros?: number; error?: string }> {
+  if (!Array.isArray(linhas) || linhas.length === 0 || linhas.length > LIMITE_BLOCO_POSICOES) {
+    return { error: `Bloco inválido (1 a ${LIMITE_BLOCO_POSICOES} linhas).` };
   }
-
-  const texto = await arquivo.text();
-  const resultado = Papa.parse<Record<string, string>>(texto, {
-    header: true,
-    skipEmptyLines: true,
-  });
-
-  if (resultado.errors.length > 0) {
-    return { error: `Erro ao ler o CSV: ${resultado.errors[0].message}` };
-  }
-
-  const linhas = resultado.data;
-  if (linhas.length === 0) {
-    return { error: "O arquivo não tem nenhuma linha de dados." };
-  }
-
-  const colunasEncontradas = Object.keys(linhas[0]);
-  const temAlgumaColunaEsperada = COLUNAS_ESPERADAS_POSICOES.some((c) =>
-    colunasEncontradas.includes(c),
-  );
-  if (!temAlgumaColunaEsperada) {
-    return {
-      error:
-        "Nenhuma coluna esperada foi encontrada no CSV. Confira os cabeçalhos em docs/importacao.md " +
-        `(esperado: ${COLUNAS_ESPERADAS_POSICOES.join(", ")}).`,
-    };
-  }
-
-  if (linhas.length > LIMITE_LINHAS) {
-    return { error: `O arquivo tem ${linhas.length} linhas — o limite por importação é ${LIMITE_LINHAS}.` };
-  }
-
-  const linhasParaStaging = linhas.map((linha) => ({
-    placa: vazio(linha.placa),
-    latitude_texto: vazio(linha.latitude),
-    longitude_texto: vazio(linha.longitude),
-    data_texto: vazio(linha.data),
-    horario_texto: vazio(linha.horario),
-  }));
+  if (!linhas.every(linhaPosicaoValida)) return { error: "Bloco com linha em formato inesperado." };
 
   const supabase = await createClient();
 
   const { error: insertError } = await supabase
     .from("staging_posicao_veiculo")
-    .insert(linhasParaStaging);
+    .insert(linhas.map((l) => ({ ...l, lote_id: loteId })));
   if (insertError) return { error: `Erro ao gravar na staging: ${insertError.message}` };
 
-  const { data: claims } = await supabase.auth.getClaims();
-  const usuario = (claims?.claims?.email as string | undefined) ?? null;
-
-  const { data: lote, error: rpcError } = await supabase.rpc("processar_staging_posicoes", {
-    p_arquivo_nome: arquivo.name,
-    p_usuario: usuario,
+  const { data, error } = await supabase.rpc("processar_bloco_posicoes", {
+    p_lote_id: loteId,
+    p_limite: linhas.length,
   });
-  if (rpcError) return { error: `Erro ao processar a importação: ${rpcError.message}` };
+  if (error) return { error: `Erro ao processar o bloco: ${error.message}` };
+
+  const resultado = data as { processadas: number; erros: number };
+  return { processadas: resultado.processadas, erros: resultado.erros };
+}
+
+// Um bloco da revalidação final; apos = última passagem do bloco anterior
+// (nulo na primeira chamada, que também devolve o total)
+export async function revalidarBlocoPosicoes(
+  loteId: string,
+  apos: string | null,
+  limite: number,
+): Promise<{ processadas?: number; ultimoId?: string | null; total?: number | null; error?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("revalidar_bloco_passagens_gps", {
+    p_lote_id: loteId,
+    p_apos: apos,
+    p_limite: limite,
+  });
+  if (error) return { error: `Erro ao revalidar as passagens: ${error.message}` };
+
+  const r = data as { processadas: number; ultimo_id: string | null; total: number | null };
+  return { processadas: r.processadas, ultimoId: r.ultimo_id, total: r.total };
+}
+
+export async function finalizarImportacaoPosicoes(loteId: string): Promise<ImportacaoState> {
+  const supabase = await createClient();
+
+  await atualizarEstatisticas(supabase);
+
+  const { data: lote, error } = await supabase
+    .from("lote_importacao")
+    .select("id, total_linhas, total_erros, erros_por_motivo")
+    .eq("id", loteId)
+    .single();
+  if (error) return { error: `Erro ao ler o resultado do lote: ${error.message}` };
 
   revalidatePath("/importacao");
+  revalidatePath("/rastreamento");
+  revalidatePath("/passagens");
+  revalidatePath("/dashboard");
   return {
     lote: { id: lote.id, total_linhas: lote.total_linhas, total_erros: lote.total_erros },
+    errosPorMotivo: (lote.erros_por_motivo ?? {}) as Record<string, number>,
   };
 }

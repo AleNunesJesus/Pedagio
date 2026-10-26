@@ -136,10 +136,19 @@ export function SecaoImportacao() {
           ]}
         />
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          A placa precisa corresponder a um veículo já cadastrado. Pings
-          novos revalidam automaticamente as passagens pendentes ou sem
-          dados de GPS daquele veículo — não é preciso rodar nada
-          manualmente depois de importar.
+          A placa precisa corresponder a um cavalo mecânico já cadastrado.
+          Sem limite de linhas: o arquivo é lido no navegador e enviado em
+          blocos, com duas barras de progresso — primeiro &quot;gravando
+          posições&quot;, depois &quot;revalidando passagens&quot; (as
+          passagens pendentes ou sem dados de GPS desses veículos no período
+          do arquivo, conferidas já com todas as posições gravadas). Não é
+          preciso rodar nada depois. Não feche a aba durante a importação; se
+          uma resposta do servidor não chegar, a tela confere onde parou e
+          continua sozinha. Se a importação for interrompida (aba fechada,
+          queda), escolha o mesmo arquivo de novo: a tela oferece continuar
+          da linha em que parou.
+          Linhas não importadas aparecem agrupadas por motivo (data/hora ou
+          coordenada inválida, placa não cadastrada, posição repetida).
         </p>
       </ManualSection>
 

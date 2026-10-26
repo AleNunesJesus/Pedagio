@@ -20,9 +20,12 @@ export function useAvisoAoSair(ativo: boolean) {
 export function BarraProgresso({
   progresso,
   unidade = "linhas processadas",
+  textoInicial = "Lendo o arquivo...",
 }: {
   progresso: Progresso;
   unidade?: string;
+  // enquanto o total ainda não é conhecido
+  textoInicial?: string;
 }) {
   return (
     <div className="space-y-1" role="status" aria-live="polite">
@@ -34,7 +37,7 @@ export function BarraProgresso({
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400">
         {progresso.total === 0
-          ? "Lendo o arquivo..."
+          ? textoInicial
           : `${formatNumber(progresso.enviadas)} de ${formatNumber(progresso.total)} ${unidade} — não feche esta aba.`}
       </p>
     </div>

@@ -2879,7 +2879,81 @@ a divergência fica ≈ valor cobrado enquanto faltar validação.
   busca, via form oculto). Sai `cadastros/layout.tsx`; as 8 páginas de
   edição/criação ganharam contêiner próprio.
 
+## FASE 27 — Importação de posições de GPS em blocos
+
+**Gatilho (2026-10-23):** importar um CSV de GPS de mais de 10 MB falhou
+com "Body exceeded 1 MB limit" (o console mostrava só um aviso de
+hydration, que era da extensão Dark Reader). A importação de GPS ainda
+mandava o arquivo inteiro numa chamada e limitava a 5.000 linhas — passagens
+e viagens já iam em blocos desde a FASE 23. Além disso, o trigger que
+revalida passagens a cada posição inserida, numa carga grande, validaria a
+passagem contra o primeiro ponto que chegasse (se fora do polígono, ela não
+seria reconferida quando o ponto certo chegasse no bloco seguinte).
+
+**Decisão do usuário (2026-10-23):** importar o arquivo e ir consumindo as
+linhas com barra de progresso, como nas demais importações.
+
+**Status:** 🟢 Concluída (2026-10-23, aguardando teste do usuário com o
+arquivo real)
+
+- [x] Migration `20261024210000_pedagio_fase27_gps_em_blocos` (aplicada):
+  `staging_posicao_veiculo.lote_id` (FK com cascade + índice);
+  `processar_bloco_posicoes(lote, limite)` set-based, SECURITY DEFINER com a
+  checagem de autorização dos outros blocos, erros por motivo (data/hora
+  inválida, coordenada inválida, placa não cadastrada como cavalo, posição
+  repetida); trigger `trg_revalidar_passagens_por_posicao` sai cedo com o
+  GUC local `pedagio.gps_em_lote = on` (ligado só dentro do bloco);
+  `revalidar_bloco_passagens_gps(lote, apos, limite)` revalida em blocos,
+  com cursor por id, as passagens pendentes/sem GPS (pedágio e
+  estacionamento) dos veículos e do período do lote;
+  `processar_staging_posicoes` (caminho manual) vira laço sobre os dois.
+- [x] App: leitura do CSV no navegador, blocos de 1.000 posições e de 200
+  passagens na revalidação, barra de progresso em duas etapas, erros por
+  motivo; sai o limite de 5.000 linhas e a ação antiga.
+- [x] Ensaio com rollback como usuário autenticado (RLS): motivos certos,
+  trigger desligado nos blocos, passagem com ponto fora do polígono chegando
+  primeiro e ponto dentro a 30 s chegando depois → **OK**. Volume: 5.000
+  posições em blocos de 1.000 (~0,3 s cada) e 5.000 passagens revalidadas em
+  8,8 s no total (pior bloco de 200: 0,8 s).
+- [x] `docs/importacao.md` e Manual atualizados.
+- [x] Fix (1º teste do usuário, arquivo de 4.739.209 linhas): pela API o bloco
+  falhava com "UPDATE requires a WHERE clause" — o PostgREST carrega a
+  extensão safeupdate, que bloqueia UPDATE sem WHERE até em tabela temporária;
+  o ensaio por conexão direta não a carrega. Migration
+  `20261024220000_pedagio_fase27_fix_safeupdate` calcula o motivo no INSERT.
+  Conferido de ponta a ponta pela API (usuário de teste criado e removido,
+  posições em 2030 sem tocar dados reais): 2 blocos de 3.000 (~360 KB cada,
+  0,7–1,8 s no banco). Bloco de posições sobe para 3.000
+  (`LIMITE_BLOCO_POSICOES`).
+- [x] Retomada (2º teste do usuário): a importação parou em 873.000 na tela
+  com 876.000 já contadas no banco — a resposta de um bloco não chegou ao
+  navegador e o laço ficou esperando para sempre (banco ocioso, servidor no
+  ar). Agora: tempo limite de 2 min por chamada; em falha, a tela lê no banco
+  quantas linhas o lote já contou (esperando um bloco em andamento esvaziar a
+  staging; linhas paradas 30 s na staging são descartadas e reenviadas) e
+  continua dali, até 5 falhas seguidas; revalidação repete o bloco. Escolher
+  de novo o mesmo arquivo oferece continuar o lote interrompido (ou só
+  revalidar, se todas as linhas já foram gravadas). Ações novas:
+  `buscarLotePosicoesIncompleto`, `progressoLotePosicoes`,
+  `descartarPendentesPosicoes`.
+- [x] **Limite do plano gratuito (2026-10-23):** a importação retomada chegou a
+  2.589.000 de 4.739.209 linhas (2.048.589 posições, 247 veículos,
+  28/08–30/09) e o banco foi a 868 MB — acima dos 500 MB do plano gratuito, o
+  Supabase pôs o projeto (compartilhado com Ticket/Treino/Fluxo) em modo só
+  leitura, o que parou a importação. Medido: ~330 bytes por posição com
+  índices (`posicao_veiculo_veiculo_data_idx` duplica o índice único
+  `(veiculo_id, data_hora)`, 136 MB) e só ~6,5% das posições ficam a menos
+  de 10 min de uma passagem do mesmo veículo. **Decisão do usuário:** apagar
+  todas as posições do lote e, mais tarde, importar um período menor (sistema
+  ainda em validação). Feito com escrita liberada só na sessão de manutenção
+  (procedimento do Supabase): lote e 2.048.589 posições apagados, VACUUM FULL
+  — banco em 164 MB, modo só leitura levantado. Ficam as 12 posições de teste
+  de setembro. Para a próxima carga: folga de ~330 MB ≈ 1 milhão de posições
+  no teto; mirar bem menos (ex.: uma semana).
+
 ## Próximo passo
+
+**FASE 27 (GPS em blocos) feita; carga real abortada por limite do plano gratuito (posições apagadas) — próxima carga com período menor.**
 
 **FASE 26 (novo layout) concluída e commitada.**
 
