@@ -5,7 +5,8 @@ import { DataTable } from "@/components/ui/data-table";
 import { formatBRL, formatNumber } from "@/lib/format";
 import { hrefCom } from "@/lib/href";
 import { STATUS } from "@/lib/status-validacao";
-import { qtdAtencao, type FaturaResumo } from "../queries";
+import { qtdAtencao } from "../atencao";
+import type { FaturaResumo } from "../queries";
 
 // fatura sem número vira "sem-fatura" na URL (mesma convenção de /faturas/[numero])
 export function chaveFatura(numero: string | null) {

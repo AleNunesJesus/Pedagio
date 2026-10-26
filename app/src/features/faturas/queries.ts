@@ -73,10 +73,6 @@ export async function getFaturaResumo(numeroFatura: string | null): Promise<Fatu
   return data as FaturaResumo | null;
 }
 
-export function qtdAtencao(f: FaturaResumo): number {
-  return (f.qtd_total ?? 0) - (f.qtd_ok ?? 0) - (f.qtd_nao_aplicavel ?? 0);
-}
-
 export async function listPassagensDaFatura(numeroFatura: string | null) {
   const supabase = await createClient();
   let query = supabase
