@@ -129,9 +129,13 @@ export function SecaoCadastros() {
           período e o sistema sugere, para cada praça sem tarifa nesse
           período, o valor por eixo que explica o maior número de débitos
           das faturas, ao lado da tarifa publicada no OpenStreetMap
-          (mantida por voluntários, pode estar desatualizada). Filtros:
-          Fatura e OSM concordam, Divergem, Sem OSM, Todas. Ao aprovar
-          (com o valor da fatura ou do OSM), a tarifa é gravada a partir do
+          (mantida por voluntários, pode estar desatualizada) e, nas praças
+          federais, da tarifa da ANTT com a data da coleta (verde quando bate
+          com a fatura, cheia ou com 5% de TAG; a ANTT nem sempre está em dia
+          com o último reajuste). Filtros: Situação (Fatura e OSM concordam,
+          Divergem, Sem OSM, Todas) e ANTT (Fatura = ANTT, Fatura ≠ ANTT, Sem
+          ANTT, Todas), combináveis. Ao aprovar (com o valor da fatura, do OSM
+          ou da ANTT), a tarifa é gravada a partir do
           início do período — fechando a tarifa anterior da praça, se
           houver — e as passagens da praça são revalidadas; acompanhe a
           barra de progresso e não feche a aba. Descartar só tira a

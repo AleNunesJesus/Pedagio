@@ -2951,7 +2951,124 @@ arquivo real)
   de setembro. Para a próxima carga: folga de ~330 MB ≈ 1 milhão de posições
   no teto; mirar bem menos (ex.: uma semana).
 
+## FASE 28 — Tarifas oficiais da ANTT como terceira fonte
+
+**Gatilho (2026-10-26):** as sugestões de tarifa (FASE 24) só têm duas
+fontes, fatura e OSM, e o OSM é colaborativo e às vezes está defasado. A
+ANTT não publica tarifas em dados abertos (conferido na FASE 24), mas o
+portal de rodovias tem um **painel público em Power BI, "Tarifas
+Vigentes"** (desde mai/2026), cujos dados podem ser lidos pela API pública do
+próprio painel (`wabi-brazil-south-api.analysis.windows.net/public/reports/
+querydata`, cabeçalho `X-PowerBI-ResourceKey`, sem login).
+
+**O que o painel traz (lido em 2026-10-26):** 3.507 linhas, 37
+concessionárias, 241 praças federais (inclui os lotes delegados do PR).
+Tabela `Tarifas Vigentes`: concessionária, praça, categoria, tipo de veículo,
+rodagem, **número de eixos**, multiplicador, valor, **data da coleta**,
+ativo/inativo (o valor anterior fica como inativo — dá o reajuste). Tabela
+`Loc Praças`: concessionária, nome, rodovia, km, UF, município,
+latitude/longitude. Cuidado: os visuais do painel **somam** as categorias de
+mesma descrição (ex.: "categoria 21 × 15" = categorias 6+7+8); a consulta tem
+que agrupar por categoria/eixos, não agregar.
+
+**Comparação exploratória (só leitura) com a fatura de set/2026:** casando
+pela distância do centroide do polígono ao ponto da ANTT (≤ 3 km), 239 das
+590 praças casaram. Valor por eixo da ANTT (caminhão, rodagem dupla, valor ÷
+eixos) contra a sugestão pendente:
+
+| | Praças |
+|---|---|
+| fatura = ANTT | 135 |
+| fatura = ANTT − 5% (TAG) | 17 |
+| fatura = valor anterior (inativo) da ANTT | 15 |
+| não batem | 67 |
+
+Das 67: (a) **painel defasado** em algumas concessionárias — RioSP, MSVia e
+lotes do PR com última coleta em 2025 e fatura de set/2026 já um pouco acima;
+(b) **sugestões suspeitas** — Ecovias Araguaia e Transbrasiliana com a
+sugestão da fatura ≈ metade da ANTT, Ecovias Minas Goiás/Itumbiara acima,
+nesses casos ANTT e OSM concordam entre si. Ou seja: ANTT não substitui a
+fatura, mas é a melhor referência para aprovar e para achar sugestão errada.
+
+**Fora do escopo (avaliado):** praças estaduais (~350). ARTESP publica a
+tabela no DOE/site a cada reajuste anual (1º/07, +4,72% em 2026), sem API —
+candidata a uma importação de planilha numa fase própria. RS/MG/demais
+estados: PDF/notícia, sem fonte estruturada. APIs pagas (TollGuru, Maplink,
+Repom) cobrem tudo por eixo — só se a cobertura estadual virar problema.
+
+**Status:** 🟢 Concluída (2026-10-26, plano aprovado pelo usuário no mesmo
+dia) — aguardando conferência do usuário na tela
+
+- [x] Migration `20261027160000_pedagio_fase28_tarifa_antt` (aplicada):
+  `tarifa_eixo_antt` (instantâneo; concessionária/praça da ANTT,
+  `distancia_m`, `valor_eixo` + `coletado_em`, `valor_eixo_anterior` +
+  `anterior_coletado_em`, linhas do painel em `categorias` jsonb), RLS no
+  padrão + grants explícitos a `authenticated`/`service_role`;
+  `tarifa_eixo_sugestao` + `valor_eixo_antt`, `antt_coletado_em`,
+  `antt_concorda`; `gerar_sugestoes_tarifa` copia a ANTT (o valor anterior
+  quando só ele bate com a fatura) e a usa **antes do OSM** no desempate e na
+  leitura cheio/TAG da praça; `aprovar_sugestoes_tarifa` aceita fonte
+  `antt`. Versão posterior à última do histórico compartilhado (Treino
+  `20261027150100`).
+- [x] Script `app/scripts/carregar-tarifas-antt.mjs` (versionado; `pg` como
+  devDependency): lê o painel agrupando por todas as colunas, valor por eixo
+  = moda de valor ÷ eixos nas categorias de caminhão ativas, casa pelo
+  centroide do polígono (≤ 3 km), descarta rodovia diferente e ambíguas;
+  ensaio por padrão, `--gravar` para gravar. **Achado:** 17 praças da BR-153/
+  BR-262 apareciam duas vezes (CONCEBRA, concessão antiga, e Way 153/Way 262
+  no mesmo ponto) — a fatura cobra o valor da Way (Itumbiara 14,90); na
+  ambiguidade, concessão substituída perde (`SUBSTITUIDAS`). Carregado:
+  **259 praças** (73 com valor anterior), 2 de fora por rodovia diferente
+  (Jacarezinho AUX BR-153 × BR-369; Arujá SP-021 × Arujá Rodoanel BR-116).
+- [x] Tela de sugestões: coluna "ANTT (por eixo)" com a data da coleta
+  (verde bate / laranja diverge), grupo de filtro "ANTT (praças federais)"
+  combinável com "Situação" (contagens cruzadas), botão "Aprovar com valor
+  da ANTT", crédito ao portal da ANTT. A coluna "Situação" virou cor no
+  próprio valor do OSM (a tabela não cabia sem rolagem lateral).
+- [x] Docs (`modelo-dados.md`) e Manual (sugestões de tarifa).
+- [x] Verificação: ensaio da migration em rollback 9/9 (gerar nova com ANTT
+  vazia = gerar antiga sobre os mesmos dados, 580 = 580; cópia/concordância;
+  aprovar com `antt`; fonte inválida; operador lê e não exclui; sem perfil
+  não lê); ensaio com ANTT carregada × sem ANTT; advisors por SQL (RLS,
+  policies, grants, search_path, anon sem execute em aprovar); `tsc`/
+  `eslint`/`next build` limpos; navegador (dev server do usuário, admin
+  temporário, Playwright) 9/9 — gerar pela tela, coluna e filtro (215 = 215),
+  data da coleta, tabela sem rolagem lateral a 1400 px, aprovar com ANTT
+  (grava 21,00 em Duque de Caxias), 390 px, console limpo (o aviso de
+  hydration do 1º teste era o `caret-color` que o screenshot do Playwright
+  injeta); limpeza conferida (tarifa do teste removida → passagem voltou a
+  sem tarifa, sugestão voltou a pendente, usuário removido).
+
+**Resultado (fatura 30/08–30/09/2026):** 580 sugestões (eram 499 em 22/10
+— a base cresceu desde então), 277 com ANTT: **215 batem**, 62 divergem.
+O desempate pela ANTT mudou 25 sugestões, quase todas da leitura com TAG
+para o valor cheio oficial (ex.: BR-101/RJ, Casimiro de Abreu, 10,26 →
+10,80 = ANTT; 10,26 = 10,80 − 5%). Das 62 que divergem, a maioria é painel defasado
+(coleta em 2025 e fatura = OSM: RioSP, Motiva Pantanal, Nova 381, EPR
+Litoral Pioneiro, Ecovias Cerrado).
+
+**Estado deixado no banco:** `tarifa_eixo_antt` com 259 praças; 580
+sugestões pendentes (geradas pela tela no teste, já com ANTT); nenhuma tarifa
+aprovada além de Franco da Rocha — **aprovar pela tela** (sugestão: filtro
+"Fatura = ANTT" → aprovar com valor da ANTT).
+
+**Pendentes:**
+- Sugestões suspeitas para revisão humana: Ecovias Araguaia e
+  Transbrasiliana (fatura ≈ metade da ANTT e do OSM) e Elovias (13,30 × 21,00)
+  — todas com 1–6 débitos, provavelmente ruído/eixos atípicos; não aprovar
+  pela fatura sem olhar.
+- Rodar o script de novo a cada reajuste (ANTT: datas variam por
+  concessão) e gerar as sugestões outra vez.
+- Praças estaduais (ARTESP etc.) seguem só com fatura + OSM.
+
+**Risco:** o endpoint do Power BI não é uma API oficial; se a ANTT mudar o
+painel, o script quebra. Por isso a fonte é um **instantâneo no banco**, sem
+chamada externa em tempo de execução.
+
 ## Próximo passo
+
+**FASE 28 (tarifas ANTT) concluída — conferir a tela de sugestões e aprovar
+as que batem com a ANTT.**
 
 **FASE 27 (GPS em blocos) feita; carga real abortada por limite do plano gratuito (posições apagadas) — próxima carga com período menor.**
 

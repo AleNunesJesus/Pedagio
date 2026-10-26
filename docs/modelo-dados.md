@@ -149,13 +149,34 @@ chamada externa em tempo de execução; licença ODbL, crédito na tela).
 | osm_ids | text[] | cabines usadas (`node/…`, `way/…`) |
 | carregado_em | timestamptz | |
 
+### `tarifa_eixo_antt` (FASE 28)
+Instantâneo da tarifa por eixo das praças federais, do painel público
+"Tarifas Vigentes" da ANTT (Power BI), carregado por
+`app/scripts/carregar-tarifas-antt.mjs` (sem chamada externa em tempo de
+execução). O script substitui a tabela inteira; casa cada praça nossa com a
+praça da ANTT mais próxima do centroide do polígono (≤ 3 km), descartando
+rodovia diferente e ambíguas (duas praças da ANTT no raio com valores
+diferentes — a não ser que uma seja de concessão substituída, ex.: CONCEBRA
+→ Way 153/262).
+
+| coluna | tipo | notas |
+|---|---|---|
+| praca_id | pk, fk praca_pedagio | `on delete cascade` |
+| concessionaria / praca_antt | text | como no painel |
+| distancia_m | int | centroide do polígono → ponto da ANTT |
+| valor_eixo | numeric(10,2) | moda de valor ÷ eixos nas categorias de caminhão (rodagem dupla, 2+ eixos) ativas |
+| coletado_em | date null | data de coleta mais recente dessas linhas |
+| valor_eixo_anterior / anterior_coletado_em | null | idem nas linhas inativas da coleta mais recente (valor antes do reajuste); nulo se igual ao atual |
+| categorias | jsonb | linhas do painel da praça (categoria, tipo, rodagem, eixos, valor, coleta, ativo) |
+| carregado_em | timestamptz | |
+
 ### `tarifa_eixo_sugestao` (FASE 24)
 Sugestão de valor por eixo por praça, calculada das faturas de um período
 (`gerar_sugestoes_tarifa`) e comparada com o OSM. Se dividir o período num
 dia de corte explica ≥ 5% a mais dos débitos (mínimo 5), a praça recebe duas
 sugestões, uma por trecho (reajuste no meio do mês — ex.: Litoral Sul 5,70
 até 13/09 e 5,90 a partir de 14/09). Aprovar (`aprovar_sugestoes_tarifa`,
-fonte fatura ou OSM) grava `tarifa_praca` a partir de `periodo_inicio`,
+fonte fatura, OSM ou ANTT) grava `tarifa_praca` a partir de `periodo_inicio`,
 fechando a tarifa aberta anterior e terminando na véspera de uma tarifa
 posterior já gravada (a ordem de aprovação dos trechos não importa).
 
@@ -168,6 +189,8 @@ posterior já gravada (a ordem de aprovação dos trechos não importa).
 | passagens_total / passagens_explicadas | int | débitos do período / explicados com eixos ≤ composição |
 | valor_eixo_osm / osm_conferido_em | null | cópia de `tarifa_eixo_osm` no momento da geração |
 | fontes_concordam | boolean | \|fatura − OSM\| ≤ 0,01 |
+| valor_eixo_antt / antt_coletado_em | null | FASE 28: cópia de `tarifa_eixo_antt` na geração — o valor anterior quando só ele bate com a fatura, senão o atual. A ANTT também desempata os candidatos antes do OSM |
+| antt_concorda | boolean | fatura = ANTT ou ANTT − 5% (TAG), ± 0,01 |
 | status | text | `pendente` \| `aprovada` \| `descartada` |
 | decidido_por / decidido_em | | e-mail do JWT e momento da decisão |
 | tarifa_praca_id | fk tarifa_praca null | tarifa gravada na aprovação; `on delete set null` |

@@ -26,7 +26,18 @@ type Sugestao = {
   valor_eixo_osm: number | null;
   osm_conferido_em: string | null;
   fontes_concordam: boolean;
+  valor_eixo_antt: number | null;
+  antt_coletado_em: string | null;
+  antt_concorda: boolean;
   praca_pedagio: { nome: string } | null;
+};
+
+type Fonte = "fatura" | "osm" | "antt";
+
+const ROTULO_FONTE: Record<Fonte, string> = {
+  fatura: "valor da fatura",
+  osm: "valor do OSM",
+  antt: "valor da ANTT",
 };
 
 // aprovar revalida as passagens da praça; blocos limitados por passagens
@@ -55,14 +66,47 @@ function dataCurta(iso: string): string {
   return `${dia}/${mes}`;
 }
 
-function Situacao({ r }: { r: Sugestao }) {
-  if (r.valor_eixo_osm === null) {
-    return <span className="text-gray-500 dark:text-gray-400">Sem OSM</span>;
-  }
-  return r.fontes_concordam ? (
-    <span className="text-green-700 dark:text-green-400">Concordam</span>
-  ) : (
-    <span className="text-amber-700 dark:text-amber-400">Divergem</span>
+function dataComAno(iso: string): string {
+  const [ano, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${ano.slice(2)}`;
+}
+
+// valor da ANTT + data da coleta; verde quando bate com a fatura (cheio ou −5%)
+function Antt({ r }: { r: Sugestao }) {
+  if (r.valor_eixo_antt === null) return <span className="text-gray-400">—</span>;
+  return (
+    <span
+      title={
+        r.antt_concorda
+          ? "Bate com a fatura (valor cheio ou com 5% de TAG)"
+          : "Diverge da fatura — a coleta da ANTT pode ser anterior ao último reajuste"
+      }
+    >
+      <span className={r.antt_concorda ? COR_BATE : COR_DIVERGE}>
+        {formatBRL(r.valor_eixo_antt)}
+      </span>
+      {r.antt_coletado_em && (
+        <span className="block text-xs text-gray-400">coleta {dataComAno(r.antt_coletado_em)}</span>
+      )}
+    </span>
+  );
+}
+
+const COR_BATE = "text-green-700 dark:text-green-400";
+const COR_DIVERGE = "text-amber-700 dark:text-amber-400";
+
+// valor do OSM; verde quando concorda com a fatura
+function Osm({ r }: { r: Sugestao }) {
+  if (r.valor_eixo_osm === null) return <span className="text-gray-400">—</span>;
+  return (
+    <span
+      title={`${r.fontes_concordam ? "Concorda" : "Diverge"} da fatura — ${
+        r.osm_conferido_em ? `conferido no OSM em ${r.osm_conferido_em}` : "sem data de conferência no OSM"
+      }`}
+      className={r.fontes_concordam ? COR_BATE : COR_DIVERGE}
+    >
+      {formatBRL(r.valor_eixo_osm)}
+    </span>
   );
 }
 
@@ -79,6 +123,7 @@ export function SugestoesTarifaList({ rows, isAdmin }: { rows: Sugestao[]; isAdm
   const ids = rows.map((r) => r.id);
   const escolhidas = rows.filter((r) => selecionados.has(r.id));
   const todasComOsm = escolhidas.length > 0 && escolhidas.every((r) => r.valor_eixo_osm !== null);
+  const todasComAntt = escolhidas.length > 0 && escolhidas.every((r) => r.valor_eixo_antt !== null);
 
   function toggle(id: string) {
     setSelecionados((prev) => {
@@ -89,12 +134,11 @@ export function SugestoesTarifaList({ rows, isAdmin }: { rows: Sugestao[]; isAdm
     });
   }
 
-  async function aprovar(fonte: "fatura" | "osm") {
+  async function aprovar(fonte: Fonte) {
     if (escolhidas.length === 0) return;
-    const rotulo = fonte === "osm" ? "valor do OSM" : "valor da fatura";
     if (
       !window.confirm(
-        `Aprovar ${escolhidas.length} sugestão(ões) com o ${rotulo}? As passagens dessas praças serão revalidadas.`,
+        `Aprovar ${escolhidas.length} sugestão(ões) com o ${ROTULO_FONTE[fonte]}? As passagens dessas praças serão revalidadas.`,
       )
     ) {
       return;
@@ -160,6 +204,15 @@ export function SugestoesTarifaList({ rows, isAdmin }: { rows: Sugestao[]; isAdm
           >
             Aprovar com valor do OSM
           </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={ocupado || !todasComAntt}
+            title={todasComAntt ? undefined : "Alguma selecionada não tem valor da ANTT"}
+            onClick={() => aprovar("antt")}
+          >
+            Aprovar com valor da ANTT
+          </Button>
           <Button size="sm" variant="destructive" disabled={ocupado} onClick={descartar}>
             {descartando ? "Descartando..." : "Descartar"}
           </Button>
@@ -207,19 +260,8 @@ export function SugestoesTarifaList({ rows, isAdmin }: { rows: Sugestao[]; isAdm
               </span>
             ),
           },
-          {
-            header: "OSM (por eixo)",
-            align: "right",
-            render: (r) =>
-              r.valor_eixo_osm === null ? (
-                "—"
-              ) : (
-                <span title={r.osm_conferido_em ? `conferido no OSM em ${r.osm_conferido_em}` : "sem data de conferência no OSM"}>
-                  {formatBRL(r.valor_eixo_osm)}
-                </span>
-              ),
-          },
-          { header: "Situação", render: (r) => <Situacao r={r} /> },
+          { header: "OSM (por eixo)", align: "right", render: (r) => <Osm r={r} /> },
+          { header: "ANTT (por eixo)", align: "right", render: (r) => <Antt r={r} /> },
         ]}
       />
     </div>

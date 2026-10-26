@@ -18,13 +18,24 @@ const FILTROS = [
 
 type Filtro = (typeof FILTROS)[number]["valor"];
 
+// FASE 28: segunda dimensão, contra a tarifa publicada pela ANTT
+const FILTROS_ANTT = [
+  { valor: "todas", label: "Todas" },
+  { valor: "bate", label: "Fatura = ANTT", cor: STATUS.good },
+  { valor: "diverge", label: "Fatura ≠ ANTT", cor: STATUS.serious },
+  { valor: "sem", label: "Sem ANTT", cor: STATUS.neutral },
+] as const;
+
+type FiltroAntt = (typeof FILTROS_ANTT)[number]["valor"];
+
 export default async function SugestoesTarifaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filtro?: string; busca?: string }>;
+  searchParams: Promise<{ filtro?: string; antt?: string; busca?: string }>;
 }) {
-  const { filtro: filtroParam, busca } = await searchParams;
+  const { filtro: filtroParam, antt: anttParam, busca } = await searchParams;
   const filtro: Filtro = FILTROS.some((f) => f.valor === filtroParam) ? (filtroParam as Filtro) : "concordam";
+  const filtroAntt: FiltroAntt = FILTROS_ANTT.some((f) => f.valor === anttParam) ? (anttParam as FiltroAntt) : "todas";
 
   const [sugestoes, papel, periodo] = await Promise.all([
     listSugestoesTarifa(),
@@ -34,9 +45,15 @@ export default async function SugestoesTarifaPage({
 
   const situacao = (s: (typeof sugestoes)[number]): Filtro =>
     s.valor_eixo_osm === null ? "sem_osm" : s.fontes_concordam ? "concordam" : "divergem";
+  const situacaoAntt = (s: (typeof sugestoes)[number]): FiltroAntt =>
+    s.valor_eixo_antt === null ? "sem" : s.antt_concorda ? "bate" : "diverge";
+  const porOsm = (s: (typeof sugestoes)[number], f: Filtro) => f === "todas" || situacao(s) === f;
+  const porAntt = (s: (typeof sugestoes)[number], f: FiltroAntt) => f === "todas" || situacaoAntt(s) === f;
   const base = sugestoes.filter((s) => contem(busca, s.praca_pedagio?.nome));
-  const contagem = (f: Filtro) => (f === "todas" ? base.length : base.filter((s) => situacao(s) === f).length);
-  const rows = filtro === "todas" ? base : base.filter((s) => situacao(s) === filtro);
+  // cada grupo conta dentro do que o outro grupo já filtrou
+  const contagem = (f: Filtro) => base.filter((s) => porAntt(s, filtroAntt) && porOsm(s, f)).length;
+  const contagemAntt = (f: FiltroAntt) => base.filter((s) => porOsm(s, filtro) && porAntt(s, f)).length;
+  const rows = base.filter((s) => porOsm(s, filtro) && porAntt(s, filtroAntt));
 
   return (
     <ListaComPainel
@@ -57,6 +74,17 @@ export default async function SugestoesTarifaPage({
               qtd: contagem(f.valor),
             }))}
           />
+          <GrupoRadio
+            legenda="ANTT (praças federais)"
+            name="antt"
+            valor={filtroAntt}
+            opcoes={FILTROS_ANTT.map((f) => ({
+              value: f.valor,
+              label: f.label,
+              cor: "cor" in f ? f.cor : undefined,
+              qtd: contagemAntt(f.valor),
+            }))}
+          />
         </PainelFiltros>
       }
       detalhe={
@@ -73,8 +101,21 @@ export default async function SugestoesTarifaPage({
             <p>
               Para cada praça sem tarifa no período, o valor por eixo que explica o maior número de
               débitos das faturas (todos os eixos ou eixos suspensos, com ou sem 5% de TAG), comparado
-              com a tarifa publicada no OpenStreetMap. Aprovar grava a tarifa a partir do início do
-              período e revalida as passagens da praça.
+              com a tarifa publicada no OpenStreetMap e, nas praças federais, com a tarifa da ANTT.
+              Aprovar grava a tarifa a partir do início do período e revalida as passagens da praça.
+            </p>
+            <p className="text-xs">
+              Tarifas da ANTT: painel público &quot;Tarifas Vigentes&quot; do{" "}
+              <a
+                href="https://www.gov.br/antt/pt-br"
+                target="_blank"
+                rel="noreferrer"
+                className="underline"
+              >
+                portal de rodovias da ANTT
+              </a>
+              , copiado por script — a data é a da coleta da ANTT, que nem sempre acompanha o último
+              reajuste.
             </p>
             <p className="text-xs">
               Tarifas do OpenStreetMap: ©{" "}
@@ -92,7 +133,7 @@ export default async function SugestoesTarifaPage({
         </div>
       }
     >
-      <SugestoesTarifaList key={`${filtro}-${busca ?? ""}`} rows={rows} isAdmin={papel === "admin"} />
+      <SugestoesTarifaList key={`${filtro}-${filtroAntt}-${busca ?? ""}`} rows={rows} isAdmin={papel === "admin"} />
     </ListaComPainel>
   );
 }

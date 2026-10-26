@@ -265,7 +265,7 @@ export async function gerarSugestoesTarifa(
 // passagens (statement_timeout do papel authenticated).
 export async function aprovarSugestoesTarifa(
   ids: string[],
-  fonte: "fatura" | "osm",
+  fonte: "fatura" | "osm" | "antt",
 ): Promise<{ error?: string; aprovadas?: number }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("aprovar_sugestoes_tarifa", { p_ids: ids, p_fonte: fonte });

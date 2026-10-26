@@ -186,6 +186,53 @@ export type Database = {
         };
         Relationships: [];
       };
+      tarifa_eixo_antt: {
+        Row: {
+          praca_id: string;
+          concessionaria: string;
+          praca_antt: string;
+          distancia_m: number;
+          valor_eixo: number;
+          coletado_em: string | null;
+          valor_eixo_anterior: number | null;
+          anterior_coletado_em: string | null;
+          categorias: Json;
+          carregado_em: string;
+        };
+        Insert: {
+          praca_id: string;
+          concessionaria: string;
+          praca_antt: string;
+          distancia_m: number;
+          valor_eixo: number;
+          coletado_em?: string | null;
+          valor_eixo_anterior?: number | null;
+          anterior_coletado_em?: string | null;
+          categorias?: Json;
+          carregado_em?: string;
+        };
+        Update: {
+          praca_id?: string;
+          concessionaria?: string;
+          praca_antt?: string;
+          distancia_m?: number;
+          valor_eixo?: number;
+          coletado_em?: string | null;
+          valor_eixo_anterior?: number | null;
+          anterior_coletado_em?: string | null;
+          categorias?: Json;
+          carregado_em?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tarifa_eixo_antt_praca_id_fkey";
+            columns: ["praca_id"];
+            isOneToOne: true;
+            referencedRelation: "praca_pedagio";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       tarifa_eixo_osm: {
         Row: {
           praca_id: string;
@@ -230,6 +277,9 @@ export type Database = {
           valor_eixo_osm: number | null;
           osm_conferido_em: string | null;
           fontes_concordam: boolean;
+          valor_eixo_antt: number | null;
+          antt_coletado_em: string | null;
+          antt_concorda: boolean;
           status: string;
           decidido_por: string | null;
           decidido_em: string | null;
@@ -247,6 +297,9 @@ export type Database = {
           valor_eixo_osm?: number | null;
           osm_conferido_em?: string | null;
           fontes_concordam?: boolean;
+          valor_eixo_antt?: number | null;
+          antt_coletado_em?: string | null;
+          antt_concorda?: boolean;
           status?: string;
           decidido_por?: string | null;
           decidido_em?: string | null;
@@ -264,6 +317,9 @@ export type Database = {
           valor_eixo_osm?: number | null;
           osm_conferido_em?: string | null;
           fontes_concordam?: boolean;
+          valor_eixo_antt?: number | null;
+          antt_coletado_em?: string | null;
+          antt_concorda?: boolean;
           status?: string;
           decidido_por?: string | null;
           decidido_em?: string | null;
