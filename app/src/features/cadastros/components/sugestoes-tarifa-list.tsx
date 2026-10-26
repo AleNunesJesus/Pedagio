@@ -10,11 +10,8 @@ import {
   useAvisoAoSair,
   type Progresso,
 } from "@/features/importacao/components/progresso-importacao";
-import {
-  aprovarSugestoesTarifa,
-  descartarSugestoesTarifa,
-  finalizarAprovacaoSugestoes,
-} from "../actions";
+import { descartarSugestoesTarifa, finalizarAprovacaoSugestoes } from "../actions";
+import { aprovarEmBlocos, type FonteSugestao } from "../aprovacao-sugestoes";
 
 type Sugestao = {
   id: string;
@@ -32,34 +29,11 @@ type Sugestao = {
   praca_pedagio: { nome: string } | null;
 };
 
-type Fonte = "fatura" | "osm" | "antt";
-
-const ROTULO_FONTE: Record<Fonte, string> = {
+const ROTULO_FONTE: Record<FonteSugestao, string> = {
   fatura: "valor da fatura",
   osm: "valor do OSM",
   antt: "valor da ANTT",
 };
-
-// aprovar revalida as passagens da praça; blocos limitados por passagens
-// (medido: ~3 ms/passagem, statement_timeout de 8 s)
-const PASSAGENS_POR_BLOCO = 400;
-
-function emBlocos(rows: Sugestao[]): Sugestao[][] {
-  const blocos: Sugestao[][] = [];
-  let atual: Sugestao[] = [];
-  let soma = 0;
-  for (const r of rows) {
-    if (atual.length > 0 && soma + r.passagens_total > PASSAGENS_POR_BLOCO) {
-      blocos.push(atual);
-      atual = [];
-      soma = 0;
-    }
-    atual.push(r);
-    soma += r.passagens_total;
-  }
-  if (atual.length > 0) blocos.push(atual);
-  return blocos;
-}
 
 function dataCurta(iso: string): string {
   const [, mes, dia] = iso.split("-");
@@ -134,7 +108,7 @@ export function SugestoesTarifaList({ rows, isAdmin }: { rows: Sugestao[]; isAdm
     });
   }
 
-  async function aprovar(fonte: Fonte) {
+  async function aprovar(fonte: FonteSugestao) {
     if (escolhidas.length === 0) return;
     if (
       !window.confirm(
@@ -145,23 +119,14 @@ export function SugestoesTarifaList({ rows, isAdmin }: { rows: Sugestao[]; isAdm
     }
     setErro(null);
     setAviso(null);
-    const blocos = emBlocos(escolhidas);
-    let aprovadas = 0;
     setProgresso({ enviadas: 0, total: escolhidas.length });
     try {
-      for (const bloco of blocos) {
-        const resultado = await aprovarSugestoesTarifa(
-          bloco.map((r) => r.id),
-          fonte,
-        );
-        if (resultado.error) {
-          setErro(
-            `${resultado.error}${aprovadas > 0 ? ` (${formatNumber(aprovadas)} já aprovada(s) antes do erro)` : ""}`,
-          );
-          return;
-        }
-        aprovadas += resultado.aprovadas ?? 0;
-        setProgresso((p) => (p ? { ...p, enviadas: p.enviadas + bloco.length } : p));
+      const { aprovadas, error } = await aprovarEmBlocos(escolhidas, fonte, (qtd) =>
+        setProgresso((p) => (p ? { ...p, enviadas: p.enviadas + qtd } : p)),
+      );
+      if (error) {
+        setErro(`${error}${aprovadas > 0 ? ` (${formatNumber(aprovadas)} já aprovada(s) antes do erro)` : ""}`);
+        return;
       }
       setAviso(`${formatNumber(aprovadas)} tarifa(s) gravada(s) e passagens revalidadas.`);
       setSelecionados(new Set());

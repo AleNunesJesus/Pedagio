@@ -240,24 +240,38 @@ export async function excluirTarifas(ids: string[]): Promise<{ error?: string }>
   return {};
 }
 
-// devolve o período enviado: o reset do form (React 19) limparia os campos
-export type GerarSugestoesState = FormState & { geradas?: number; inicio?: string; fim?: string };
+// Sugestão confirmada por fonte independente — o componente grava essas em
+// seguida (aprovar em blocos): ANTT bate (cheio ou −5%) → valor da ANTT;
+// senão OSM = fatura → valor da fatura.
+export type SugestaoConfirmada = { id: string; passagens_total: number; fonte: "antt" | "fatura" };
 
 export async function gerarSugestoesTarifa(
-  _prevState: GerarSugestoesState,
-  formData: FormData,
-): Promise<GerarSugestoesState> {
-  const inicio = (formData.get("inicio") as string | null)?.trim() ?? "";
-  const fim = (formData.get("fim") as string | null)?.trim() ?? "";
-  if (!inicio || !fim) return { error: "Informe o período.", inicio, fim };
-  if (fim < inicio) return { error: "Fim do período não pode ser antes do início.", inicio, fim };
+  inicio: string,
+  fim: string,
+): Promise<{ error?: string; geradas?: number; confirmadas?: SugestaoConfirmada[] }> {
+  if (!inicio || !fim) return { error: "Informe o período." };
+  if (fim < inicio) return { error: "Fim do período não pode ser antes do início." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("gerar_sugestoes_tarifa", { p_inicio: inicio, p_fim: fim });
-  if (error) return { error: error.message, inicio, fim };
+  if (error) return { error: error.message };
+
+  const { data: confirmadas, error: erroLista } = await supabase
+    .from("tarifa_eixo_sugestao")
+    .select("id, passagens_total, antt_concorda")
+    .eq("status", "pendente")
+    .or("antt_concorda.eq.true,fontes_concordam.eq.true");
+  if (erroLista) return { error: erroLista.message, geradas: data ?? 0 };
 
   revalidatePath("/cadastros/tarifas/sugestoes");
-  return { success: true, geradas: data ?? 0, inicio, fim };
+  return {
+    geradas: data ?? 0,
+    confirmadas: (confirmadas ?? []).map((s) => ({
+      id: s.id,
+      passagens_total: s.passagens_total,
+      fonte: s.antt_concorda ? "antt" : "fatura",
+    })),
+  };
 }
 
 // Um bloco por chamada: aprovar grava a tarifa e revalida as passagens da

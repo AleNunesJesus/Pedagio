@@ -126,7 +126,12 @@ export function SecaoCadastros() {
       >
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Rota <code>/cadastros/tarifas/sugestoes</code>. O admin informa um
-          período e o sistema sugere, para cada praça sem tarifa nesse
+          período e clica em &quot;Gerar sugestões&quot;: as sugestões
+          confirmadas por uma fonte independente (fatura = ANTT, gravada com o
+          valor da ANTT, ou fatura = OSM, gravada com o valor da fatura) já
+          são gravadas em Tarifas na hora — acompanhe a barra e não feche a
+          aba; as demais ficam na lista para revisão. O sistema sugere, para
+          cada praça sem tarifa nesse
           período, o valor por eixo que explica o maior número de débitos
           das faturas, ao lado da tarifa publicada no OpenStreetMap
           (mantida por voluntários, pode estar desatualizada) e, nas praças

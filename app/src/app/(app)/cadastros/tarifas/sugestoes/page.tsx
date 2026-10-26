@@ -92,7 +92,7 @@ export default async function SugestoesTarifaPage({
           {papel === "admin" && (
             <PainelNovo
               titulo="Gerar sugestões"
-              descricao="Refaz todas as sugestões pendentes a partir dos débitos do período."
+              descricao="Refaz as sugestões pendentes a partir dos débitos do período e grava em Tarifas as confirmadas pela ANTT ou pelo OSM; as demais ficam aqui para revisão."
             >
               <GerarSugestoesForm inicio={periodo.inicio} fim={periodo.fim} />
             </PainelNovo>

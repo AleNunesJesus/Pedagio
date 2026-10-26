@@ -3052,6 +3052,25 @@ sugestões pendentes (geradas pela tela no teste, já com ANTT); nenhuma tarifa
 aprovada além de Franco da Rocha — **aprovar pela tela** (sugestão: filtro
 "Fatura = ANTT" → aprovar com valor da ANTT).
 
+**Ajuste (2026-10-26) — gerar grava as confirmadas:** pergunta do usuário
+("gerar não deveria cadastrar em Tarifas?"). **Decisão do usuário:** gravar
+automaticamente só o que uma fonte independente confirma — fatura = ANTT
+(cheio ou −5%, grava o valor da ANTT) ou fatura = OSM (grava o valor da
+fatura); as demais ficam pendentes. Sem mudança no banco: a action
+`gerarSugestoesTarifa` devolve as confirmadas e o formulário as aprova em
+seguida pelo mesmo caminho do botão (blocos de até 400 passagens, barra de
+progresso, aviso ao sair) — aprovar dentro do `gerar` estouraria o
+`statement_timeout` (≈ 20 mil passagens a revalidar). `aprovarEmBlocos`
+(`features/cadastros/aprovacao-sugestoes.ts`) compartilhado com a lista;
+formulário com `onSubmit` (o reset do form do React 19 limparia as datas).
+Navegador (admin temporário) 10/10: 580 geradas → **386 gravadas** e 194
+pendentes em 2 min 18 s, nenhuma confirmada sobrou e nenhuma não confirmada
+foi gravada, valor certo por fonte, 20.912 passagens passaram a ter
+conferência de valor, datas mantidas, console limpo; tudo desfeito no fim
+(386 tarifas removidas → passagens revalidadas de volta, sugestões
+pendentes, usuário removido). **As tarifas reais serão gravadas quando o
+usuário clicar em "Gerar sugestões".**
+
 **Pendentes:**
 - Sugestões suspeitas para revisão humana: Ecovias Araguaia e
   Transbrasiliana (fatura ≈ metade da ANTT e do OSM) e Elovias (13,30 × 21,00)
